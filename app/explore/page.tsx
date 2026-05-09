@@ -12,7 +12,7 @@ import {
   Loader2, Mail, Phone, Camera, Send, Play,
   Trophy, MessageSquare, PlusCircle, Zap, TrendingUp,
   Ticket as TicketIcon, ShieldCheck, ArrowUp, Star,
-  Users, Globe, Music
+  Users, Globe, Music, Receipt // ⚡ ICON RECEIPT DITAMBAHIN
 } from "lucide-react";
 import Link from "next/link";
 
@@ -263,7 +263,9 @@ export default function ExplorePage() {
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer"><ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan</DropdownMenuItem>
+                {/* ⚡ MENU RIWAYAT PEMBAYARAN DITAMBAH DI SINI */}
+                <DropdownMenuItem onClick={() => router.push("explore/history")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran</DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
                 <DropdownMenuItem 
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer" 
@@ -629,7 +631,9 @@ export default function ExplorePage() {
             <div className="space-y-6">
               <h4 className="font-black uppercase tracking-widest text-[10px] text-amber-300 italic underline underline-offset-8 text-left">Support</h4>
               <ul className="space-y-4 text-purple-50 text-sm font-bold text-left uppercase">
-                <li onClick={() => router.push("explore/complaints")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><MessageSquare size={16} /> PUSAT PENGADUAN</li>
+                <li onClick={() => router.push("/explore/complaints")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><MessageSquare size={16} /> PUSAT PENGADUAN</li>
+                {/* ⚡ MENU RIWAYAT PEMBAYARAN DITAMBAH DI BAWAH PENGADUAN FOOTER */}
+                <li onClick={() => router.push("explore/history")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><Receipt size={16} /> RIWAYAT PEMBAYARAN</li>
                 <li className="flex items-center gap-3 italic"><Mail size={16} /> HELLO@TIKETIN.COM</li>
                 <li className="flex items-center gap-3 italic"><Phone size={16} /> +62 812 3456 789</li>
               </ul>

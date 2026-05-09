@@ -6,7 +6,7 @@ import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Ticket, Calendar, MapPin, 
-  CreditCard, Loader2, Zap, ShieldCheck
+  CreditCard, Loader2, Zap, ShieldCheck, AlertOctagon, Tag
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -40,16 +40,34 @@ export default function CheckoutPage() {
 
   const [user, setUser] = useState<any>(null);
   const [event, setEvent] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [alreadyBought, setAlreadyBought] = useState(0);
 
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(style);
+    
+    // ⚡ SUNTIK SCRIPT MIDTRANS KE HALAMAN
+    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
+    const script = document.createElement("script");
+    script.src = snapScript;
+    script.setAttribute("data-client-key", clientKey);
+    script.async = true;
+    document.head.appendChild(script);
+
     fetchData();
-    return () => { document.head.removeChild(style); };
+
+    return () => { 
+      document.head.removeChild(style); 
+      document.head.removeChild(script); // ⚡ BERSIHIN SCRIPT PAS KELUAR HALAMAN
+    };
   }, [eventId]);
 
   const fetchData = async () => {
@@ -60,29 +78,80 @@ export default function CheckoutPage() {
     }
     setUser(session.user);
 
-    // Fetch detail event
-    const { data: eventData } = await supabase
-      .from("events")
-      .select("*")
-      .eq("id", eventId)
-      .single();
-
+    // 1. Fetch Event
+    const { data: eventData } = await supabase.from("events").select("*").eq("id", eventId).single();
     if (eventData) setEvent(eventData);
+
+    // 2. Fetch Kategori Tiket dari tabel ticket_categories
+    const { data: catData } = await supabase.from("ticket_categories").select("*").eq("event_id", eventId).order("price", { ascending: true });
+    if (catData && catData.length > 0) {
+      setCategories(catData);
+      setSelectedCatId(catData[0].id); // Default pilih yang pertama
+    }
+
+    // 3. Cek Jumlah Tiket yang udah dibeli user ini buat validasi limit
+    const { data: userTickets } = await supabase
+      .from("tiket")
+      .select("id, transaksi!inner(user_id)")
+      .eq("event_id", eventId)
+      .eq("transaksi.user_id", session.user.id);
+      
+    const boughtCount = userTickets ? userTickets.length : 0;
+    setAlreadyBought(boughtCount);
+
     setIsLoading(false);
   };
 
+  // Logic buat ngatur limit maksimal yang bisa dibeli
+  const selectedCategory = categories.find(c => c.id === selectedCatId);
+  const maxBuyPerUser = event?.max_buy || 0;
+  
+  // Kuota dari sisa limit user (Max dari EO dikurang yang udah dibeli)
+  const availableUserQuota = Math.max(0, maxBuyPerUser - alreadyBought);
+  
+  // Kuota asli dari stok tiket yang ada
+  const stockAvailable = selectedCategory ? selectedCategory.stock : 0;
+
+  // Batas mutlak pembelian saat ini (yang paling kecil antara jatah user atau sisa stok)
+  const absoluteMaxQty = Math.min(availableUserQuota, stockAvailable);
+
+  // Auto-koreksi Qty kalau user ganti kategori dan stoknya lebih dikit dari inputan sebelumnya
+  useEffect(() => {
+    if (qty > absoluteMaxQty) {
+      setQty(Math.max(1, absoluteMaxQty));
+    }
+    if (absoluteMaxQty === 0) setQty(0);
+  }, [selectedCatId, absoluteMaxQty]);
+
+  // ⚡ FUNGSI CHECKOUT PRO (UDAH BISA SIMPEN TOKEN & INFO TIKET KE DB)
   const handleCheckout = async () => {
-    if (!user || !event) return;
+    if (!user || !event || !selectedCategory || qty <= 0) return;
     setIsProcessing(true);
 
-    // Simulasi loading gateway pembayaran (biar keren)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     try {
-      const orderId = `INV-BRUTAL-${Date.now()}`;
-      const totalBayar = event.price * qty;
+      const orderId = `INV-${Date.now().toString().slice(-6)}`;
+      const totalBayar = selectedCategory.price * qty;
 
-      // 1. Insert Transaksi (Otomatis "paid" buat testing)
+      // 1. Minta Token dari API Backend lo
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          gross_amount: totalBayar,
+          first_name: user.user_metadata?.full_name || "User",
+          email: user.email,
+          item_name: `${event.title} - ${selectedCategory.name}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!data.token) {
+        throw new Error(data.error || "Gagal dapet token dari Midtrans!");
+      }
+
+      // 2. ⚡ INSERT TRANSAKSI DENGAN STATUS "PENDING" & SIMPEN TOKEN
       const { data: txData, error: txError } = await supabase
         .from("transaksi")
         .insert({
@@ -90,34 +159,76 @@ export default function CheckoutPage() {
           order_id: orderId,
           total_qty: qty,
           total_bayar: totalBayar,
-          status_pembayaran: "paid" 
+          status_pembayaran: "pending",
+          snap_token: data.token,          // SIMPEN TOKENNYA
+          event_id: event.id,              // SIMPEN ID EVENT
+          category_id: selectedCategory.id // SIMPEN ID KATEGORI
         })
         .select()
         .single();
 
       if (txError) throw txError;
 
-      // 2. Bikin tiket sebanyak Qty yang dibeli
-      const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
-        transaksi_id: txData.id,
-        event_id: event.id,
-        ticket_code: `TKT-${Date.now().toString().slice(-6)}${idx}`, // Kode unik tiket
-        seat_info: "GENERAL ADMISSION",
-        status_checkin: false
-      }));
+      // 3. TAMPILIN POP-UP MIDTRANS
+      // @ts-ignore
+      window.snap.pay(data.token, {
+        onSuccess: async function (result: any) {
+          // ⚡ KALAU BAYAR SUKSES, BARU UPDATE STATUS JADI PAID
+          try {
+            await supabase
+              .from("transaksi")
+              .update({ status_pembayaran: "paid" })
+              .eq("id", txData.id);
 
-      const { error: tktError } = await supabase
-        .from("tiket")
-        .insert(ticketsToInsert);
+            // Insert ke tabel Tiket pake nama kategori
+            const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
+              transaksi_id: txData.id,
+              event_id: event.id,
+              ticket_category_id: selectedCategory.id, 
+              ticket_code: `TKT-${orderId}-${idx}`, 
+              seat_info: selectedCategory.name, 
+              status_checkin: false
+            }));
 
-      if (tktError) throw tktError;
+            const { error: tktError } = await supabase.from("tiket").insert(ticketsToInsert);
+            if (tktError) throw tktError;
 
-      // 3. Sukses! Lempar ke halaman tiket
-      router.push("/explore/tickets"); // Sesuaikan sama URL halaman tiket lo
+            // Update (kurangin) stok di tabel ticket_categories
+            const { error: stockError } = await supabase
+              .from("ticket_categories")
+              .update({ stock: stockAvailable - qty })
+              .eq("id", selectedCategory.id);
+              
+            if (stockError) console.error("Gagal potong stok:", stockError);
 
-    } catch (error) {
+            alert("PEMBAYARAN BERHASIL MAN!");
+            router.push("/explore/tickets"); 
+
+          } catch (dbError) {
+             console.error("Gagal simpan ke DB setelah bayar:", dbError);
+             alert("Pembayaran berhasil di Midtrans, tapi gagal nyimpen tiket di sistem kita. Segera hubungi Admin!");
+             setIsProcessing(false);
+          }
+        },
+        onPending: function (result: any) {
+          // KALO MILIH METODE YANG BUTUH WAKTU
+          alert("Siapp, tagihan lo udah disimpen. Cek halaman Riwayat ya!");
+          router.push("/explore/history"); 
+        },
+        onError: function (result: any) {
+          alert("Pembayaran gagal!");
+          setIsProcessing(false);
+        },
+        onClose: function () {
+          // KALO POP-UP DITUTUP MANUAL SAMA USER
+          alert("Pop-up ditutup! Tenang, tagihan lo aman di Riwayat Pembayaran.");
+          router.push("/explore/history"); 
+        }
+      });
+
+    } catch (error: any) {
       console.error("Gagal checkout:", error);
-      alert("Waduh, war tiket gagal Man! Coba lagi.");
+      alert(`Waduh, war tiket gagal Man! ${error.message}`);
       setIsProcessing(false);
     }
   };
@@ -158,8 +269,8 @@ export default function CheckoutPage() {
 
         <div className="flex flex-col lg:flex-row gap-16">
           
-          {/* KIRI: DETAIL EVENT */}
-          <div className="flex-1">
+          {/* KIRI: DETAIL EVENT & PILIH KATEGORI */}
+          <div className="flex-1 space-y-8">
             <div className="bg-white border-4 border-slate-900 brutal-shadow-card flex flex-col overflow-hidden">
               <div className="h-64 bg-slate-900 relative border-b-4 border-slate-900">
                 <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-70" />
@@ -181,56 +292,133 @@ export default function CheckoutPage() {
                 </div>
               </div>
             </div>
+
+            {/* PILIH KATEGORI TIKET */}
+            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card">
+              <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 flex items-center gap-3">
+                <Tag size={28} className="text-[#6D4AFF]" /> PILIH TIER TIKET
+              </h3>
+              <div className="space-y-4">
+                {categories.map((cat) => (
+                  <label 
+                    key={cat.id} 
+                    className={`block w-full border-4 p-4 cursor-pointer transition-all ${
+                      selectedCatId === cat.id 
+                        ? "border-slate-900 bg-amber-400 shadow-[4px_4px_0_0_#000] translate-x-1 translate-y-1" 
+                        : "border-slate-300 bg-slate-50 hover:border-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <input 
+                          type="radio" 
+                          name="ticketCategory" 
+                          value={cat.id} 
+                          checked={selectedCatId === cat.id}
+                          onChange={() => setSelectedCatId(cat.id)}
+                          disabled={cat.stock <= 0}
+                          className="w-5 h-5 accent-slate-900" 
+                        />
+                        <div>
+                          <p className="font-black italic uppercase text-lg leading-none">{cat.name}</p>
+                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">Stok: {cat.stock} Pcs</p>
+                        </div>
+                      </div>
+                      <p className={`font-black italic text-xl ${selectedCatId === cat.id ? "text-slate-900" : "text-[#6D4AFF]"}`}>
+                        {formatRupiah(cat.price)}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* KANAN: FORM CHECKOUT */}
           <div className="w-full lg:w-[450px]">
-            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full">
-              <div className="flex items-center gap-2 mb-8 border-b-4 border-slate-900 pb-4">
-                <Ticket size={28} strokeWidth={3} className="text-[#6D4AFF]" />
-                <h3 className="text-2xl font-black italic uppercase -skew-x-6">ORDER SUMMARY</h3>
-              </div>
-
-              {/* Atur Jumlah Tiket */}
-              <div className="flex items-center justify-between mb-8">
-                <span className="font-bold uppercase text-slate-500 tracking-widest text-sm">JUMLAH TIKET</span>
-                <div className="flex items-center gap-4 border-4 border-slate-900 bg-slate-100 p-1 shadow-[4px_4px_0_0_#000]">
-                  <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors">-</button>
-                  <span className="font-black text-xl w-8 text-center">{qty}</span>
-                  <button onClick={() => setQty(qty + 1)} className="w-10 h-10 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors">+</button>
+            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full sticky top-24">
+              <div className="flex items-center justify-between gap-2 mb-8 border-b-4 border-slate-900 pb-4">
+                <div className="flex items-center gap-2">
+                  <Ticket size={28} strokeWidth={3} className="text-[#6D4AFF]" />
+                  <h3 className="text-2xl font-black italic uppercase -skew-x-6">SUMMARY</h3>
                 </div>
               </div>
 
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
-                  <span>Harga Satuan</span>
-                  <span>{formatRupiah(event.price)}</span>
+              {/* Tampilkan Peringatan Limit Tercapai */}
+              {availableUserQuota === 0 ? (
+                <div className="bg-red-100 border-4 border-red-500 p-4 mb-8 flex items-start gap-3 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
+                  <AlertOctagon className="text-red-500 shrink-0 mt-0.5" size={24} strokeWidth={3} />
+                  <div>
+                    <p className="font-black italic uppercase text-red-500 leading-tight">LIMIT TERCAPAI!</p>
+                    <p className="text-xs font-bold text-red-900 mt-1 uppercase">Lo udah beli {alreadyBought} tiket. Aturan EO: Maksimal {maxBuyPerUser} tiket/akun.</p>
+                  </div>
                 </div>
-                <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
-                  <span>Biaya Layanan (Palsu)</span>
-                  <span>Rp 0</span>
+              ) : stockAvailable === 0 ? (
+                <div className="bg-slate-200 border-4 border-slate-900 p-4 mb-8 flex items-start gap-3">
+                  <AlertOctagon className="text-slate-600 shrink-0 mt-0.5" size={24} strokeWidth={3} />
+                  <div>
+                    <p className="font-black italic uppercase text-slate-800 leading-tight">TIKET SOLD OUT!</p>
+                    <p className="text-xs font-bold text-slate-600 mt-1 uppercase">Tier tiket ini udah habis terjual. Pilih tier lain!</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <span className="font-bold uppercase text-slate-500 tracking-widest text-[10px] block">JUMLAH TIKET</span>
+                      <span className="text-[9px] font-black bg-emerald-100 text-emerald-600 border border-emerald-300 px-2 py-0.5 inline-block mt-1 uppercase">Sisa Jatah Lo: {availableUserQuota}</span>
+                    </div>
+                    <div className="flex items-center gap-4 border-4 border-slate-900 bg-slate-100 p-1 shadow-[4px_4px_0_0_#000]">
+                      <button 
+                        onClick={() => setQty(Math.max(1, qty - 1))} 
+                        className="w-8 h-8 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors flex items-center justify-center"
+                      >
+                        -
+                      </button>
+                      <span className="font-black text-xl w-6 text-center">{qty}</span>
+                      <button 
+                        onClick={() => setQty(Math.min(absoluteMaxQty, qty + 1))} 
+                        className="w-8 h-8 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-8">
+                    <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
+                      <span>{selectedCategory?.name || "Tiket"} x {qty}</span>
+                      <span>{formatRupiah((selectedCategory?.price || 0) * qty)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
+                      <span>Biaya Layanan</span>
+                      <span>Rp 0</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Total Bayar */}
               <div className="mt-auto border-t-4 border-slate-900 pt-6 mb-8">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TOTAL BAYAR</p>
                 <p className="text-4xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
-                  {formatRupiah(event.price * qty)}
+                  {formatRupiah((selectedCategory?.price || 0) * qty)}
                 </p>
               </div>
 
               {/* Tombol Checkout */}
               <button 
                 onClick={handleCheckout}
-                disabled={isProcessing}
-                className="w-full bg-amber-400 text-slate-900 border-4 border-slate-900 p-5 font-black text-xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isProcessing || absoluteMaxQty === 0}
+                className="w-full bg-amber-400 text-slate-900 border-4 border-slate-900 p-5 font-black text-xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0_0_#000] disabled:translate-x-0 disabled:translate-y-0"
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="animate-spin" size={24} strokeWidth={4} />
                     MEMPROSES...
                   </>
+                ) : absoluteMaxQty === 0 ? (
+                  "TIDAK BISA BELI"
                 ) : (
                   <>
                     <CreditCard size={24} strokeWidth={3} />
