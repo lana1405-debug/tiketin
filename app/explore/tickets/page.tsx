@@ -6,18 +6,17 @@ import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, ChevronLeft, Calendar, MapPin, 
-  QrCode, Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2
+  Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { QRCodeSVG } from "qrcode.react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -72,7 +71,6 @@ export default function MyTicketsPage() {
       return;
     }
 
-    // 1. Ambil Profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
@@ -81,13 +79,13 @@ export default function MyTicketsPage() {
     
     if (profile) setUserProfile(profile);
 
-    // 2. Ambil Tiket beneran dari database (Join Tiket -> Events & Transaksi)
     const { data: ticketData, error } = await supabase
       .from("tiket")
       .select(`
         id,
         ticket_code,
         seat_info,
+        status_checkin,
         events (
           title,
           date,
@@ -111,6 +109,7 @@ export default function MyTicketsPage() {
         status: t.transaksi.status_pembayaran === "paid" ? "AKTIF" : "RIWAYAT",
         seat: t.seat_info || "GENERAL ADMISSION",
         image: t.events.image_url,
+        status_checkin: t.status_checkin, 
       }));
       setTickets(formatted);
     }
@@ -177,7 +176,6 @@ export default function MyTicketsPage() {
             </h1>
           </div>
           
-          {/* TAB FILTER */}
           <div className="flex bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] p-1 w-max">
             {["AKTIF", "RIWAYAT"].map((tab) => (
               <button
@@ -193,7 +191,7 @@ export default function MyTicketsPage() {
           </div>
         </header>
 
-        {/* ── TICKET LIST (Spacing diperlebar untuk Triple Shadow) ── */}
+        {/* ── TICKET LIST ── */}
         <div className="space-y-24">
           <AnimatePresence mode="popLayout">
             {isLoading ? (
@@ -211,8 +209,18 @@ export default function MyTicketsPage() {
                   transition={{ duration: 0.4, delay: idx * 0.1 }}
                   className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
                 >
+                  
+                  {/* ⚡ STAMP CHECK-IN JIKA SUDAH DI SCAN */}
+                  {ticket.status_checkin && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                      <div className="bg-emerald-400 border-4 border-slate-900 px-6 py-2 text-3xl md:text-5xl font-black italic uppercase -rotate-12 shadow-[8px_8px_0_0_#000] text-slate-900">
+                        CHECKED IN
+                      </div>
+                    </div>
+                  )}
+
                   {/* KIRI: Info Event */}
-                  <div className="flex-1 flex flex-col sm:flex-row">
+                  <div className={`flex-1 flex flex-col sm:flex-row ${ticket.status_checkin ? 'opacity-50 grayscale-[50%]' : ''}`}>
                     <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
                       <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
                       <div className="absolute top-3 left-3 bg-slate-900 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white">
@@ -255,15 +263,59 @@ export default function MyTicketsPage() {
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TICKET ID</p>
                     <p className="text-base font-black uppercase bg-slate-100 px-4 py-1 border-2 border-slate-900 mb-6">{ticket.id}</p>
                     
-                    <div className="bg-slate-900 p-4 shadow-[4px_4px_0_0_#FBBF24] mb-6">
-                      <QrCode size={64} className="text-white" strokeWidth={1.5} />
+                    {/* ⚡ REAL QR CODE GENERATOR (DITAMBAHIN ID qr-{ticket.id}) */}
+                    <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative">
+                      <QRCodeSVG 
+                        id={`qr-${ticket.id}`} 
+                        value={ticket.id} 
+                        size={120}
+                        level="H"
+                        includeMargin={false}
+                        fgColor={ticket.status_checkin ? "#94a3b8" : "#0f172a"} 
+                      />
                     </div>
 
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">SECTION / SEAT</p>
                     <p className="text-sm font-black text-[#6D4AFF] italic uppercase">{ticket.seat}</p>
                     
-                    {activeTab === "AKTIF" && (
-                      <button className="mt-6 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 hover:shadow-[4px_4px_0_0_#000] transition-all flex items-center justify-center gap-2 active:translate-x-1 active:translate-y-1 active:shadow-none">
+                    {activeTab === "AKTIF" && !ticket.status_checkin && (
+                      <button 
+                        onClick={() => {
+                          const svgElement = document.getElementById(`qr-${ticket.id}`)?.outerHTML;
+                          const printWindow = window.open('', '', 'width=600,height=800');
+                          
+                          printWindow?.document.write(`
+                            <html>
+                              <head>
+                                <title>E-Ticket - ${ticket.id}</title>
+                                <style>
+                                  body { font-family: 'Arial', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f1f5f9; text-transform: uppercase; }
+                                  .ticket { background-color: #fff; border: 4px solid #0f172a; padding: 40px; text-align: center; box-shadow: 8px 8px 0px 0px #6D4AFF; width: 320px; }
+                                  h2 { margin: 0 0 5px 0; font-size: 28px; font-weight: 900; font-style: italic; transform: skewX(-5deg); color: #0f172a; }
+                                  p.info { margin: 0 0 20px 0; color: #64748b; font-size: 12px; font-weight: bold; line-height: 1.5; }
+                                  .qr-box { border: 4px solid #0f172a; padding: 15px; margin-bottom: 20px; display: inline-block; background-color: #fff; }
+                                  .code { font-size: 16px; font-weight: 900; background: #f8fafc; padding: 8px; border: 2px solid #0f172a; letter-spacing: 2px; color: #0f172a; }
+                                  .seat { margin-top: 15px; font-size: 14px; font-weight: 900; color: #6D4AFF; font-style: italic; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="ticket">
+                                  <h2>${ticket.title}</h2>
+                                  <p class="info">📅 ${ticket.date}<br/>📍 ${ticket.location}</p>
+                                  <div class="qr-box">${svgElement || ''}</div>
+                                  <div class="code">${ticket.id}</div>
+                                  <div class="seat">${ticket.seat}</div>
+                                </div>
+                                <script>
+                                  setTimeout(() => { window.print(); window.close(); }, 500);
+                                </script>
+                              </body>
+                            </html>
+                          `);
+                          printWindow?.document.close();
+                        }}
+                        className="mt-6 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 hover:shadow-[4px_4px_0_0_#000] transition-all flex items-center justify-center gap-2 active:translate-x-1 active:translate-y-1 active:shadow-none"
+                      >
                         <Download size={14} strokeWidth={3} /> E-TICKET
                       </button>
                     )}
