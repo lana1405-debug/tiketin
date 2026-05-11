@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Poppins } from "next/font/google";
-import { Zap, ShieldCheck, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Zap, ShieldCheck, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "900"] });
 
@@ -14,10 +14,9 @@ export default function GateScanner() {
   
   const [passkey, setPasskey] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [scanStatus, setScanStatus] = useState<{status: 'idle' | 'success' | 'error', msg: string}>({status: 'idle', msg: ''});
+  const [scanStatus, setScanStatus] = useState<{status: 'idle' | 'success' | 'warning' | 'error', msg: string}>({status: 'idle', msg: ''});
   const [isUnlocking, setIsUnlocking] = useState(false);
 
-  // ⚡ GEMBOK ANTI-SPAM: Biar kamera nggak nge-scan 10x dalam sedetik
   const scanLock = useRef(false);
 
   const handleUnlock = async () => {
@@ -54,7 +53,6 @@ export default function GateScanner() {
     setTimeout(async () => {
       try {
         const { Html5QrcodeScanner } = await import("html5-qrcode");
-        
         const scanner = new Html5QrcodeScanner(
           "reader",
           { 
@@ -65,7 +63,6 @@ export default function GateScanner() {
           },
           false
         );
-        
         scanner.render(onScanSuccess, (err) => {});
       } catch (error) {
         console.error("Gagal buka kamera:", error);
@@ -74,33 +71,41 @@ export default function GateScanner() {
   };
 
   const onScanSuccess = async (decodedText: string) => {
-    // 1. Cek apakah lagi cooldown
     if (scanLock.current) return;
     scanLock.current = true;
 
     setScanStatus({ status: 'idle', msg: 'MENGECEK DATABASE...' });
 
     try {
-      const { data, error } = await supabase
+      // 1. Ambil data tiket dulu buat ngecek status aslinya
+      const { data: ticket, error: fetchError } = await supabase
         .from("tiket")
-        .update({ status_checkin: true })
+        .select("status_checkin")
         .eq("ticket_code", decodedText)
         .eq("event_id", eventId)
-        .eq("status_checkin", false) // Cuma bisa update yang masih false
-        .select();
+        .single();
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setScanStatus({ status: 'success', msg: `VALID! TIKET BERHASIL MASUK.` });
+      if (fetchError || !ticket) {
+        // TIKET GAK ADA DI DATABASE (MERAH)
+        setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID / PALSU!" });
+      } else if (ticket.status_checkin === true) {
+        // TIKET SUDAH PERNAH DI SCAN (KUNING)
+        setScanStatus({ status: 'warning', msg: "PERINGATAN: TIKET SUDAH PERNAH DIGUNAKAN!" });
       } else {
-        setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID / SUDAH CHECK-IN!" });
+        // TIKET VALID & BELUM MASUK (HIJAU)
+        const { error: updateError } = await supabase
+          .from("tiket")
+          .update({ status_checkin: true })
+          .eq("ticket_code", decodedText);
+
+        if (updateError) throw updateError;
+        setScanStatus({ status: 'success', msg: `BERHASIL! SILAKAN MASUK.` });
       }
     } catch (err: any) {
       console.error("Error scan:", err);
-      setScanStatus({ status: 'error', msg: "KONEKSI ERROR! COBA LAGI." });
+      setScanStatus({ status: 'error', msg: "KONEKSI BERMASALAH!" });
     } finally {
-      // 2. Buka gembok setelah 3 detik (Cooldown)
+      // Cooldown 3 detik biar gak spam
       setTimeout(() => {
         scanLock.current = false;
         setScanStatus({ status: 'idle', msg: '' });
@@ -125,7 +130,7 @@ export default function GateScanner() {
             <div className="space-y-2 text-center">
               <ShieldCheck className="mx-auto text-[#6D4AFF]" size={48} />
               <h2 className="text-xl font-black italic uppercase">STAFF ONLY</h2>
-              <p className="text-xs font-bold text-slate-400 uppercase">Input Gate Passkey untuk membuka scanner</p>
+              <p className="text-xs font-bold text-slate-400 uppercase">Input Gate Passkey</p>
             </div>
             <input 
               type="password"
@@ -138,7 +143,7 @@ export default function GateScanner() {
             <button 
               onClick={handleUnlock}
               disabled={isUnlocking}
-              className="w-full bg-amber-400 border-4 border-slate-900 p-4 font-black uppercase italic shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+              className="w-full bg-amber-400 border-4 border-slate-900 p-4 font-black uppercase italic shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 transition-all flex justify-center items-center gap-2 disabled:opacity-50"
             >
               {isUnlocking ? <Loader2 className="animate-spin" size={20} /> : "UNLOCK SCANNER"}
             </button>
@@ -147,11 +152,20 @@ export default function GateScanner() {
           <div className="space-y-6">
             <div id="reader" className="w-full min-h-[300px] bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#6D4AFF]"></div>
             
+            {/* LOGIKA WARNA NOTIFIKASI BARU */}
             {scanStatus.msg && (
               <div className={`p-6 border-4 border-slate-900 font-black italic uppercase flex items-center gap-4 animate-bounce ${
-                scanStatus.status === 'success' ? 'bg-emerald-400' : scanStatus.status === 'error' ? 'bg-red-400' : 'bg-amber-200'
+                scanStatus.status === 'success' 
+                  ? 'bg-emerald-400' 
+                  : scanStatus.status === 'warning'
+                    ? 'bg-amber-400' 
+                    : scanStatus.status === 'error'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-white'
               }`}>
-                {scanStatus.status === 'success' ? <CheckCircle2 size={32} /> : <XCircle size={32} />}
+                {scanStatus.status === 'success' && <CheckCircle2 size={32} />}
+                {scanStatus.status === 'warning' && <AlertCircle size={32} />}
+                {scanStatus.status === 'error' && <XCircle size={32} />}
                 <span className="text-lg leading-tight">{scanStatus.msg}</span>
               </div>
             )}
