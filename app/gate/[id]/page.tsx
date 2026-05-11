@@ -15,14 +15,9 @@ export default function GateScanner() {
   const [passkey, setPasskey] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [scanStatus, setScanStatus] = useState<{status: 'idle' | 'success' | 'error', msg: string}>({status: 'idle', msg: ''});
-  
-  // State buat tombol unlock
   const [isUnlocking, setIsUnlocking] = useState(false);
 
   const handleUnlock = async () => {
-    // ⚡ INI DETEKTORNYA: Buat ngecek HP lo beneran dapet URL Supabase atau enggak!
-    alert("Cek URL di HP: " + process.env.NEXT_PUBLIC_SUPABASE_URL);
-
     if (!passkey) {
       alert("Isi dulu passkey-nya, Man!");
       return;
@@ -30,11 +25,12 @@ export default function GateScanner() {
 
     setIsUnlocking(true);
     try {
-      // ⚡ INI TIMEOUT-NYA: Maksimal nunggu 3 detik, kalo Supabase no-respon langsung error!
-      const fetchPromise = supabase.from("events").select("gate_passkey").eq("id", eventId).single();
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout! Supabase nggak ngerespon. Pasti .env belum bener atau server belum di-restart.")), 3000));
-      
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      // Kodingan bersih, langsung nembak ke Supabase tanpa Timeout aneh-aneh
+      const { data, error } = await supabase
+        .from("events")
+        .select("gate_passkey")
+        .eq("id", eventId)
+        .single();
         
       if (error) throw error;
 
@@ -60,7 +56,9 @@ export default function GateScanner() {
         { fps: 10, qrbox: { width: 250, height: 250 } },
         false
       );
-      scanner.render(onScanSuccess, (err) => {});
+      scanner.render(onScanSuccess, (err) => {
+        // Biarin kosong biar konsol nggak penuh log error scan
+      });
     }, 300);
   };
 
@@ -72,13 +70,14 @@ export default function GateScanner() {
       .update({ status_checkin: true })
       .eq("ticket_code", decodedText)
       .eq("event_id", eventId)
-      .eq("status_checkin", false)
+      .eq("status_checkin", false) // Cuma bisa update tiket yang belum check-in
       .select();
 
     if (data && data.length > 0) {
-      setScanStatus({ status: 'success', msg: `VALID! ${decodedText} BERHASIL MASUK.` });
+      setScanStatus({ status: 'success', msg: `VALID! TIKET ${decodedText} BERHASIL MASUK.` });
     } else {
-      setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID ATAU SUDAH MASUK!" });
+      // Kalo tiket gak ketemu atau udah pernah check-in (status_checkin = true)
+      setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID ATAU SUDAH DIGUNAKAN!" });
     }
   };
 
