@@ -227,9 +227,12 @@ export default function EODashboard() {
             <LayoutDashboard size={20} /> Dashboard EO
           </button>
           {/* ⚡ MENU BARU: SCAN QR KESELURUHAN */}
-          <Link href="/dashboard/eo/scan" className="w-full flex items-center gap-4 bg-amber-400 text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-sm tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-            <QrCode size={20} /> Scan Check-In
-          </Link>
+         <button 
+  onClick={() => alert("Pilih event di tabel sebelah kanan, lalu klik tombol 'Buka Scanner' ya, Man!")} 
+  className="w-full flex items-center gap-4 bg-amber-400 text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-sm tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+>
+  <QrCode size={20} /> Scan Check-In
+</button>
           <Link href="/explore" className="w-full flex items-center gap-4 bg-white text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-sm tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
             <Ticket size={20} /> Lihat Stage
           </Link>
@@ -329,7 +332,7 @@ export default function EODashboard() {
                           {/* ⚡ TOMBOL SCAN QR KHUSUS EVENT INI */}
                           {event.status === 'approved' && (
                             <button 
-                              onClick={() => router.push(`/dashboard/eo/scan?event=${event.id}`)} 
+                              onClick={() => window.open(`/gate/${event.id}`, '_blank')} 
                               className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[10px] shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"
                             >
                               <QrCode size={14} /> Buka Scanner
