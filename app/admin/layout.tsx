@@ -7,7 +7,7 @@ import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { 
   LayoutDashboard, CalendarCheck, Users, Wallet, 
-  ShieldCheck, LifeBuoy, LogOut, Loader2, Zap, Terminal, AlertTriangle, IdCard
+  ShieldCheck, LifeBuoy, LogOut, Loader2, Landmark, Zap, Terminal, AlertTriangle, IdCard, BarChart3, Ticket as TicketIcon
 } from "lucide-react";
 
 const poppins = Poppins({ 
@@ -55,14 +55,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/login");
   };
 
-  // TAMBAH MENU VERIFIKASI KTP DI SINI
+  // 💥 MENU BARU DITAMBAH DI SINI 💥
   const menuItems = [
     { name: "Dashboard", icon: LayoutDashboard, href: "/admin/dashboard" },
     { name: "Verifikasi Event", icon: CalendarCheck, href: "/admin/verify-events" },
     { name: "Verifikasi KTP", icon: IdCard, href: "/admin/verify-ktp" },
     { name: "Daftar User & EO", icon: Users, href: "/admin/users" },
     { name: "Transaksi Global", icon: Wallet, href: "/admin/transactions" },
+    { name: "Event Analytics", icon: BarChart3, href: "/admin/event-analytics" }, // <--- INI DIA MAN!
     { name: "Sertifikasi/Legal", icon: ShieldCheck, href: "/admin/legal" },
+    { name: "Pencairan Dana", icon: Landmark, href: "/admin/withdrawals" },
     { name: "Layanan Pengaduan", icon: LifeBuoy, href: "/admin/complaints" },
   ];
 
@@ -88,7 +90,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-8 border-b-8 border-black bg-[#6D4AFF] text-white">
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-white p-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <Zap className="text-[#6D4AFF]" size={24} strokeWidth={4} />
+              {/* Logo Petir ganti jadi Tiket biar seragam */}
+              <TicketIcon className="text-[#6D4AFF]" size={24} strokeWidth={4} />
             </div>
             <span className="text-3xl font-black italic uppercase tracking-tighter -skew-x-12">TIKETIN.</span>
           </div>
@@ -140,14 +143,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </div>
 
-        {/* System Info (Floating) */}
-        <div className="fixed bottom-8 right-8 pointer-events-none hidden xl:block">
-          <div className="bg-black text-white border-2 border-black p-4 font-black italic text-[8px] uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(109,74,255,1)]">
-             <div className="flex items-center gap-2">
-  
-             </div>
-          </div>
-        </div>
+        
       </main>
     </div>
   );
