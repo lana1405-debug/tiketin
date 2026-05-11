@@ -41,12 +41,17 @@ function MarqueeTicker() {
     "🎭 TEATER EKSKLUSIF HADIR DI TIKETIN",
     "🔥 500+ EVENT TERSEDIA BULAN INI",
     "🏆 #1 PLATFORM TIKET KONSER INDONESIA",
-    "✨ DAFTARIN EVENT LO DI TIKETIN",
+    "✨ DAFTARIN EVENT DI TIKETIN",
   ];
   const repeated = [...items, ...items];
 
   return (
-    <div className="w-full bg-amber-400 border-b-4 border-slate-900 overflow-hidden h-10 flex items-center">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full bg-amber-400 border-b-4 border-slate-900 overflow-hidden h-10 flex items-center"
+    >
       <motion.div
         className="flex gap-16 whitespace-nowrap"
         animate={{ x: ["0%", "-50%"] }}
@@ -58,7 +63,7 @@ function MarqueeTicker() {
           </span>
         ))}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -83,7 +88,6 @@ function AnimatedNumber({ target }: { target: number }) {
   return <span ref={ref}>{count.toLocaleString("id-ID")}</span>;
 }
 
-// ─── Dot Grid BG ─────────────────────────────────────────────────────────────
 function DotGrid({ className = "" }: { className?: string }) {
   return (
     <div
@@ -96,7 +100,6 @@ function DotGrid({ className = "" }: { className?: string }) {
   );
 }
 
-// ─── Category Badge ───────────────────────────────────────────────────────────
 function CategoryBadge({ category }: { category: string }) {
   const map: Record<string, { bg: string; text: string }> = {
     MUSIK:  { bg: "bg-[#6D4AFF] text-white",  text: "MUSIK"  },
@@ -114,6 +117,17 @@ const poppins_font = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
 });
+
+// ─── ANIMATION VARIANTS ──────────────────────────────────────────────────────
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+};
 
 export default function ExplorePage() {
   const router = useRouter();
@@ -180,7 +194,7 @@ export default function ExplorePage() {
 
   const handleBookNow = (eventId: string) => {
     if (userProfile?.verification_status !== "approved") {
-      alert("⚠️ HOLD UP  Lo harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
+      alert("⚠️ HOLD UP  harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
       router.push("/verify");
       return;
     }
@@ -214,7 +228,6 @@ export default function ExplorePage() {
         transition={{ repeat: Infinity, duration: 1.2 }}
         className="h-20 w-20 bg-[#6D4AFF] border-4 border-slate-900 flex items-center justify-center shadow-[8px_8px_0_0_rgba(0,0,0,1)]"
       >
-        {/* LOGO LOADING GANTI JADI TIKET */}
         <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
       </motion.div>
       <p className="font-black italic text-2xl text-slate-900 uppercase -skew-x-6 tracking-tighter">
@@ -230,7 +243,6 @@ export default function ExplorePage() {
       <nav className="w-full bg-white border-b-4 border-slate-900 sticky top-0 z-[50] shadow-[0_4px_0_0_rgba(0,0,0,1)] h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
-            {/* LOGO NAVBAR GANTI JADI TIKET */}
             <div className="h-10 w-10 bg-[#6D4AFF] border-4 border-slate-900 -rotate-12 flex items-center justify-center group-hover:rotate-0 transition-transform shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
               <TicketIcon className="text-amber-400" size={24} strokeWidth={3} />
             </div>
@@ -265,16 +277,12 @@ export default function ExplorePage() {
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer"><ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan</DropdownMenuItem>
-                
-                {/* LOGO ZAP GANTI TICKET & FIX TYPO */}
                 <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
-                
                 <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
                 <DropdownMenuItem 
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer" 
@@ -292,6 +300,7 @@ export default function ExplorePage() {
 
       <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-16 pb-24">
 
+        {/* HERO HEADER */}
         <header className="mb-16 space-y-8 flex flex-col items-start text-left">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -323,19 +332,22 @@ export default function ExplorePage() {
           </motion.div>
         </header>
 
+        {/* SCROLL REVEAL: STATS */}
         {!searchQuery && (
           <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25 }}
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
             className="grid grid-cols-2 gap-0 border-4 border-slate-900 mb-20 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] overflow-hidden"
           >
             {[
               { icon: <Music size={28} strokeWidth={3} className="text-[#6D4AFF]" />, label: "TOTAL EVENT", value: events.length || 500, suffix: "+" },
               { icon: <Users size={28} strokeWidth={3} className="text-emerald-500" />, label: "HAPPY FANS", value: 12000, suffix: "+" },
             ].map((stat, i) => (
-              <div
+              <motion.div
                 key={i}
+                variants={fadeInUp}
                 className={`p-8 flex flex-col gap-2 bg-white relative overflow-hidden ${i === 0 ? "border-r-4 border-slate-900" : ""}`}
               >
                 <DotGrid className="opacity-30" />
@@ -346,13 +358,20 @@ export default function ExplorePage() {
                   </p>
                   <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">{stat.label}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </motion.section>
         )}
 
+        {/* SCROLL REVEAL: HERO CAROUSEL */}
         {!searchQuery && (
-          <section className="mb-32">
+          <motion.section 
+            variants={fadeInUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            className="mb-32"
+          >
             <div className="relative w-full h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
               <AnimatePresence mode="wait">
                 {heroEvents.length > 0 && (
@@ -421,11 +440,17 @@ export default function ExplorePage() {
                 ))}
               </div>
             </div>
-          </section>
+          </motion.section>
         )}
 
         <div className="flex flex-col items-center justify-center space-y-16 mb-24 mt-40 pt-10">
-          <div className="flex flex-col items-center gap-4">
+          <motion.div 
+            variants={fadeInUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="flex flex-col items-center gap-4"
+          >
             <div className="flex items-center gap-3">
               <TrendingUp className="text-red-500" size={40} strokeWidth={4} />
               <h2 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter -skew-x-6 text-center">
@@ -433,13 +458,20 @@ export default function ExplorePage() {
               </h2>
             </div>
             <div className="h-2 w-40 bg-slate-900 -skew-x-12 mt-2" />
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 w-full max-w-4xl mx-auto pt-6 px-4">
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 w-full max-w-4xl mx-auto pt-6 px-4"
+          >
             {["ALL", "MUSIK", "TEATER"].map((cat) => {
               const isActive = selectedCategory === cat;
               return (
-                <button
+                <motion.button
+                  variants={fadeInUp}
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
                   className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:shadow-[2px_2px_0_0_#6D4AFF,4px_4px_0_0_#000,6px_6px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 ${
@@ -447,16 +479,15 @@ export default function ExplorePage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {/* ICON CATEGORY GANTI TIKET & MUSIC */}
                     {cat === "MUSIK" && <Music size={24} strokeWidth={3} className={isActive ? "text-amber-400" : "text-slate-900"} />}
                     {cat === "TEATER" && <Sparkles size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
                     {cat === "ALL" && <TicketIcon size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
                     <span className="tracking-[0.15em] text-base md:text-lg">{cat}</span>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
-          </div>
+          </motion.div>
         </div>
 
         <div className="mt-12">
@@ -488,10 +519,10 @@ export default function ExplorePage() {
 
                   <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
                     <div className="h-[3.5rem] overflow-hidden pr-2">
-  <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
-    {event.title}
-  </h3>
-</div>
+                      <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
+                        {event.title}
+                      </h3>
+                    </div>
                     <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       <div className="flex items-center gap-3">
                         <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
@@ -522,8 +553,15 @@ export default function ExplorePage() {
           )}
         </div>
 
+        {/* SCROLL REVEAL: CTA EO */}
         {!searchQuery && (
-          <section className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-12 md:p-20 text-white shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left">
+          <motion.section 
+            variants={fadeInUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-12 md:p-20 text-white shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left"
+          >
             <DotGrid className="opacity-10" />
             <div className="relative z-10 space-y-8 max-w-xl">
               <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic">EVENT MANAGER</div>
@@ -533,16 +571,22 @@ export default function ExplorePage() {
               </Button>
             </div>
             <TicketIcon size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12" strokeWidth={4} />
-          </section>
+          </motion.section>
         )}
       </main>
 
-      <footer className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left">
+      {/* SCROLL REVEAL: FOOTER */}
+      <motion.footer 
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left"
+      >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-16">
             <div className="space-y-8 text-left">
               <div className="flex items-center gap-2">
-                {/* FOOTER LOGO GANTI TICKET */}
                 <div className="h-12 w-12 bg-amber-400 border-4 border-white -rotate-12 flex items-center justify-center shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                   <TicketIcon size={28} strokeWidth={3} className="text-slate-900" />
                 </div>
@@ -563,7 +607,7 @@ export default function ExplorePage() {
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300 italic -skew-x-12">BUILT BY IKMAN @ UPI</p>
           </div>
         </div>
-      </footer>
+      </motion.footer>
 
       <AnimatePresence>
         {showScrollTop && (
