@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Poppins } from "next/font/google";
@@ -16,6 +16,9 @@ export default function GateScanner() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [scanStatus, setScanStatus] = useState<{status: 'idle' | 'success' | 'error', msg: string}>({status: 'idle', msg: ''});
   const [isUnlocking, setIsUnlocking] = useState(false);
+
+  // ⚡ GEMBOK ANTI-SPAM: Biar kamera nggak nge-scan 10x dalam sedetik
+  const scanLock = useRef(false);
 
   const handleUnlock = async () => {
     if (!passkey) {
@@ -48,50 +51,60 @@ export default function GateScanner() {
   };
 
   const startScanner = () => {
-    // ⚡ Kasih jeda lebih lama dikit biar HTML-nya beneran udah dirender sama HP
     setTimeout(async () => {
       try {
         const { Html5QrcodeScanner } = await import("html5-qrcode");
         
-        // ⚡ SETTINGAN KHUSUS HP BIAR KAMERA NGGAK NGE-BLANK
         const scanner = new Html5QrcodeScanner(
           "reader",
           { 
             fps: 10, 
             qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0, // Maksa rasionya kotak biar HP nggak bingung
-            videoConstraints: {
-              facingMode: "environment" // Maksa pakai kamera belakang
-            }
+            aspectRatio: 1.0,
+            videoConstraints: { facingMode: "environment" }
           },
           false
         );
         
-        scanner.render(onScanSuccess, (err) => {
-          // Biarin kosong biar nggak menuhin console
-        });
+        scanner.render(onScanSuccess, (err) => {});
       } catch (error) {
         console.error("Gagal buka kamera:", error);
-        alert("Gagal load kamera. Coba refresh webnya ya.");
       }
     }, 500);
   };
 
   const onScanSuccess = async (decodedText: string) => {
-    setScanStatus({ status: 'idle', msg: 'Checking database...' });
+    // 1. Cek apakah lagi cooldown
+    if (scanLock.current) return;
+    scanLock.current = true;
 
-    const { data, error } = await supabase
-      .from("tiket")
-      .update({ status_checkin: true })
-      .eq("ticket_code", decodedText)
-      .eq("event_id", eventId)
-      .eq("status_checkin", false)
-      .select();
+    setScanStatus({ status: 'idle', msg: 'MENGECEK DATABASE...' });
 
-    if (data && data.length > 0) {
-      setScanStatus({ status: 'success', msg: `VALID! TIKET ${decodedText} BERHASIL MASUK.` });
-    } else {
-      setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID ATAU SUDAH DIGUNAKAN!" });
+    try {
+      const { data, error } = await supabase
+        .from("tiket")
+        .update({ status_checkin: true })
+        .eq("ticket_code", decodedText)
+        .eq("event_id", eventId)
+        .eq("status_checkin", false) // Cuma bisa update yang masih false
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setScanStatus({ status: 'success', msg: `VALID! TIKET BERHASIL MASUK.` });
+      } else {
+        setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID / SUDAH CHECK-IN!" });
+      }
+    } catch (err: any) {
+      console.error("Error scan:", err);
+      setScanStatus({ status: 'error', msg: "KONEKSI ERROR! COBA LAGI." });
+    } finally {
+      // 2. Buka gembok setelah 3 detik (Cooldown)
+      setTimeout(() => {
+        scanLock.current = false;
+        setScanStatus({ status: 'idle', msg: '' });
+      }, 3000);
     }
   };
 
@@ -132,7 +145,6 @@ export default function GateScanner() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* ⚡ WADAH KAMERA GUE GEDEIN BIAR NGGAK MENGKERUT DI HP */}
             <div id="reader" className="w-full min-h-[300px] bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#6D4AFF]"></div>
             
             {scanStatus.msg && (
