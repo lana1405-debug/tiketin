@@ -53,7 +53,6 @@ export default function CheckoutPage() {
     style.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(style);
     
-    // ⚡ SUNTIK SCRIPT MIDTRANS KE HALAMAN
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
     const script = document.createElement("script");
@@ -66,7 +65,7 @@ export default function CheckoutPage() {
 
     return () => { 
       document.head.removeChild(style); 
-      document.head.removeChild(script); // ⚡ BERSIHIN SCRIPT PAS KELUAR HALAMAN
+      document.head.removeChild(script); 
     };
   }, [eventId]);
 
@@ -78,18 +77,15 @@ export default function CheckoutPage() {
     }
     setUser(session.user);
 
-    // 1. Fetch Event
     const { data: eventData } = await supabase.from("events").select("*").eq("id", eventId).single();
     if (eventData) setEvent(eventData);
 
-    // 2. Fetch Kategori Tiket dari tabel ticket_categories
     const { data: catData } = await supabase.from("ticket_categories").select("*").eq("event_id", eventId).order("price", { ascending: true });
     if (catData && catData.length > 0) {
       setCategories(catData);
-      setSelectedCatId(catData[0].id); // Default pilih yang pertama
+      setSelectedCatId(catData[0].id);
     }
 
-    // 3. Cek Jumlah Tiket yang udah dibeli user ini buat validasi limit
     const { data: userTickets } = await supabase
       .from("tiket")
       .select("id, transaksi!inner(user_id)")
@@ -102,20 +98,12 @@ export default function CheckoutPage() {
     setIsLoading(false);
   };
 
-  // Logic buat ngatur limit maksimal yang bisa dibeli
   const selectedCategory = categories.find(c => c.id === selectedCatId);
   const maxBuyPerUser = event?.max_buy || 0;
-  
-  // Kuota dari sisa limit user (Max dari EO dikurang yang udah dibeli)
   const availableUserQuota = Math.max(0, maxBuyPerUser - alreadyBought);
-  
-  // Kuota asli dari stok tiket yang ada
   const stockAvailable = selectedCategory ? selectedCategory.stock : 0;
-
-  // Batas mutlak pembelian saat ini (yang paling kecil antara jatah user atau sisa stok)
   const absoluteMaxQty = Math.min(availableUserQuota, stockAvailable);
 
-  // Auto-koreksi Qty kalau user ganti kategori dan stoknya lebih dikit dari inputan sebelumnya
   useEffect(() => {
     if (qty > absoluteMaxQty) {
       setQty(Math.max(1, absoluteMaxQty));
@@ -123,7 +111,6 @@ export default function CheckoutPage() {
     if (absoluteMaxQty === 0) setQty(0);
   }, [selectedCatId, absoluteMaxQty]);
 
-  // ⚡ FUNGSI CHECKOUT PRO (UDAH BISA SIMPEN TOKEN & INFO TIKET KE DB)
   const handleCheckout = async () => {
     if (!user || !event || !selectedCategory || qty <= 0) return;
     setIsProcessing(true);
@@ -132,7 +119,6 @@ export default function CheckoutPage() {
       const orderId = `INV-${Date.now().toString().slice(-6)}`;
       const totalBayar = selectedCategory.price * qty;
 
-      // 1. Minta Token dari API Backend lo
       const response = await fetch("/api/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,12 +132,8 @@ export default function CheckoutPage() {
       });
 
       const data = await response.json();
-      
-      if (!data.token) {
-        throw new Error(data.error || "Gagal dapet token dari Midtrans!");
-      }
+      if (!data.token) throw new Error(data.error || "Gagal dapet token!");
 
-      // 2. ⚡ INSERT TRANSAKSI DENGAN STATUS "PENDING" & SIMPEN TOKEN
       const { data: txData, error: txError } = await supabase
         .from("transaksi")
         .insert({
@@ -160,27 +142,21 @@ export default function CheckoutPage() {
           total_qty: qty,
           total_bayar: totalBayar,
           status_pembayaran: "pending",
-          snap_token: data.token,          // SIMPEN TOKENNYA
-          event_id: event.id,              // SIMPEN ID EVENT
-          category_id: selectedCategory.id // SIMPEN ID KATEGORI
+          snap_token: data.token,
+          event_id: event.id,
+          category_id: selectedCategory.id
         })
         .select()
         .single();
 
       if (txError) throw txError;
 
-      // 3. TAMPILIN POP-UP MIDTRANS
       // @ts-ignore
       window.snap.pay(data.token, {
         onSuccess: async function (result: any) {
-          // ⚡ KALAU BAYAR SUKSES, BARU UPDATE STATUS JADI PAID
           try {
-            await supabase
-              .from("transaksi")
-              .update({ status_pembayaran: "paid" })
-              .eq("id", txData.id);
+            await supabase.from("transaksi").update({ status_pembayaran: "paid" }).eq("id", txData.id);
 
-            // Insert ke tabel Tiket pake nama kategori
             const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
               transaksi_id: txData.id,
               event_id: event.id,
@@ -189,46 +165,41 @@ export default function CheckoutPage() {
               seat_info: selectedCategory.name, 
               status_checkin: false
             }));
+            await supabase.from("tiket").insert(ticketsToInsert);
 
-            const { error: tktError } = await supabase.from("tiket").insert(ticketsToInsert);
-            if (tktError) throw tktError;
+            await supabase.from("ticket_categories").update({ stock: stockAvailable - qty }).eq("id", selectedCategory.id);
 
-            // Update (kurangin) stok di tabel ticket_categories
-            const { error: stockError } = await supabase
-              .from("ticket_categories")
-              .update({ stock: stockAvailable - qty })
-              .eq("id", selectedCategory.id);
-              
-            if (stockError) console.error("Gagal potong stok:", stockError);
+            // REWARDS POIN
+            const earnedPoints = qty * 50;
+            const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single();
+            const newPoints = (profile?.points || 0) + earnedPoints;
+            await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
 
-            alert("PEMBAYARAN BERHASIL MAN!");
+            alert(`PEMBAYARAN BERHASIL! Lo dapet ${earnedPoints} Poin! 🎉`);
             router.push("/explore/tickets"); 
 
           } catch (dbError) {
-             console.error("Gagal simpan ke DB setelah bayar:", dbError);
-             alert("Pembayaran berhasil di Midtrans, tapi gagal nyimpen tiket di sistem kita. Segera hubungi Admin!");
-             setIsProcessing(false);
+            console.error(dbError);
+            alert("Sistem gagal sinkron, cek Tiket Saya!");
+            router.push("/explore/tickets");
           }
         },
-        onPending: function (result: any) {
-          // KALO MILIH METODE YANG BUTUH WAKTU
-          alert("Siapp, tagihan lo udah disimpen. Cek halaman Riwayat ya!");
-          router.push("/explore/history"); 
+        onPending: () => { 
+          alert("Pembayaran tertunda, silakan selesaikan!");
+          router.push("/explore/tickets"); // ⚡ REDIRECT KE TIKET SAYA
         },
-        onError: function (result: any) {
-          alert("Pembayaran gagal!");
-          setIsProcessing(false);
+        onError: () => { 
+          alert("Pembayaran gagal!"); 
+          setIsProcessing(false); 
         },
-        onClose: function () {
-          // KALO POP-UP DITUTUP MANUAL SAMA USER
-          alert("Pop-up ditutup! Tenang, tagihan lo aman di Riwayat Pembayaran.");
-          router.push("/explore/history"); 
+        onClose: () => { 
+          // ⚡ JANGAN KE HALAMAN GAIB, KE TIKET SAYA AJA
+          router.push("/explore/tickets"); 
         }
       });
 
     } catch (error: any) {
-      console.error("Gagal checkout:", error);
-      alert(`Waduh, war tiket gagal Man! ${error.message}`);
+      alert(`Gagal checkout! ${error.message}`);
       setIsProcessing(false);
     }
   };
@@ -236,97 +207,70 @@ export default function CheckoutPage() {
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
-  if (isLoading) return (
-    <div className={`min-h-screen flex items-center justify-center bg-[#FCFAF1] ${poppins.className}`}>
-      <Loader2 className="animate-spin text-[#6D4AFF]" size={64} strokeWidth={4} />
-    </div>
-  );
-
-  if (!event) return (
-    <div className={`min-h-screen flex items-center justify-center bg-[#FCFAF1] ${poppins.className}`}>
-      <h1 className="text-4xl font-black italic uppercase">Event Ga Ketemu!</h1>
-    </div>
-  );
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FCFAF1]"><Loader2 className="animate-spin text-[#6D4AFF]" size={64} /></div>;
 
   return (
     <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise ${poppins.className}`}>
       
-      {/* HEADER SIMPEL */}
       <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center px-6 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
         <button onClick={() => router.back()} className="flex items-center gap-2 group border-2 border-transparent p-2 hover:border-slate-900 hover:bg-amber-400 transition-all">
           <ChevronLeft size={24} strokeWidth={4} />
-          <span className="text-xl font-black italic uppercase tracking-tighter -skew-x-12">KEMBALI</span>
+          <span className="text-xl font-black italic uppercase tracking-tighter -skew-x-12 leading-none">KEMBALI</span>
         </button>
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-12 pb-32">
-        <div className="mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
           <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 drop-shadow-[4px_4px_0_#6D4AFF]">
             SECURE <span className="text-amber-400 drop-shadow-[4px_4px_0_#000]">TICKETS.</span>
           </h1>
-          <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm">Selesaikan pembayaran lo sebelum kehabisan!</p>
-        </div>
+          <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm flex items-center gap-2 italic text-left">
+            <Zap size={16} className="fill-amber-400 text-amber-400" /> Selesaikan pembayaran lo & dapet 50 poin/tiket!
+          </p>
+        </motion.div>
 
         <div className="flex flex-col lg:flex-row gap-16">
-          
-          {/* KIRI: DETAIL EVENT & PILIH KATEGORI */}
           <div className="flex-1 space-y-8">
-            <div className="bg-white border-4 border-slate-900 brutal-shadow-card flex flex-col overflow-hidden">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 brutal-shadow-card flex flex-col overflow-hidden text-left">
               <div className="h-64 bg-slate-900 relative border-b-4 border-slate-900">
-                <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-70" />
+                {event.image_url ? (
+                   <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-70" />
+                ) : <div className="w-full h-full bg-slate-200" />}
                 <div className="absolute top-4 left-4 bg-amber-400 border-2 border-slate-900 px-3 py-1 font-black text-[10px] uppercase shadow-[2px_2px_0_0_#000] -rotate-2">
                   {event.category}
                 </div>
               </div>
               <div className="p-8">
-                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6">{event.title}</h2>
-                <div className="space-y-4 font-bold uppercase text-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-[#6D4AFF] p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><Calendar size={20} className="text-white"/></div>
+                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 underline decoration-4 decoration-[#6D4AFF]">{event.title}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 uppercase font-bold text-xs">
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
+                    <Calendar size={24} className="text-[#6D4AFF]"/>
                     <span>{event.date}</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-amber-400 p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><MapPin size={20} className="text-slate-900"/></div>
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
+                    <MapPin size={24} className="text-amber-500"/>
                     <span>{event.location}</span>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* PILIH KATEGORI TIKET */}
-            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card">
+            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card text-left">
               <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 flex items-center gap-3">
                 <Tag size={28} className="text-[#6D4AFF]" /> PILIH TIER TIKET
               </h3>
               <div className="space-y-4">
                 {categories.map((cat) => (
-                  <label 
-                    key={cat.id} 
-                    className={`block w-full border-4 p-4 cursor-pointer transition-all ${
-                      selectedCatId === cat.id 
-                        ? "border-slate-900 bg-amber-400 shadow-[4px_4px_0_0_#000] translate-x-1 translate-y-1" 
-                        : "border-slate-300 bg-slate-50 hover:border-slate-900"
-                    }`}
-                  >
+                  <label key={cat.id} className={`block w-full border-4 p-5 cursor-pointer transition-all ${selectedCatId === cat.id ? "border-slate-900 bg-amber-400 shadow-[6px_6px_0_0_#000] translate-x-1 translate-y-1" : "border-slate-300 bg-white hover:border-slate-900"}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <input 
-                          type="radio" 
-                          name="ticketCategory" 
-                          value={cat.id} 
-                          checked={selectedCatId === cat.id}
-                          onChange={() => setSelectedCatId(cat.id)}
-                          disabled={cat.stock <= 0}
-                          className="w-5 h-5 accent-slate-900" 
-                        />
+                        <input type="radio" name="ticketCategory" checked={selectedCatId === cat.id} onChange={() => setSelectedCatId(cat.id)} disabled={cat.stock <= 0} className="w-6 h-6 accent-slate-900 cursor-pointer" />
                         <div>
-                          <p className="font-black italic uppercase text-lg leading-none">{cat.name}</p>
-                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">Stok: {cat.stock} Pcs</p>
+                          <p className="font-black italic uppercase text-xl leading-none">{cat.name}</p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Sisa Stok: {cat.stock} Pcs</p>
                         </div>
                       </div>
-                      <p className={`font-black italic text-xl ${selectedCatId === cat.id ? "text-slate-900" : "text-[#6D4AFF]"}`}>
-                        {formatRupiah(cat.price)}
-                      </p>
+                      <p className="font-black italic text-2xl tracking-tighter">{formatRupiah(cat.price)}</p>
                     </div>
                   </label>
                 ))}
@@ -334,105 +278,74 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* KANAN: FORM CHECKOUT */}
           <div className="w-full lg:w-[450px]">
-            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full sticky top-24">
-              <div className="flex items-center justify-between gap-2 mb-8 border-b-4 border-slate-900 pb-4">
-                <div className="flex items-center gap-2">
-                  <Ticket size={28} strokeWidth={3} className="text-[#6D4AFF]" />
-                  <h3 className="text-2xl font-black italic uppercase -skew-x-6">SUMMARY</h3>
-                </div>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full sticky top-24 text-left">
+              <div className="flex items-center gap-3 mb-8 border-b-4 border-slate-900 pb-4">
+                <Ticket size={32} strokeWidth={3} className="text-[#6D4AFF]" />
+                <h3 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter">SUMMARY</h3>
               </div>
 
-              {/* Tampilkan Peringatan Limit Tercapai */}
-              {availableUserQuota === 0 ? (
-                <div className="bg-red-100 border-4 border-red-500 p-4 mb-8 flex items-start gap-3 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
-                  <AlertOctagon className="text-red-500 shrink-0 mt-0.5" size={24} strokeWidth={3} />
-                  <div>
-                    <p className="font-black italic uppercase text-red-500 leading-tight">LIMIT TERCAPAI!</p>
-                    <p className="text-xs font-bold text-red-900 mt-1 uppercase">Lo udah beli {alreadyBought} tiket. Aturan EO: Maksimal {maxBuyPerUser} tiket/akun.</p>
-                  </div>
-                </div>
-              ) : stockAvailable === 0 ? (
-                <div className="bg-slate-200 border-4 border-slate-900 p-4 mb-8 flex items-start gap-3">
-                  <AlertOctagon className="text-slate-600 shrink-0 mt-0.5" size={24} strokeWidth={3} />
-                  <div>
-                    <p className="font-black italic uppercase text-slate-800 leading-tight">TIKET SOLD OUT!</p>
-                    <p className="text-xs font-bold text-slate-600 mt-1 uppercase">Tier tiket ini udah habis terjual. Pilih tier lain!</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between mb-8">
+              <AnimatePresence mode="wait">
+                {availableUserQuota === 0 ? (
+                  <motion.div key="limit" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-red-500 text-white border-4 border-black p-5 mb-8 rotate-1 flex items-start gap-3 shadow-[6px_6px_0_0_#000]">
+                    <AlertOctagon size={32} strokeWidth={3} className="shrink-0" />
                     <div>
-                      <span className="font-bold uppercase text-slate-500 tracking-widest text-[10px] block">JUMLAH TIKET</span>
-                      <span className="text-[9px] font-black bg-emerald-100 text-emerald-600 border border-emerald-300 px-2 py-0.5 inline-block mt-1 uppercase">Sisa Jatah Lo: {availableUserQuota}</span>
+                      <p className="font-black italic uppercase text-lg leading-tight">LIMIT HABIS!</p>
+                      <p className="text-[10px] font-bold uppercase mt-1 italic">Maks beli {maxBuyPerUser} tiket/akun. Lo udah beli {alreadyBought}.</p>
                     </div>
-                    <div className="flex items-center gap-4 border-4 border-slate-900 bg-slate-100 p-1 shadow-[4px_4px_0_0_#000]">
-                      <button 
-                        onClick={() => setQty(Math.max(1, qty - 1))} 
-                        className="w-8 h-8 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors flex items-center justify-center"
-                      >
-                        -
-                      </button>
-                      <span className="font-black text-xl w-6 text-center">{qty}</span>
-                      <button 
-                        onClick={() => setQty(Math.min(absoluteMaxQty, qty + 1))} 
-                        className="w-8 h-8 bg-white border-2 border-slate-900 font-black text-xl hover:bg-amber-400 transition-colors flex items-center justify-center"
-                      >
-                        +
-                      </button>
+                  </motion.div>
+                ) : stockAvailable === 0 ? (
+                  <motion.div key="soldout" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-slate-900 text-white border-4 border-black p-5 mb-8 -rotate-1 text-center">
+                    <p className="font-black italic uppercase text-lg">TIKET SOLD OUT!</p>
+                  </motion.div>
+                ) : (
+                  <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div className="flex items-center justify-between mb-8 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
+                      <div>
+                        <span className="font-black uppercase text-[10px] text-slate-400 block tracking-widest italic">JUMLAH BELI</span>
+                        <span className="font-black text-emerald-500 text-[10px] uppercase italic">Sisa Jatah: {availableUserQuota}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 bg-white border-4 border-slate-900 font-black text-2xl hover:bg-amber-400 transition-colors">-</button>
+                        <span className="font-black text-2xl w-8 text-center">{qty}</span>
+                        <button onClick={() => setQty(Math.min(absoluteMaxQty, qty + 1))} className="w-10 h-10 bg-white border-4 border-slate-900 font-black text-2xl hover:bg-amber-400 transition-colors">+</button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-4 mb-8">
-                    <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
-                      <span>{selectedCategory?.name || "Tiket"} x {qty}</span>
-                      <span>{formatRupiah((selectedCategory?.price || 0) * qty)}</span>
+                    <div className="space-y-4 mb-8 font-black uppercase italic text-xs">
+                      <div className="flex justify-between text-slate-400">
+                        <span>{selectedCategory?.name} x {qty}</span>
+                        <span>{formatRupiah((selectedCategory?.price || 0) * qty)}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-500 bg-emerald-50 p-2 border-2 border-emerald-200">
+                        <span>ESTIMASI REWARDS</span>
+                        <span>+ {qty * 50} PTS</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between font-bold text-sm text-slate-500 uppercase">
-                      <span>Biaya Layanan</span>
-                      <span>Rp 0</span>
-                    </div>
-                  </div>
-                </>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {/* Total Bayar */}
               <div className="mt-auto border-t-4 border-slate-900 pt-6 mb-8">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TOTAL BAYAR</p>
-                <p className="text-4xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 italic">TOTAL TAGIHAN</p>
+                <p className="text-5xl font-black text-[#6D4AFF] italic tracking-tighter leading-none drop-shadow-[2px_2px_0_#FBBF24]">
                   {formatRupiah((selectedCategory?.price || 0) * qty)}
                 </p>
               </div>
 
-              {/* Tombol Checkout */}
               <button 
-                onClick={handleCheckout}
-                disabled={isProcessing || absoluteMaxQty === 0}
-                className="w-full bg-amber-400 text-slate-900 border-4 border-slate-900 p-5 font-black text-xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0_0_#000] disabled:translate-x-0 disabled:translate-y-0"
+                onClick={handleCheckout} 
+                disabled={isProcessing || absoluteMaxQty === 0} 
+                className="w-full bg-amber-400 text-slate-900 border-4 border-slate-900 p-6 font-black text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="animate-spin" size={24} strokeWidth={4} />
-                    MEMPROSES...
-                  </>
-                ) : absoluteMaxQty === 0 ? (
-                  "TIDAK BISA BELI"
-                ) : (
-                  <>
-                    <CreditCard size={24} strokeWidth={3} />
-                    BAYAR SEKARANG
-                  </>
-                )}
+                {isProcessing ? <><Loader2 className="animate-spin" size={28} strokeWidth={4} /> PROSES...</> : absoluteMaxQty === 0 ? "LIMIT HABIS" : <><CreditCard size={28} strokeWidth={3} /> BAYAR SEKARANG</>}
               </button>
 
-              <div className="mt-6 flex items-center justify-center gap-2 text-[10px] font-black uppercase text-emerald-500 tracking-widest bg-emerald-50 py-2 border-2 border-emerald-200">
-                <ShieldCheck size={14} strokeWidth={3} /> TRANSAKSI AMAN 100%
+              <div className="mt-8 flex items-center justify-center gap-3 text-[10px] font-black uppercase text-emerald-600 tracking-widest">
+                <ShieldCheck size={20} strokeWidth={3} /> TRANSAKSI ENKRIPSI 100% AMAN
               </div>
-            </div>
+            </motion.div>
           </div>
-
         </div>
       </main>
     </div>

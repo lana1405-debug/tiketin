@@ -90,7 +90,7 @@ export default function AdminComplaintsPage() {
 
   const handleAdminReply = async (id: string) => {
     const text = replyInputs[id];
-    if (!text) return alert("Isi pesan dulu, Man!");
+    if (!text) return alert("Isi pesan dulu, ");
 
     const { data: { session } } = await supabase.auth.getSession();
     

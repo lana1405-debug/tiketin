@@ -12,7 +12,7 @@ import {
   Loader2, Mail, Phone, Camera, Send, Play,
   Trophy, MessageSquare, PlusCircle, Zap, TrendingUp,
   Ticket as TicketIcon, ShieldCheck, ArrowUp, Star,
-  Users, Globe, Music, Receipt // ⚡ ICON RECEIPT DITAMBAHIN
+  Users, Globe, Music, Receipt 
 } from "lucide-react";
 import Link from "next/link";
 
@@ -37,7 +37,7 @@ const poppins = Poppins({
 function MarqueeTicker() {
   const items = [
     "🎸 KONSER TERBARU UDAH LIVE",
-    "⚡ TIKET LIMITED — GASKEUN SEKARANG",
+    "🎫 TIKET LIMITED — GASKEUN SEKARANG",
     "🎭 TEATER EKSKLUSIF HADIR DI TIKETIN",
     "🔥 500+ EVENT TERSEDIA BULAN INI",
     "🏆 #1 PLATFORM TIKET KONSER INDONESIA",
@@ -178,11 +178,10 @@ export default function ExplorePage() {
     });
   };
 
-  // ⚡ FUNGSI CHECKOUT DENGAN VALIDASI KYC KTP
   const handleBookNow = (eventId: string) => {
     if (userProfile?.verification_status !== "approved") {
-      alert("⚠️ HOLD UP MAN! Lo harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
-      router.push("/verify"); // Arahin ke halaman verifikasi KTP
+      alert("⚠️ HOLD UP  Lo harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
+      router.push("/verify");
       return;
     }
     router.push(`/explore/checkout/${eventId}`);
@@ -215,7 +214,8 @@ export default function ExplorePage() {
         transition={{ repeat: Infinity, duration: 1.2 }}
         className="h-20 w-20 bg-[#6D4AFF] border-4 border-slate-900 flex items-center justify-center shadow-[8px_8px_0_0_rgba(0,0,0,1)]"
       >
-        <Zap className="text-amber-400" size={40} strokeWidth={3} />
+        {/* LOGO LOADING GANTI JADI TIKET */}
+        <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
       </motion.div>
       <p className="font-black italic text-2xl text-slate-900 uppercase -skew-x-6 tracking-tighter">
         LOADING TIKETIN<motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>
@@ -230,8 +230,9 @@ export default function ExplorePage() {
       <nav className="w-full bg-white border-b-4 border-slate-900 sticky top-0 z-[50] shadow-[0_4px_0_0_rgba(0,0,0,1)] h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
+            {/* LOGO NAVBAR GANTI JADI TIKET */}
             <div className="h-10 w-10 bg-[#6D4AFF] border-4 border-slate-900 -rotate-12 flex items-center justify-center group-hover:rotate-0 transition-transform shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
-              <Zap className="text-amber-400" size={24} strokeWidth={3} />
+              <TicketIcon className="text-amber-400" size={24} strokeWidth={3} />
             </div>
             <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase">TIKETIN</span>
           </Link>
@@ -264,8 +265,16 @@ export default function ExplorePage() {
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer"><ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan</DropdownMenuItem>
-                {/* ⚡ MENU RIWAYAT PEMBAYARAN DITAMBAH DI SINI */}
-                <DropdownMenuItem onClick={() => router.push("explore/history")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran</DropdownMenuItem>
+                
+                {/* LOGO ZAP GANTI TICKET & FIX TYPO */}
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
+                </DropdownMenuItem>
+                
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
                 <DropdownMenuItem 
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer" 
@@ -279,13 +288,10 @@ export default function ExplorePage() {
         </div>
       </nav>
 
-      {/* ── MARQUEE TICKER ──────────────────────────────────────────────────── */}
       <MarqueeTicker />
 
-      {/* ── CONTENT ─────────────────────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-16 pb-24">
 
-        {/* HERO TEXT + SEARCH */}
         <header className="mb-16 space-y-8 flex flex-col items-start text-left">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -296,7 +302,6 @@ export default function ExplorePage() {
               YO,{" "}
               <span className="relative inline-block">
                 <span className="relative z-10">{userProfile?.full_name?.split(" ")[0].toUpperCase()}!</span>
-                {/* Yellow underline brush stroke */}
                 <span className="absolute bottom-0 left-0 right-0 h-4 bg-amber-400 -z-0 -skew-x-6 opacity-70" />
               </span>
             </h1>
@@ -315,16 +320,9 @@ export default function ExplorePage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-20 w-full pl-16 pr-6 border-4 border-slate-900 bg-white font-black text-lg uppercase shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] outline-none -skew-x-3 focus:bg-slate-50 transition-all"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-slate-400 hover:text-red-500 text-lg uppercase"
-              >✕</button>
-            )}
           </motion.div>
         </header>
 
-        {/* ── STATS BAR ─────────────────────────────────────────────────────── */}
         {!searchQuery && (
           <motion.section
             initial={{ opacity: 0, y: 30 }}
@@ -353,7 +351,6 @@ export default function ExplorePage() {
           </motion.section>
         )}
 
-        {/* ── HERO CAROUSEL ─────────────────────────────────────────────────── */}
         {!searchQuery && (
           <section className="mb-32">
             <div className="relative w-full h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
@@ -372,7 +369,6 @@ export default function ExplorePage() {
               </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-r from-black/90 to-transparent" />
 
-              {/* Content */}
               <div className="relative z-20 h-full p-12 flex flex-col justify-end items-start text-left">
                 <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] -rotate-2 mb-6 italic inline-flex items-center gap-2">
                   <Sparkles size={14} /> RECOMMENDED
@@ -390,7 +386,6 @@ export default function ExplorePage() {
                   </motion.h2>
                 </AnimatePresence>
 
-                {/* Price tag on hero */}
                 {heroEvents[currentHeroIndex]?.price && (
                   <motion.div
                     key={`price-${currentHeroIndex}`}
@@ -416,7 +411,6 @@ export default function ExplorePage() {
                 </button>
               </div>
 
-              {/* Carousel Dots */}
               <div className="absolute bottom-6 right-6 z-30 flex gap-3">
                 {heroEvents.map((_, i) => (
                   <button
@@ -426,16 +420,10 @@ export default function ExplorePage() {
                   />
                 ))}
               </div>
-
-              {/* Slide counter badge */}
-              <div className="absolute top-6 right-6 z-30 bg-black/60 border-2 border-white px-3 py-1 font-black text-white text-[10px] uppercase tracking-widest">
-                {String(currentHeroIndex + 1).padStart(2, "0")} / {String(heroEvents.length).padStart(2, "0")}
-              </div>
             </div>
           </section>
         )}
 
-        {/* ── FILTER + TITLE SECTION ────────────────────────────────────────── */}
         <div className="flex flex-col items-center justify-center space-y-16 mb-24 mt-40 pt-10">
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-3">
@@ -445,16 +433,8 @@ export default function ExplorePage() {
               </h2>
             </div>
             <div className="h-2 w-40 bg-slate-900 -skew-x-12 mt-2" />
-
-            {/* Event count badge */}
-            <div className="flex items-center gap-3 mt-2">
-              <span className="bg-slate-900 text-white px-4 py-2 font-black text-xs uppercase italic tracking-widest border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)]">
-                {filteredEvents.length} EVENT DITEMUKAN
-              </span>
-            </div>
           </div>
 
-          {/* FILTER CHIPS (DIPAKSA SAMA RATA PAKE GRID) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 w-full max-w-4xl mx-auto pt-6 px-4">
             {["ALL", "MUSIK", "TEATER"].map((cat) => {
               const isActive = selectedCategory === cat;
@@ -463,15 +443,14 @@ export default function ExplorePage() {
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
                   className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:shadow-[2px_2px_0_0_#6D4AFF,4px_4px_0_0_#000,6px_6px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 ${
-                    isActive
-                      ? "bg-[#6D4AFF] text-white shadow-none translate-x-3 translate-y-3"
-                      : "bg-white text-slate-900"
+                    isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-3 translate-y-3" : "bg-white text-slate-900"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    {cat === "MUSIK" && <Zap size={24} strokeWidth={3} className={isActive ? "text-amber-400" : "text-slate-900"} />}
+                    {/* ICON CATEGORY GANTI TIKET & MUSIC */}
+                    {cat === "MUSIK" && <Music size={24} strokeWidth={3} className={isActive ? "text-amber-400" : "text-slate-900"} />}
                     {cat === "TEATER" && <Sparkles size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
-                    {cat === "ALL" && <Star size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
+                    {cat === "ALL" && <TicketIcon size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
                     <span className="tracking-[0.15em] text-base md:text-lg">{cat}</span>
                   </div>
                 </button>
@@ -480,7 +459,6 @@ export default function ExplorePage() {
           </div>
         </div>
 
-        {/* ── EVENT GRID ────────────────────────────────────────────────────── */}
         <div className="mt-12">
           {filteredEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-24">
@@ -493,50 +471,27 @@ export default function ExplorePage() {
                   transition={{ duration: 0.4, delay: (idx % 3) * 0.1 }}
                   className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
                 >
-                  {/* Image */}
                   <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden">
-                    <img
-                      src={event.image_url}
-                      alt={event.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                    {/* Category badge */}
+                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute top-4 left-4">
                       <CategoryBadge category={event.category} />
                     </div>
-
-                    {/* NEW sticker */}
-                    {event.created_at && isNewEvent(event.created_at) && (
-                      <div className="absolute top-4 left-4 mt-8">
-                        <span className="bg-red-500 text-white px-2 py-1 text-[9px] font-black uppercase border-2 border-slate-900 -rotate-2 inline-block italic shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
-                          NEW!
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Like button */}
                     <button
                       onClick={() => toggleLike(event.id)}
                       className={`absolute top-4 right-4 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${
-                        likedEvents.has(event.id)
-                          ? "bg-red-500 text-white"
-                          : "bg-white hover:bg-red-500 hover:text-white"
+                        likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
                       }`}
                     >
                       <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
                     </button>
                   </div>
 
-                  {/* Card Body */}
                   <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
-                    <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter line-clamp-1">
-                      {event.title}
-                    </h3>
-
+                    <div className="h-[3.5rem] overflow-hidden pr-2">
+  <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
+    {event.title}
+  </h3>
+</div>
                     <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       <div className="flex items-center gap-3">
                         <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
@@ -545,19 +500,12 @@ export default function ExplorePage() {
                         <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
                       </div>
                     </div>
-
-                    {/* Divider + price + CTA */}
                     <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
                       <div className="text-left">
                         <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
-                        <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
-                          {formatRupiah(event.price)}
-                        </p>
+                        <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
                       </div>
-                      <button 
-                        onClick={() => handleBookNow(event.id)}
-                        className="h-14 w-14 bg-slate-900 text-white flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)] rotate-12 hover:rotate-0 hover:bg-[#6D4AFF] transition-all"
-                      >
+                      <button onClick={() => handleBookNow(event.id)} className="h-14 w-14 bg-slate-900 text-white flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)] rotate-12 hover:rotate-0 hover:bg-[#6D4AFF] transition-all">
                         <ChevronRight size={24} strokeWidth={4} />
                       </button>
                     </div>
@@ -566,76 +514,47 @@ export default function ExplorePage() {
               ))}
             </div>
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-24 text-center border-8 border-dashed border-slate-200 mb-24 relative overflow-hidden"
-            >
+            <div className="py-24 text-center border-8 border-dashed border-slate-200 mb-24 relative overflow-hidden">
               <DotGrid className="opacity-20" />
-              <p className="text-6xl mb-4">🎸</p>
-              <p className="text-4xl font-black italic uppercase text-slate-300">STAGE GAK NEMU, MAN!</p>
-              <p className="text-slate-400 font-bold italic mt-2 uppercase">Coba cari kategori atau artis lain.</p>
-              <button
-                onClick={() => { setSearchQuery(""); setSelectedCategory("ALL"); }}
-                className="mt-8 px-8 py-4 bg-[#6D4AFF] text-white border-4 border-slate-900 font-black uppercase italic text-sm shadow-[6px_6px_0_0_rgba(0,0,0,1)] hover:bg-amber-400 hover:text-slate-900 transition-all -skew-x-6"
-              >
-                RESET FILTER
-              </button>
-            </motion.div>
+              <p className="text-6xl mb-4">🎫</p>
+              <p className="text-4xl font-black italic uppercase text-slate-300">STAGE GAK NEMU, </p>
+            </div>
           )}
         </div>
 
-        {/* ── CTA BANNER ────────────────────────────────────────────────────── */}
         {!searchQuery && (
           <section className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-12 md:p-20 text-white shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left">
             <DotGrid className="opacity-10" />
             <div className="relative z-10 space-y-8 max-w-xl">
-              <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic">
-                EVENT MANAGER
-              </div>
-              <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.8] -skew-x-6">
-                PUNYA EVENT? <br /> JUAL DI SINI.
-              </h2>
-              <p className="text-purple-100 font-bold text-lg italic opacity-90">
-                Kelola tiket konsermu sendiri dengan sistem dashboard profesional Tiketin.
-              </p>
+              <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic">EVENT MANAGER</div>
+              <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.8] -skew-x-6">PUNYA EVENT? <br /> JUAL DI SINI.</h2>
               <Button asChild className="bg-amber-400 border-4 border-slate-900 text-slate-900 px-12 py-8 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:bg-white transition-all -skew-x-6 h-auto">
                 <Link href="/dashboard/upgrade-eo">DAFTAR EO SEKARANG</Link>
               </Button>
             </div>
-            <PlusCircle size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12" strokeWidth={4} />
+            <TicketIcon size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12" strokeWidth={4} />
           </section>
         )}
       </main>
 
-      {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-16">
             <div className="space-y-8 text-left">
               <div className="flex items-center gap-2">
+                {/* FOOTER LOGO GANTI TICKET */}
                 <div className="h-12 w-12 bg-amber-400 border-4 border-white -rotate-12 flex items-center justify-center shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
-                  <Zap size={28} strokeWidth={3} className="text-slate-900" />
+                  <TicketIcon size={28} strokeWidth={3} className="text-slate-900" />
                 </div>
                 <span className="text-3xl font-black italic -skew-x-12 tracking-tighter uppercase">TIKETIN</span>
               </div>
               <p className="text-purple-100 text-sm font-bold italic uppercase">Platform war tiket konser paling gila di Indonesia.</p>
             </div>
             <div className="space-y-6">
-              <h4 className="font-black uppercase tracking-widest text-[10px] text-amber-300 italic underline underline-offset-8 text-left">Explore</h4>
-              <ul className="space-y-3 text-purple-50 text-sm font-bold italic uppercase text-left">
-                <li className="hover:text-amber-300 cursor-pointer">Trending Now</li>
-                <li className="hover:text-amber-300 cursor-pointer">Featured Festivals</li>
-              </ul>
-            </div>
-            <div className="space-y-6">
               <h4 className="font-black uppercase tracking-widest text-[10px] text-amber-300 italic underline underline-offset-8 text-left">Support</h4>
               <ul className="space-y-4 text-purple-50 text-sm font-bold text-left uppercase">
                 <li onClick={() => router.push("/explore/complaints")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><MessageSquare size={16} /> PUSAT PENGADUAN</li>
-                {/* ⚡ MENU RIWAYAT PEMBAYARAN DITAMBAH DI BAWAH PENGADUAN FOOTER */}
-                <li onClick={() => router.push("explore/history")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><Receipt size={16} /> RIWAYAT PEMBAYARAN</li>
-                <li className="flex items-center gap-3 italic"><Mail size={16} /> HELLO@TIKETIN.COM</li>
-                <li className="flex items-center gap-3 italic"><Phone size={16} /> +62 812 3456 789</li>
+                <li onClick={() => router.push("/explore/history")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><Receipt size={16} /> RIWAYAT PEMBAYARAN</li>
               </ul>
             </div>
           </div>
@@ -646,17 +565,16 @@ export default function ExplorePage() {
         </div>
       </footer>
 
-      {/* ── SCROLL TO TOP ────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showScrollTop && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.5, rotate: 45 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="fixed bottom-8 right-8 z-50 h-14 w-14 bg-amber-400 border-4 border-slate-900 shadow-[6px_6px_0_0_rgba(0,0,0,1)] flex items-center justify-center hover:bg-[#6D4AFF] hover:text-white transition-colors group"
+            className="fixed bottom-8 right-8 z-50 h-14 w-14 bg-amber-400 border-4 border-slate-900 shadow-[6px_6px_0_0_rgba(0,0,0,1)] flex items-center justify-center hover:bg-[#6D4AFF] hover:text-white transition-colors"
           >
-            <ArrowUp size={24} strokeWidth={4} className="group-hover:text-white text-slate-900" />
+            <ArrowUp size={24} strokeWidth={4} />
           </motion.button>
         )}
       </AnimatePresence>

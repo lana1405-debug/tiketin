@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
             User <span className="text-[#6D4AFF]">Base.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
-            Manajemen otorisasi akun. Hati-hati pas hapus data, Man!
+            Manajemen otorisasi akun. Hati-hati pas hapus data, 
           </p>
         </div>
 

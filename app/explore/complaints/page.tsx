@@ -117,7 +117,7 @@ export default function CustomerComplaintsPage() {
 
   const handleSubmitNewReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !title || !message) return alert("Isi yang lengkap Man!");
+    if (!userId || !title || !message) return alert("Isi yang lengkap ");
     setIsSubmitting(true);
 
     const { data, error } = await supabase

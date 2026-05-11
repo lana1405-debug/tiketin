@@ -54,7 +54,7 @@ export default function CustomerVerificationPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { 
-        alert("Ukuran KTP maksimal 2MB Man!"); 
+        alert("Ukuran KTP maksimal 2MB "); 
         return; 
       }
       setKtpFile(file);
@@ -132,14 +132,14 @@ export default function CustomerVerificationPage() {
           <div className="bg-emerald-400 border-4 border-black p-8 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
             <CheckCircle size={64} strokeWidth={3} className="mx-auto mb-4" />
             <h2 className="text-3xl font-black italic uppercase tracking-tighter">Akun Tervalidasi!</h2>
-            <p className="font-bold text-sm mt-2">Identitas lo udah dikonfirmasi admin. Sekarang lo bisa beli tiket sepuasnya.</p>
+            <p className="font-bold text-sm mt-2">Identitas udah dikonfirmasi admin. Sekarang bisa beli tiket sepuasnya.</p>
             <button onClick={() => router.push('/explore')} className="mt-6 bg-black text-white px-6 py-3 font-black uppercase italic text-xs tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">Mulai Belanja Tiket</button>
           </div>
         ) : status === "pending" ? (
           <div className="bg-amber-400 border-4 border-black p-8 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
             <Loader2 size={64} strokeWidth={3} className="mx-auto mb-4 animate-spin" />
             <h2 className="text-3xl font-black italic uppercase tracking-tighter">Dalam Antrean Review</h2>
-            <p className="font-bold text-sm mt-2 mb-8">Berkas KTP lo lagi dicek sama sistem admin. Sabar ya Man!</p>
+            <p className="font-bold text-sm mt-2 mb-8">Berkas KTP lagi dicek sama sistem admin. Sabar ya </p>
             
             <button 
               onClick={() => router.push('/explore')}
@@ -152,7 +152,7 @@ export default function CustomerVerificationPage() {
           <form onSubmit={handleSubmit} className="space-y-8">
             {status === "rejected" && (
               <div className="bg-red-500 text-white border-4 border-black p-4 font-bold italic text-sm flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <AlertCircle size={24} /> KTP lo ditolak admin! Pastiin fotonya jelas dan NIK-nya bener. Silakan upload ulang.
+                <AlertCircle size={24} /> KTP ditolak admin! Pastiin fotonya jelas dan NIK-nya bener. Silakan upload ulang.
               </div>
             )}
 

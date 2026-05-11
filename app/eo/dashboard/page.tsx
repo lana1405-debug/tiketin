@@ -99,7 +99,7 @@ export default function EODashboard() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { alert("Maksimal 2MB Man!"); return; }
+      if (file.size > 2 * 1024 * 1024) { alert("Maksimal 2MB "); return; }
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
@@ -109,7 +109,7 @@ export default function EODashboard() {
 
   const addCategory = () => setCategories([...categories, { id: Date.now(), name: "", price: "", stock: "" }]);
   const removeCategory = (id: number) => {
-    if (categories.length === 1) return alert("Minimal 1 kategori tiket Man!");
+    if (categories.length === 1) return alert("Minimal 1 kategori tiket ");
     setCategories(categories.filter(cat => cat.id !== id));
   };
   const updateCategory = (id: number, field: string, value: string) => setCategories(categories.map(cat => cat.id === id ? { ...cat, [field]: value } : cat));
@@ -228,7 +228,7 @@ export default function EODashboard() {
           </button>
           {/* ⚡ MENU BARU: SCAN QR KESELURUHAN */}
          <button 
-  onClick={() => alert("Pilih event di tabel sebelah kanan, lalu klik tombol 'Buka Scanner' ya, Man!")} 
+  onClick={() => alert("Pilih event di tabel sebelah kanan, lalu klik tombol 'Buka Scanner' ya, ")} 
   className="w-full flex items-center gap-4 bg-amber-400 text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-sm tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
 >
   <QrCode size={20} /> Scan Check-In

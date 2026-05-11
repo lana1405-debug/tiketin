@@ -98,7 +98,7 @@ export default function EODashboard() {
           <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             EO <span className="text-[#6D4AFF]">DASHBOARD.</span>
           </h1>
-          <p className="text-lg font-bold text-slate-500 italic">Pantau cuan dan sisa tiket lo secara real-time, Man!</p>
+          <p className="text-lg font-bold text-slate-500 italic">Pantau cuan dan sisa tiket lo secara real-time, </p>
         </div>
 
         {/* TOMBOL BUAT EVENT BARU */}
@@ -182,7 +182,7 @@ export default function EODashboard() {
         <div className="p-8">
            {events.length === 0 ? (
              <div className="text-center py-10">
-               <p className="font-black italic uppercase text-slate-300 text-2xl">Belum Ada Panggung Man!</p>
+               <p className="font-black italic uppercase text-slate-300 text-2xl">Belum Ada Panggung </p>
                <p className="text-slate-400 font-bold mt-2">Bikin event pertama lo sekarang.</p>
              </div>
            ) : (

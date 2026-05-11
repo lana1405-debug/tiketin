@@ -21,7 +21,7 @@ export default function GateScanner() {
 
   const handleUnlock = async () => {
     if (!passkey) {
-      alert("Isi dulu passkey-nya, Man!");
+      alert("Isi dulu passkey-nya, ");
       return;
     }
 
@@ -39,7 +39,7 @@ export default function GateScanner() {
         setIsAuthorized(true);
         startScanner();
       } else {
-        alert("PASSKEY SALAH, MAN! Coba inget-inget lagi.");
+        alert("PASSKEY SALAH,  Coba inget-inget lagi.");
       }
     } catch (err: any) {
       console.error("Gagal unlock:", err);

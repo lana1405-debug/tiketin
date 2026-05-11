@@ -84,7 +84,7 @@ export default function AdminVerifyKTPPage() {
             Verifikasi <span className="text-red-500">KTP.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
-            Cocokin NIK sama foto KTP. Jangan sampe ada calo yang lolos, Man!
+            Cocokin NIK sama foto KTP. Jangan sampe ada calo yang lolos, 
           </p>
         </div>
 

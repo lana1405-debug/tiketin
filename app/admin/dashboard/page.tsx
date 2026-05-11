@@ -94,7 +94,7 @@ export default function AdminDashboard() {
             COMMAND <span className="text-[#6D4AFF]">CENTER.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
-            Real-time monitoring engine. Kendali penuh di tangan lo, Man!
+            Real-time monitoring engine. Kendali penuh di tangan lo, 
           </p>
         </div>
 

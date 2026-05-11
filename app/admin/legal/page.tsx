@@ -176,7 +176,7 @@ export default function AdminLegalPage() {
         ) : (
           <div className="col-span-full py-20 border-4 border-dashed border-slate-200 text-center bg-slate-50 flex flex-col items-center justify-center space-y-4">
             <AlertCircle size={48} className="text-slate-200" />
-            <p className="text-2xl font-black italic text-slate-300 uppercase tracking-widest">Antrean Kosong Man!</p>
+            <p className="text-2xl font-black italic text-slate-300 uppercase tracking-widest">Antrean Kosong </p>
           </div>
         )}
       </div>

@@ -85,7 +85,7 @@ export default function VerifyEventsPage() {
             Verifikasi <span className="text-[#6D4AFF]">Event.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
-            Tinjau panggung baru dari EO. Pastikan semuanya layak tayang, Man!
+            Tinjau panggung baru dari EO. Pastikan semuanya layak tayang, 
           </p>
         </div>
       </header>
