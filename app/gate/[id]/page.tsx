@@ -25,7 +25,6 @@ export default function GateScanner() {
 
     setIsUnlocking(true);
     try {
-      // Kodingan bersih, langsung nembak ke Supabase tanpa Timeout aneh-aneh
       const { data, error } = await supabase
         .from("events")
         .select("gate_passkey")
@@ -49,17 +48,33 @@ export default function GateScanner() {
   };
 
   const startScanner = () => {
+    // ⚡ Kasih jeda lebih lama dikit biar HTML-nya beneran udah dirender sama HP
     setTimeout(async () => {
-      const { Html5QrcodeScanner } = await import("html5-qrcode");
-      const scanner = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-      scanner.render(onScanSuccess, (err) => {
-        // Biarin kosong biar konsol nggak penuh log error scan
-      });
-    }, 300);
+      try {
+        const { Html5QrcodeScanner } = await import("html5-qrcode");
+        
+        // ⚡ SETTINGAN KHUSUS HP BIAR KAMERA NGGAK NGE-BLANK
+        const scanner = new Html5QrcodeScanner(
+          "reader",
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0, // Maksa rasionya kotak biar HP nggak bingung
+            videoConstraints: {
+              facingMode: "environment" // Maksa pakai kamera belakang
+            }
+          },
+          false
+        );
+        
+        scanner.render(onScanSuccess, (err) => {
+          // Biarin kosong biar nggak menuhin console
+        });
+      } catch (error) {
+        console.error("Gagal buka kamera:", error);
+        alert("Gagal load kamera. Coba refresh webnya ya.");
+      }
+    }, 500);
   };
 
   const onScanSuccess = async (decodedText: string) => {
@@ -70,13 +85,12 @@ export default function GateScanner() {
       .update({ status_checkin: true })
       .eq("ticket_code", decodedText)
       .eq("event_id", eventId)
-      .eq("status_checkin", false) // Cuma bisa update tiket yang belum check-in
+      .eq("status_checkin", false)
       .select();
 
     if (data && data.length > 0) {
       setScanStatus({ status: 'success', msg: `VALID! TIKET ${decodedText} BERHASIL MASUK.` });
     } else {
-      // Kalo tiket gak ketemu atau udah pernah check-in (status_checkin = true)
       setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID ATAU SUDAH DIGUNAKAN!" });
     }
   };
@@ -85,7 +99,6 @@ export default function GateScanner() {
     <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 p-6 ${poppins.className}`}>
       <div className="max-w-xl mx-auto space-y-8 pt-10">
         
-        {/* HEADER */}
         <div className="text-center space-y-2">
           <div className="inline-block bg-[#6D4AFF] p-3 border-4 border-slate-900 -rotate-6 shadow-[4px_4px_0_0_#000]">
             <Zap className="text-amber-400" size={32} strokeWidth={3} />
@@ -95,7 +108,6 @@ export default function GateScanner() {
         </div>
 
         {!isAuthorized ? (
-          /* FORM PASSKEY */
           <div className="bg-white border-8 border-slate-900 p-8 shadow-[12px_12px_0_0_#000] space-y-6">
             <div className="space-y-2 text-center">
               <ShieldCheck className="mx-auto text-[#6D4AFF]" size={48} />
@@ -119,11 +131,10 @@ export default function GateScanner() {
             </button>
           </div>
         ) : (
-          /* SCANNER UI */
           <div className="space-y-6">
-            <div id="reader" className="bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#6D4AFF] overflow-hidden rounded-none"></div>
+            {/* ⚡ WADAH KAMERA GUE GEDEIN BIAR NGGAK MENGKERUT DI HP */}
+            <div id="reader" className="w-full min-h-[300px] bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#6D4AFF]"></div>
             
-            {/* STATUS NOTIFICATION */}
             {scanStatus.msg && (
               <div className={`p-6 border-4 border-slate-900 font-black italic uppercase flex items-center gap-4 animate-bounce ${
                 scanStatus.status === 'success' ? 'bg-emerald-400' : scanStatus.status === 'error' ? 'bg-red-400' : 'bg-amber-200'
