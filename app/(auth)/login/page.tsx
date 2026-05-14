@@ -123,12 +123,12 @@ export default function LoginPage() {
                   <h2 className="text-3xl lg:text-5xl font-black italic uppercase -skew-x-6 tracking-tighter leading-none">
                     SIAP <span className="text-[#6D4AFF]">WAR?</span>
                   </h2>
-                  <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px] lg:text-xs mt-2">Masukin kuncinya buat masuk arena</p>
+                  <p className="font-bold text-slate-400 uppercase tracking-widest text-[10px] lg:text-xs mt-2">Masukin kuncinya buat masuk </p>
                 </header>
 
                 <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-8">
                   <div className="space-y-2 lg:space-y-3">
-                    <Label className="font-black uppercase italic text-xs lg:text-sm tracking-widest">Email Arena</Label>
+                    <Label className="font-black uppercase italic text-xs lg:text-sm tracking-widest">Email</Label>
                     <div className="relative">
                       <div className="absolute inset-0 bg-black translate-x-1 translate-y-1" />
                       <div className="relative flex items-center bg-white border-[3px] lg:border-4 border-black">
@@ -137,7 +137,7 @@ export default function LoginPage() {
                         </div>
                         <input 
                           type="email" 
-                          placeholder="LEGEND@GMAIL.COM" 
+                          placeholder="........@GMAIL.COM" 
                           className="w-full h-12 lg:h-16 px-4 lg:px-6 font-bold text-sm lg:text-lg uppercase outline-none placeholder:text-slate-300 bg-transparent" 
                           onChange={(e) => setEmail(e.target.value)}
                           required
