@@ -12,7 +12,7 @@ import {
   Loader2, Mail, Phone, Camera, Send, Play,
   Trophy, MessageSquare, PlusCircle, Zap, TrendingUp,
   Ticket as TicketIcon, ShieldCheck, ArrowUp, Star,
-  Users, Globe, Music, Receipt 
+  Users, Globe, Music, Receipt, Filter
 } from "lucide-react";
 import Link from "next/link";
 
@@ -137,11 +137,14 @@ export default function ExplorePage() {
   const [heroEvents, setHeroEvents] = useState<any[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  // ⚡ STATE BARU: Wishlist, Sorting, & Pagination
+  const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [sortBy, setSortBy] = useState("NEWEST"); // NEWEST, PRICE_ASC, PRICE_DESC, TRENDING
+  const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     setMounted(true);
@@ -169,12 +172,26 @@ export default function ExplorePage() {
       .from("profiles").select("*").eq("id", session.user.id).single();
     if (profile) setUserProfile(profile);
 
+    // ⚡ Tarik Data Wishlist (Persistensi)
+    const { data: wishlist } = await supabase.from("wishlist").select("event_id").eq("user_id", session.user.id);
+    if (wishlist) {
+      setLikedEvents(new Set(wishlist.map(w => w.event_id)));
+    }
+
+    // Tarik Data Event & Stok
     const { data: eventData } = await supabase
-      .from("events").select("*").eq("status", "approved").order("created_at", { ascending: false });
+      .from("events")
+      .select("*, ticket_categories(stock)")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
 
     if (eventData) {
-      setEvents(eventData);
-      setHeroEvents(eventData.slice(0, 3));
+      const formattedEvents = eventData.map(ev => {
+        const totalRemainingStock = ev.ticket_categories?.reduce((acc: number, cat: any) => acc + (cat.stock || 0), 0) || 0;
+        return { ...ev, totalRemainingStock };
+      });
+      setEvents(formattedEvents);
+      setHeroEvents(formattedEvents.slice(0, 3));
     }
     setIsLoading(false);
   };
@@ -184,12 +201,24 @@ export default function ExplorePage() {
     window.location.href = "/login";
   };
   
-  const toggleLike = (id: string) => {
+  // ⚡ LOGIC WISHLIST DATABASE
+  const toggleLike = async (eventId: string) => {
+    if (!userProfile) return;
+    const isLiked = likedEvents.has(eventId);
+    
+    // Update UI instan (Optimistic Update)
     setLikedEvents((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      isLiked ? next.delete(eventId) : next.add(eventId);
       return next;
     });
+
+    // Simpan ke Supabase
+    if (isLiked) {
+      await supabase.from("wishlist").delete().eq("user_id", userProfile.id).eq("event_id", eventId);
+    } else {
+      await supabase.from("wishlist").insert({ user_id: userProfile.id, event_id: eventId });
+    }
   };
 
   const handleBookNow = (eventId: string) => {
@@ -201,7 +230,8 @@ export default function ExplorePage() {
     router.push(`/explore/checkout/${eventId}`);
   };
 
-  const filteredEvents = events.filter((event) => {
+  // ⚡ LOGIC FILTER & SORTING
+  let processedEvents = events.filter((event) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = (
       event.title?.toLowerCase().includes(query) ||
@@ -212,14 +242,15 @@ export default function ExplorePage() {
     return matchesSearch && matchesCategory;
   });
 
+  if (sortBy === "PRICE_ASC") processedEvents.sort((a,b) => a.price - b.price);
+  else if (sortBy === "PRICE_DESC") processedEvents.sort((a,b) => b.price - a.price);
+  else if (sortBy === "TRENDING") processedEvents.sort((a,b) => a.totalRemainingStock - b.totalRemainingStock); // Yg sisa tiketnya dikit = Trending
+
+  // ⚡ PAGINATION LOGIC
+  const visibleEvents = processedEvents.slice(0, visibleCount);
+
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
-
-  const isNewEvent = (createdAt: string) => {
-    const created = new Date(createdAt);
-    const now = new Date();
-    return (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24) < 7;
-  };
 
   if (!mounted || isLoading) return (
     <div className={`min-h-screen flex flex-col items-center justify-center bg-white gap-4 ${poppins_font.className}`}>
@@ -246,7 +277,7 @@ export default function ExplorePage() {
             <div className="h-10 w-10 bg-[#6D4AFF] border-4 border-slate-900 -rotate-12 flex items-center justify-center group-hover:rotate-0 transition-transform shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
               <TicketIcon className="text-amber-400" size={24} strokeWidth={3} />
             </div>
-            <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase">TIKETIN</span>
+            <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase hidden md:block">TIKETIN</span>
           </Link>
 
           <div className="flex items-center gap-4">
@@ -274,9 +305,15 @@ export default function ExplorePage() {
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
-                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer"><ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer"><MessageSquare className="mr-2 h-4 w-4" /> Pengaduan</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
@@ -326,7 +363,10 @@ export default function ExplorePage() {
             <input
               placeholder="CARI KONSER (lokasi dan artis)"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setVisibleCount(6); // Reset pagination on search
+              }}
               className="h-20 w-full pl-16 pr-6 border-4 border-slate-900 bg-white font-black text-lg uppercase shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] outline-none -skew-x-3 focus:bg-slate-50 transition-all"
             />
           </motion.div>
@@ -405,6 +445,17 @@ export default function ExplorePage() {
                   </motion.h2>
                 </AnimatePresence>
 
+                {/* ⚡ INDIKATOR FOMO DI HERO */}
+                {heroEvents[currentHeroIndex]?.totalRemainingStock > 0 && heroEvents[currentHeroIndex]?.totalRemainingStock <= 20 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-4 bg-red-500 text-white border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] animate-pulse inline-flex items-center gap-2"
+                  >
+                    🔥 Sisa {heroEvents[currentHeroIndex].totalRemainingStock} Tiket! Buruan War!
+                  </motion.div>
+                )}
+
                 {heroEvents[currentHeroIndex]?.price && (
                   <motion.div
                     key={`price-${currentHeroIndex}`}
@@ -420,13 +471,18 @@ export default function ExplorePage() {
                 )}
 
                 <button 
+                  disabled={heroEvents[currentHeroIndex]?.totalRemainingStock === 0}
                   onClick={() => {
                     const activeHeroId = heroEvents[currentHeroIndex]?.id;
                     if (activeHeroId) handleBookNow(activeHeroId);
                   }}
-                  className="bg-white border-4 border-slate-900 px-10 py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:bg-amber-400 transition-all -skew-x-6"
+                  className={`border-4 border-slate-900 px-10 py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${
+                     heroEvents[currentHeroIndex]?.totalRemainingStock === 0 
+                     ? 'bg-slate-500 text-slate-300 cursor-not-allowed' 
+                     : 'bg-white text-black hover:bg-amber-400'
+                  }`}
                 >
-                  BOOK NOW
+                  {heroEvents[currentHeroIndex]?.totalRemainingStock === 0 ? "SOLD OUT" : "BOOK NOW"}
                 </button>
               </div>
 
@@ -443,7 +499,7 @@ export default function ExplorePage() {
           </motion.section>
         )}
 
-        <div className="flex flex-col items-center justify-center space-y-16 mb-24 mt-40 pt-10">
+        <div className="flex flex-col items-center justify-center space-y-16 mb-16 mt-32 pt-10">
           <motion.div 
             variants={fadeInUp}
             initial="hidden"
@@ -473,7 +529,10 @@ export default function ExplorePage() {
                 <motion.button
                   variants={fadeInUp}
                   key={cat}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setVisibleCount(6); // Reset pagination on category change
+                  }}
                   className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:shadow-[2px_2px_0_0_#6D4AFF,4px_4px_0_0_#000,6px_6px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 ${
                     isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-3 translate-y-3" : "bg-white text-slate-900"
                   }`}
@@ -490,65 +549,130 @@ export default function ExplorePage() {
           </motion.div>
         </div>
 
-        <div className="mt-12">
-          {filteredEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-24">
-              {filteredEvents.map((event, idx) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-60px" }}
-                  transition={{ duration: 0.4, delay: (idx % 3) * 0.1 }}
-                  className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
-                >
-                  <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden">
-                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute top-4 left-4">
-                      <CategoryBadge category={event.category} />
-                    </div>
-                    <button
-                      onClick={() => toggleLike(event.id)}
-                      className={`absolute top-4 right-4 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${
-                        likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
-                      }`}
-                    >
-                      <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
-                    </button>
-                  </div>
+        {/* ⚡ DROPDOWN SORTING & INFO (NEW) */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4">
+          <p className="font-black italic uppercase text-slate-400 text-sm">
+            Menampilkan {visibleEvents.length} dari {processedEvents.length} Event
+          </p>
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <Filter size={20} className="hidden md:block text-slate-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => { 
+                setSortBy(e.target.value); 
+                setVisibleCount(6); // Reset pagination on sort change
+              }}
+              className="w-full md:w-auto p-4 border-4 border-slate-900 bg-white font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] outline-none cursor-pointer hover:bg-amber-400 transition-colors"
+            >
+              <option value="NEWEST">🔥 Terbaru</option>
+              <option value="PRICE_ASC">💵 Harga: Termurah</option>
+              <option value="PRICE_DESC">💎 Harga: Termahal</option>
+              <option value="TRENDING">📈 Paling Laku (Sisa Dikit)</option>
+            </select>
+          </div>
+        </div>
 
-                  <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
-                    <div className="h-[3.5rem] overflow-hidden pr-2">
-                      <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
-                        {event.title}
-                      </h3>
-                    </div>
-                    <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      <div className="flex items-center gap-3">
-                        <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
+        <div className="mt-12">
+          {visibleEvents.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
+                {visibleEvents.map((event, idx) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-60px" }}
+                    transition={{ duration: 0.4, delay: (idx % 3) * 0.1 }}
+                    className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
+                  >
+                    <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden">
+                      <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      
+                      {/* ⚡ FOMO INDICATOR (SOLD OUT OVERLAY) */}
+                      {event.totalRemainingStock === 0 && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-20">
+                           <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-3xl italic uppercase -skew-x-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
+                             SOLD OUT
+                           </div>
+                        </div>
+                      )}
+
+                      <div className="absolute top-4 left-4 z-30">
+                        <CategoryBadge category={event.category} />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
-                      </div>
-                    </div>
-                    <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
-                      <div className="text-left">
-                        <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
-                        <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
-                      </div>
-                      <button onClick={() => handleBookNow(event.id)} className="h-14 w-14 bg-slate-900 text-white flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)] rotate-12 hover:rotate-0 hover:bg-[#6D4AFF] transition-all">
-                        <ChevronRight size={24} strokeWidth={4} />
+
+                      {/* ⚡ FOMO INDICATOR (HAMPIR HABIS) */}
+                      {event.totalRemainingStock > 0 && event.totalRemainingStock <= 20 && (
+                        <div className="absolute top-4 left-28 z-30 bg-red-500 text-white border-2 border-slate-900 px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse">
+                          🔥 Sisa {event.totalRemainingStock} Tiket!
+                        </div>
+                      )}
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleLike(event.id); }}
+                        className={`absolute top-4 right-4 z-30 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${
+                          likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
+                        }`}
+                      >
+                        <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
                       </button>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+
+                    <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
+                      <div className="h-[3.5rem] overflow-hidden pr-2">
+                        <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
+                          {event.title}
+                        </h3>
+                      </div>
+                      <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <div className="flex items-center gap-3">
+                          <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
+                        </div>
+                      </div>
+                      <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
+                        <div className="text-left">
+                          <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
+                          <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
+                        </div>
+                        
+                        {/* ⚡ BOOK BUTTON DISABLED LOGIC */}
+                        <button 
+                          disabled={event.totalRemainingStock === 0}
+                          onClick={() => handleBookNow(event.id)} 
+                          className={`h-14 w-14 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)] rotate-12 transition-all ${
+                             event.totalRemainingStock === 0 
+                             ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none rotate-0' 
+                             : 'bg-slate-900 text-white hover:rotate-0 hover:bg-[#6D4AFF]'
+                          }`}
+                        >
+                          <ChevronRight size={24} strokeWidth={4} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* ⚡ LOAD MORE BUTTON (PAGINATION) */}
+              {visibleCount < processedEvents.length && (
+                <div className="flex justify-center mb-24">
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 6)}
+                    className="bg-white border-4 border-slate-900 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3"
+                  >
+                    <PlusCircle size={20} /> MUAT LEBIH BANYAK
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="py-24 text-center border-8 border-dashed border-slate-200 mb-24 relative overflow-hidden">
               <DotGrid className="opacity-20" />
               <p className="text-6xl mb-4">🎫</p>
-              <p className="text-4xl font-black italic uppercase text-slate-300">STAGE GAK NEMU, </p>
+              <p className="text-4xl font-black italic uppercase text-slate-300">STAGE GAK NEMU</p>
             </div>
           )}
         </div>

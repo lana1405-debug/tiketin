@@ -167,7 +167,15 @@ export default function CheckoutPage() {
             }));
             await supabase.from("tiket").insert(ticketsToInsert);
 
-            await supabase.from("ticket_categories").update({ stock: stockAvailable - qty }).eq("id", selectedCategory.id);
+            // ⚡ FIX: MENGGUNAKAN RPC UNTUK MENGHINDARI RACE CONDITION SAAT PENGURANGAN STOK
+            const { error: stockError } = await supabase.rpc('decrement_ticket_stock', { 
+              cat_id: selectedCategory.id, 
+              qty: qty 
+            });
+            
+            if (stockError) {
+              console.error("Gagal potong stok di DB:", stockError);
+            }
 
             // REWARDS POIN
             const earnedPoints = qty * 50;
@@ -175,7 +183,7 @@ export default function CheckoutPage() {
             const newPoints = (profile?.points || 0) + earnedPoints;
             await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
 
-            alert(`PEMBAYARAN BERHASIL! Lo dapet ${earnedPoints} Poin! 🎉`);
+            alert(`PEMBAYARAN BERHASIL! dapet ${earnedPoints} Poin! 🎉`);
             router.push("/explore/tickets"); 
 
           } catch (dbError) {
@@ -186,14 +194,13 @@ export default function CheckoutPage() {
         },
         onPending: () => { 
           alert("Pembayaran tertunda, silakan selesaikan!");
-          router.push("/explore/tickets"); // ⚡ REDIRECT KE TIKET SAYA
+          router.push("/explore/tickets");
         },
         onError: () => { 
           alert("Pembayaran gagal!"); 
           setIsProcessing(false); 
         },
         onClose: () => { 
-          // ⚡ JANGAN KE HALAMAN GAIB, KE TIKET SAYA AJA
           router.push("/explore/tickets"); 
         }
       });
@@ -225,7 +232,7 @@ export default function CheckoutPage() {
             SECURE <span className="text-amber-400 drop-shadow-[4px_4px_0_#000]">TICKETS.</span>
           </h1>
           <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm flex items-center gap-2 italic text-left">
-            <Zap size={16} className="fill-amber-400 text-amber-400" /> Selesaikan pembayaran lo & dapet 50 poin/tiket!
+            <Zap size={16} className="fill-amber-400 text-amber-400" /> Selesaikan pembayaran & dapet 50 poin/tiket!
           </p>
         </motion.div>
 
@@ -291,7 +298,7 @@ export default function CheckoutPage() {
                     <AlertOctagon size={32} strokeWidth={3} className="shrink-0" />
                     <div>
                       <p className="font-black italic uppercase text-lg leading-tight">LIMIT HABIS!</p>
-                      <p className="text-[10px] font-bold uppercase mt-1 italic">Maks beli {maxBuyPerUser} tiket/akun. Lo udah beli {alreadyBought}.</p>
+                      <p className="text-[10px] font-bold uppercase mt-1 italic">Maks beli {maxBuyPerUser} tiket/akun. udah beli {alreadyBought}.</p>
                     </div>
                   </motion.div>
                 ) : stockAvailable === 0 ? (
