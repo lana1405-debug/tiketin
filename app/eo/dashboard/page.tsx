@@ -13,6 +13,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const poppins = Poppins({ 
   subsets: ["latin"], 
   weight: ["400", "700", "900"] 
@@ -72,6 +79,29 @@ export default function EODashboard() {
 
   const updateCategory = (id: number, field: string, value: string) => {
     setCategories(categories.map(cat => cat.id === id ? { ...cat, [field]: value } : cat));
+  };
+
+  // ⚡ LOGIC AUTO-GENERATE TIKET TERUSAN (MULTI-DAY PASS)
+  const handleGenerateMultiDayPass = (type: '3-DAY' | '2-DAY') => {
+    const defaultPrice = type === '3-DAY' ? "750000" : "500000";
+    const defaultStock = "500";
+    const newCat = {
+      id: Date.now(),
+      name: ` - ${type} PASS`,
+      price: defaultPrice,
+      stock: defaultStock
+    };
+    setCategories([...categories, newCat]);
+  };
+
+  // ⚡ MENGHITUNG DURASI EVENT UNTUK MENAMPILKAN TOMBOL MULTI-DAY
+  const getEventDurationInDays = () => {
+    if (!formData.date || !formData.end_date) return 1;
+    const start = new Date(formData.date);
+    const end = new Date(formData.end_date);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Termasuk hari H
+    return diffDays;
   };
 
   useEffect(() => {
@@ -142,7 +172,6 @@ export default function EODashboard() {
     setIsLoading(false);
   };
 
-  // --- LOGIC CHAT UTUH ---
   const fetchMyComplaints = async (userId: string) => {
     const { data } = await supabase.from("complaints").select("*").eq("user_id", userId).order("created_at", { ascending: false });
     if (data) setMyComplaints(data);
@@ -173,7 +202,6 @@ export default function EODashboard() {
     setIsSendingComplaint(false);
   };
 
-  // --- LOGIC EVENT UTUH ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -573,7 +601,26 @@ export default function EODashboard() {
                 </div>
               </div>
               <div className="bg-amber-400 border-8 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] space-y-4 text-left">
-                <div className="flex justify-between items-center border-b-4 border-black pb-4 mb-6"><h3 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-2"><Tag size={24}/> Kategori Tiket</h3><button type="button" onClick={addCategory} disabled={!!editingEventId} className="bg-black text-white px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(255,255,255,1)] hover:translate-x-1 transition-all">Tambah Tier</button></div>
+                <div className="flex justify-between items-center border-b-4 border-black pb-4 mb-6">
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-2"><Tag size={24}/> Kategori Tiket</h3>
+                  <div className="flex gap-2">
+                    {/* ⚡ TOMBOL UNTUK MULTI-DAY PASS (MUNCUL JIKA EVENT LEBIH DARI 1 HARI) */}
+                    {getEventDurationInDays() > 1 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" disabled={!!editingEventId} className="bg-emerald-400 text-black px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-1 transition-all flex items-center gap-1">
+                            <PlusCircle size={12}/> Multi-Day
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="z-[200] bg-white border-4 border-black rounded-none shadow-[8px_8px_0_0_#000]">
+                          {getEventDurationInDays() >= 2 && <DropdownMenuItem onClick={() => handleGenerateMultiDayPass('2-DAY')} className="font-black italic text-xs uppercase cursor-pointer hover:bg-emerald-100">Bikin Tiket Terusan 2 Hari</DropdownMenuItem>}
+                          {getEventDurationInDays() >= 3 && <DropdownMenuItem onClick={() => handleGenerateMultiDayPass('3-DAY')} className="font-black italic text-xs uppercase cursor-pointer hover:bg-emerald-100">Bikin Tiket Terusan 3 Hari</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    <button type="button" onClick={addCategory} disabled={!!editingEventId} className="bg-black text-white px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(255,255,255,1)] hover:translate-x-1 transition-all">Tambah Tier</button>
+                  </div>
+                </div>
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {categories.map((cat, index) => (
                     <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">

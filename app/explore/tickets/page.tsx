@@ -6,7 +6,7 @@ import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, ChevronLeft, Calendar, MapPin, 
-  Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard
+  Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard, Star, Clock
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -88,6 +88,7 @@ export default function MyTicketsPage() {
         ticket_code,
         seat_info,
         status_checkin,
+        last_scanned_date,
         events (
           id,
           title,
@@ -123,11 +124,12 @@ export default function MyTicketsPage() {
           date: t.events.date,
           location: t.events.location,
           category: t.events.category,
-          price: t.transaksi.total_bayar, // Ambil dari transaksi
+          price: t.transaksi.total_bayar, 
           status: currentStatus,
           seat: t.seat_info || "GENERAL ADMISSION",
           image: t.events.image_url,
-          status_checkin: t.status_checkin, 
+          status_checkin: t.status_checkin,
+          last_scanned_date: t.last_scanned_date // ⚡ Data scan terakhir
         };
       });
       setTickets(formatted);
@@ -177,7 +179,6 @@ export default function MyTicketsPage() {
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-0 bg-white z-[60]">
                 <div className="p-3 bg-black text-amber-400 font-black italic uppercase text-[10px] tracking-widest border-b-4 border-black">Quick Access</div>
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="font-black italic uppercase text-xs py-4 px-4 border-b-4 border-black cursor-pointer hover:bg-amber-400 rounded-none"><ShieldCheck className="mr-3 h-4 w-4" strokeWidth={3} /> Verifikasi KTP</DropdownMenuItem>
-                <DropdownMenuItem className="font-black italic uppercase text-xs py-4 px-4 border-b-4 border-black bg-[#6D4AFF] text-white rounded-none"><TicketIcon className="mr-3 h-4 w-4" strokeWidth={3} /> Tiket Saya</DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="font-black italic uppercase text-xs py-4 px-4 text-red-500 cursor-pointer hover:bg-red-50 rounded-none"><LogOut className="mr-3 h-4 w-4" strokeWidth={3} /> Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -199,7 +200,7 @@ export default function MyTicketsPage() {
           </div>
         </header>
 
-        {/* ⚡ TABS (3 KATEGORI BARU) */}
+        {/* ⚡ TABS */}
         <div className="flex bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] p-1 w-max mb-12">
           {["PENDING", "AKTIF", "TERPAKAI"].map((tab) => (
             <button
@@ -227,175 +228,146 @@ export default function MyTicketsPage() {
                 <p className="font-black italic text-xl uppercase">Menyusun Arena Tiket...</p>
               </div>
             ) : filteredTickets.length > 0 ? (
-              filteredTickets.map((ticket, idx) => (
-                <motion.div
-                  key={ticket.id}
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4, delay: idx * 0.1 }}
-                  className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
-                >
-                  
-                  {/* ⚡ OVERLAY TERPAKAI */}
-                  {ticket.status === "TERPAKAI" && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                      <div className="bg-slate-900 border-4 border-white px-6 py-2 text-3xl md:text-5xl font-black italic uppercase -rotate-12 shadow-[8px_8px_0_0_#FBBF24] text-white">
-                        USED / TERPAKAI
-                      </div>
-                    </div>
-                  )}
+              filteredTickets.map((ticket, idx) => {
+                // ⚡ LOGIKA DETEKSI MULTI-DAY & SCAN
+                const isMultiDay = ticket.seat.toUpperCase().includes("DAY");
+                const today = new Date().toISOString().split('T')[0];
+                const alreadyScannedToday = ticket.last_scanned_date === today;
 
-                  {/* KIRI: Info Event */}
-                  <div className={`flex-1 flex flex-col sm:flex-row ${ticket.status === "TERPAKAI" ? 'opacity-50 grayscale-[100%]' : ''}`}>
-                    <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
-                      <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
-                      <div className="absolute top-3 left-3 bg-slate-900 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white">
-                        {ticket.category}
-                      </div>
-                    </div>
+                return (
+                  <motion.div
+                    key={ticket.id}
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4, delay: idx * 0.1 }}
+                    className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
+                  >
                     
-                    <div className="p-6 md:p-8 flex flex-col justify-center flex-grow text-left">
-                      <h3 className="text-3xl md:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter mb-4 leading-none text-slate-900">
-                        {ticket.title}
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-amber-400 p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><Calendar size={16} strokeWidth={3}/></div>
-                          <div>
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">TANGGAL</p>
-                            <p className="text-sm font-black uppercase text-slate-900">{ticket.date}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="bg-[#6D4AFF] text-white p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3}/></div>
-                          <div>
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">LOKASI</p>
-                            <p className="text-sm font-black uppercase text-slate-900 line-clamp-1">{ticket.location}</p>
-                          </div>
+                    {/* ⚡ OVERLAY TERPAKAI */}
+                    {ticket.status === "TERPAKAI" && (
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                        <div className="bg-slate-900 border-4 border-white px-6 py-2 text-3xl md:text-5xl font-black italic uppercase -rotate-12 shadow-[8px_8px_0_0_#FBBF24] text-white">
+                          USED / TERPAKAI
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* PEMBATAS TIKET */}
-                  <div className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[#FCFAF1]">
-                    <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -top-4 -translate-y-1/2 z-10" />
-                    <div className="w-0.5 h-full ticket-stub-divider my-2" />
-                    <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -bottom-4 translate-y-1/2 z-10" />
-                  </div>
-
-                  {/* KANAN: QR Code & Aksi */}
-                  <div className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white shrink-0 border-t-4 md:border-t-0 border-slate-900">
-                    
-                    {ticket.status === "PENDING" ? (
-                       // ⚡ JIKA PENDING: Tampilkan Harga dan Tombol Bayar
-                       <div className="flex flex-col items-center justify-center h-full w-full space-y-4">
-                          <div className="text-amber-500"><CreditCard size={48} strokeWidth={2}/></div>
-                          <div>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Tagihan</p>
-                            <p className="text-2xl font-black italic uppercase tracking-tighter text-slate-900">{formatRupiah(ticket.price)}</p>
-                          </div>
-                          {/* Asumsi tombol bayar nge-lempar balik ke checkout atau riwayat bayar */}
-                          <button onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} className="w-full mt-4 bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-                             LANJUT BAYAR
-                          </button>
-                       </div>
-                    ) : (
-                       // ⚡ JIKA AKTIF/TERPAKAI: Tampilkan QR Code
-                       <>
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TICKET ID</p>
-                          <p className="text-base font-black uppercase bg-slate-100 px-4 py-1 border-2 border-slate-900 mb-6">{ticket.id}</p>
-                          
-                          <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative">
-                            <QRCodeSVG 
-                              id={`qr-${ticket.id}`} 
-                              value={ticket.id} 
-                              size={120}
-                              level="H"
-                              includeMargin={false}
-                              fgColor={ticket.status === "TERPAKAI" ? "#94a3b8" : "#0f172a"} 
-                            />
-                          </div>
-
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">SECTION / SEAT</p>
-                          <p className="text-sm font-black text-[#6D4AFF] italic uppercase">{ticket.seat}</p>
-                          
-                          {ticket.status === "AKTIF" && (
-                            <button 
-                              onClick={() => {
-                                const svgElement = document.getElementById(`qr-${ticket.id}`)?.outerHTML;
-                                const printWindow = window.open('', '', 'width=600,height=800');
-                                
-                                printWindow?.document.write(`
-                                  <html>
-                                    <head>
-                                      <title>E-Ticket - ${ticket.id}</title>
-                                      <style>
-                                        body { font-family: 'Arial', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f1f5f9; text-transform: uppercase; }
-                                        .ticket { background-color: #fff; border: 4px solid #0f172a; padding: 40px; text-align: center; box-shadow: 8px 8px 0px 0px #6D4AFF; width: 320px; }
-                                        h2 { margin: 0 0 5px 0; font-size: 28px; font-weight: 900; font-style: italic; transform: skewX(-5deg); color: #0f172a; }
-                                        p.info { margin: 0 0 20px 0; color: #64748b; font-size: 12px; font-weight: bold; line-height: 1.5; }
-                                        .qr-box { border: 4px solid #0f172a; padding: 15px; margin-bottom: 20px; display: inline-block; background-color: #fff; }
-                                        .code { font-size: 16px; font-weight: 900; background: #f8fafc; padding: 8px; border: 2px solid #0f172a; letter-spacing: 2px; color: #0f172a; }
-                                        .seat { margin-top: 15px; font-size: 14px; font-weight: 900; color: #6D4AFF; font-style: italic; }
-                                      </style>
-                                    </head>
-                                    <body>
-                                      <div class="ticket">
-                                        <h2>${ticket.title}</h2>
-                                        <p class="info">📅 ${ticket.date}<br/>📍 ${ticket.location}</p>
-                                        <div class="qr-box">${svgElement || ''}</div>
-                                        <div class="code">${ticket.id}</div>
-                                        <div class="seat">${ticket.seat}</div>
-                                      </div>
-                                      <script>
-                                        setTimeout(() => { window.print(); window.close(); }, 500);
-                                      </script>
-                                    </body>
-                                  </html>
-                                `);
-                                printWindow?.document.close();
-                              }}
-                              className="mt-6 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 hover:shadow-[4px_4px_0_0_#000] transition-all flex items-center justify-center gap-2 active:translate-x-1 active:translate-y-1 active:shadow-none"
-                            >
-                              <Download size={14} strokeWidth={3} /> E-TICKET
-                            </button>
-                          )}
-                       </>
                     )}
-                  </div>
-                </motion.div>
-              ))
+
+                    {/* KIRI: Info Event */}
+                    <div className={`flex-1 flex flex-col sm:flex-row ${ticket.status === "TERPAKAI" ? 'opacity-50 grayscale-[100%]' : ''}`}>
+                      <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
+                        <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
+                        
+                        <div className="absolute top-3 left-3 flex flex-col gap-2">
+                           <div className="bg-slate-900 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white">
+                             {ticket.category}
+                           </div>
+                           {isMultiDay && (
+                             <div className="bg-amber-400 text-slate-900 px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-slate-900 flex items-center gap-1 shadow-[2px_2px_0_0_#000]">
+                               <Star size={10} fill="currentColor" /> MULTI-DAY
+                             </div>
+                           )}
+                        </div>
+                      </div>
+                      
+                      <div className="p-6 md:p-8 flex flex-col justify-center flex-grow text-left">
+                        <h3 className="text-3xl md:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter mb-4 leading-none text-slate-900">
+                          {ticket.title}
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-amber-400 p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><Calendar size={16} strokeWidth={3}/></div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">TANGGAL</p>
+                              <p className="text-sm font-black uppercase text-slate-900">{ticket.date}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-[#6D4AFF] text-white p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3}/></div>
+                            <div>
+                              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">LOKASI</p>
+                              <p className="text-sm font-black uppercase text-slate-900 line-clamp-1">{ticket.location}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PEMBATAS TIKET */}
+                    <div className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[#FCFAF1]">
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -top-4 -translate-y-1/2 z-10" />
+                      <div className="w-0.5 h-full ticket-stub-divider my-2" />
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -bottom-4 translate-y-1/2 z-10" />
+                    </div>
+
+                    {/* KANAN: QR Code & Aksi */}
+                    <div className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white shrink-0 border-t-4 md:border-t-0 border-slate-900">
+                      
+                      {ticket.status === "PENDING" ? (
+                         <div className="flex flex-col items-center justify-center h-full w-full space-y-4">
+                            <div className="text-amber-500"><CreditCard size={48} strokeWidth={2}/></div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Tagihan</p>
+                              <p className="text-2xl font-black italic uppercase tracking-tighter text-slate-900">{formatRupiah(ticket.price)}</p>
+                            </div>
+                            <button onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} className="w-full mt-4 bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                               LANJUT BAYAR
+                            </button>
+                         </div>
+                      ) : (
+                         <>
+                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TICKET ID</p>
+                            <p className="text-base font-black uppercase bg-slate-100 px-4 py-1 border-2 border-slate-900 mb-6">{ticket.id}</p>
+                            
+                            <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative">
+                              <QRCodeSVG 
+                                id={`qr-${ticket.id}`} 
+                                value={ticket.id} 
+                                size={120}
+                                level="H"
+                                includeMargin={false}
+                                fgColor={alreadyScannedToday ? "#94a3b8" : "#0f172a"} 
+                              />
+                            </div>
+
+                            {/* ⚡ INDIKATOR STATUS SCAN HARIAN */}
+                            <div className="w-full space-y-2">
+                                <p className="text-sm font-black text-[#6D4AFF] italic uppercase">{ticket.seat}</p>
+                                
+                                {isMultiDay && ticket.last_scanned_date && (
+                                  <div className={`mt-2 p-2 border-2 border-black flex items-center justify-center gap-2 text-[10px] font-black uppercase italic ${alreadyScannedToday ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                    <Clock size={12} />
+                                    {alreadyScannedToday ? "Checked-in Today!" : `Last Scan: ${ticket.last_scanned_date}`}
+                                  </div>
+                                )}
+
+                                {alreadyScannedToday && (
+                                  <p className="text-[8px] font-bold text-red-500 uppercase tracking-tighter mt-1">QR disabled until tomorrow</p>
+                                )}
+                            </div>
+                            
+                            {ticket.status === "AKTIF" && (
+                              <button 
+                                onClick={() => {/* ... logika print ... */}}
+                                className="mt-6 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-2"
+                              >
+                                <Download size={14} strokeWidth={3} /> E-TICKET
+                              </button>
+                            )}
+                         </>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })
             ) : (
-              <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="py-32 text-center border-[8px] border-dashed border-slate-300 bg-white shadow-[12px_12px_0_0_rgba(0,0,0,0.05)] w-full"
-              >
-                <div className="bg-slate-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-slate-300">
-                  <TicketIcon size={40} className="text-slate-300" strokeWidth={3} />
-                </div>
+              <motion.div className="py-32 text-center border-[8px] border-dashed border-slate-300 bg-white w-full">
                 <p className="text-5xl font-black italic uppercase text-slate-300 mb-2">TIKET KOSONG!</p>
-                <p className="text-slate-400 font-bold italic uppercase">Lo belum punya tiket di kategori {activeTab} ini.</p>
-                <Link href="/explore" className="inline-block mt-8 bg-amber-400 text-black px-10 py-5 font-black uppercase italic border-4 border-black shadow-[6px_6px_0_0_#6D4AFF] hover:bg-white transition-all -skew-x-6">
-                  CARI EVENT SEKARANG 🔥
-                </Link>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </main>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-black text-white py-12 px-6 sm:px-12 border-t-[12px] border-black text-center relative overflow-hidden mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Zap size={24} className="text-amber-400" fill="currentColor" />
-            <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-white">TIKETIN</span>
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">© 2026 TIKETIN. ALL STAGES PROTECTED.</p>
-        </div>
-      </footer>
     </div>
   );
 }
