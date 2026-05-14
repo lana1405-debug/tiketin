@@ -167,7 +167,6 @@ export default function CheckoutPage() {
             }));
             await supabase.from("tiket").insert(ticketsToInsert);
 
-            // ⚡ FIX: MENGGUNAKAN RPC UNTUK MENGHINDARI RACE CONDITION SAAT PENGURANGAN STOK
             const { error: stockError } = await supabase.rpc('decrement_ticket_stock', { 
               cat_id: selectedCategory.id, 
               qty: qty 
@@ -177,7 +176,6 @@ export default function CheckoutPage() {
               console.error("Gagal potong stok di DB:", stockError);
             }
 
-            // REWARDS POIN
             const earnedPoints = qty * 50;
             const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single();
             const newPoints = (profile?.points || 0) + earnedPoints;
@@ -249,7 +247,7 @@ export default function CheckoutPage() {
               </div>
               <div className="p-8">
                 <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 underline decoration-4 decoration-[#6D4AFF]">{event.title}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 uppercase font-bold text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 uppercase font-bold text-xs mb-8">
                   <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
                     <Calendar size={24} className="text-[#6D4AFF]"/>
                     <span>{event.date}</span>
@@ -259,6 +257,16 @@ export default function CheckoutPage() {
                     <span>{event.location}</span>
                   </div>
                 </div>
+
+                {/* ⚡ MENAMPILKAN DESKRIPSI EVENT */}
+                {event.description && (
+                  <div className="border-t-4 border-slate-900 pt-6">
+                    <h3 className="text-lg font-black italic uppercase text-slate-400 mb-2">Details</h3>
+                    <div className="font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">
+                      {event.description}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
 

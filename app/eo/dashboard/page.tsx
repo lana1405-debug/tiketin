@@ -61,6 +61,19 @@ export default function EODashboard() {
 
   const [categories, setCategories] = useState([{ id: Date.now(), name: "REGULAR", price: "", stock: "" }]);
 
+  // ⚡ LOGIC MANIPULASI ARRAY KATEGORI (TIER TIKET)
+  const addCategory = () => {
+    setCategories([...categories, { id: Date.now(), name: "", price: "", stock: "" }]);
+  };
+
+  const removeCategory = (idToRemove: number) => {
+    setCategories(categories.filter(cat => cat.id !== idToRemove));
+  };
+
+  const updateCategory = (id: number, field: string, value: string) => {
+    setCategories(categories.map(cat => cat.id === id ? { ...cat, [field]: value } : cat));
+  };
+
   useEffect(() => {
     setMounted(true);
     const fetchEOData = async () => {
@@ -160,7 +173,7 @@ export default function EODashboard() {
     setIsSendingComplaint(false);
   };
 
-  // --- LOGIC EVENT UTUH (YG TADI HILANG) ---
+  // --- LOGIC EVENT UTUH ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -189,7 +202,21 @@ export default function EODashboard() {
       }
       const minPrice = Math.min(...categories.map(c => Number(c.price)));
       const totalStock = categories.reduce((acc, c) => acc + Number(c.stock), 0);
-      const payload = { title: formData.title, category: formData.category, date: formData.date, end_date: formData.end_date || null, start_time: formData.start_time || null, location: formData.location, price: minPrice, stock: totalStock, max_buy: Number(formData.max_buy), description: formData.description || null, image_url: finalImageUrl, organizer_id: eoId, status: "pending" };
+      const payload = { 
+        title: formData.title, 
+        category: formData.category, 
+        date: formData.date, 
+        end_date: formData.end_date || null, 
+        start_time: formData.start_time || null, 
+        location: formData.location, 
+        price: minPrice, 
+        stock: totalStock, 
+        max_buy: Number(formData.max_buy), 
+        description: formData.description || null, 
+        image_url: finalImageUrl, 
+        organizer_id: eoId, 
+        status: "pending" 
+      };
       
       if (editingEventId) {
         const { error: err } = await supabase.from("events").update(payload).eq("id", editingEventId);
@@ -206,7 +233,16 @@ export default function EODashboard() {
 
   const openEditModal = (event: any) => {
     setEditingEventId(event.id);
-    setFormData({ title: event.title, category: event.category || "MUSIK", date: event.date, end_date: event.end_date || "", start_time: event.start_time || "", location: event.location, max_buy: event.max_buy?.toString() || "4", description: event.description || "" });
+    setFormData({ 
+      title: event.title, 
+      category: event.category || "MUSIK", 
+      date: event.date, 
+      end_date: event.end_date || "", 
+      start_time: event.start_time || "", 
+      location: event.location, 
+      max_buy: event.max_buy?.toString() || "4", 
+      description: event.description || "" 
+    });
     setCategories([{ id: Date.now(), name: "DEFAULT TIER", price: event.price.toString(), stock: event.stock.toString() }]);
     setImagePreview(event.image_url); setImageFile(null); setIsModalOpen(true);
   };
@@ -227,7 +263,17 @@ export default function EODashboard() {
       const gross = withdrawEvent.revenue;
       const fee = Math.round(gross * 0.15);
       const net = gross - fee;
-      const { error } = await supabase.from("withdrawals").insert([{ event_id: withdrawEvent.id, organizer_id: eoId, gross_amount: gross, platform_fee: fee, net_amount: net, bank_name: withdrawForm.bank_name, account_number: withdrawForm.account_number, account_name: withdrawForm.account_name, status: "pending" }]);
+      const { error } = await supabase.from("withdrawals").insert([{ 
+        event_id: withdrawEvent.id, 
+        organizer_id: eoId, 
+        gross_amount: gross, 
+        platform_fee: fee, 
+        net_amount: net, 
+        bank_name: withdrawForm.bank_name, 
+        account_number: withdrawForm.account_number, 
+        account_name: withdrawForm.account_name, 
+        status: "pending" 
+      }]);
       if (error) throw error;
       alert("Pengajuan terkirim!"); setIsWithdrawModalOpen(false); fetchMyEvents(eoId!);
     } catch (err: any) { alert(err.message); } finally { setIsWithdrawing(false); }
@@ -449,13 +495,21 @@ export default function EODashboard() {
                          <div className="bg-black text-white p-4 border-4 border-black self-start max-w-[80%] shadow-[4px_4px_0_0_#6D4AFF]"><p className="text-[8px] font-black text-amber-400 uppercase mb-1">LAPORAN AWAL:</p><p className="text-sm font-bold italic">"{selectedComplaint.message}"</p></div>
                          {chatMessages.map((msg, i) => (
                            <div key={i} className={`flex flex-col ${msg.is_admin ? 'items-start' : 'items-end'}`}>
-                              <div className={`p-4 border-4 border-black max-w-[75%] shadow-[4px_4px_0_0_#000] ${msg.is_admin ? 'bg-white' : 'bg-[#6D4AFF] text-white'}`}><p className="text-[8px] font-black uppercase mb-1 ${msg.is_admin ? 'text-[#6D4AFF]' : 'text-purple-200'}">{msg.is_admin ? 'Admin Tiketin' : 'LO'}</p><p className="text-sm font-bold italic">{msg.message}</p></div>
+                              <div className={`p-4 border-4 border-black max-w-[75%] shadow-[4px_4px_0_0_#000] ${msg.is_admin ? 'bg-white' : 'bg-[#6D4AFF] text-white'}`}>
+                                 <p className={`text-[8px] font-black uppercase mb-1 ${msg.is_admin ? 'text-[#6D4AFF]' : 'text-purple-200'}`}>
+                                    {msg.is_admin ? 'Admin Tiketin' : 'LO'}
+                                 </p>
+                                 <p className="text-sm font-bold italic">{msg.message}</p>
+                              </div>
                               <span className="text-[8px] font-bold text-slate-400 mt-1">{new Date(msg.created_at).toLocaleTimeString()}</span>
                            </div>
                          ))}
                       </div>
                       {selectedComplaint.status !== 'resolved' && (
-                        <form onSubmit={handleSendChatMessage} className="p-6 border-t-8 border-black bg-white flex gap-4 shrink-0"><input type="text" placeholder="BALAS ADMIN..." className="flex-1 p-4 border-4 border-black font-black italic uppercase text-xs outline-none" value={chatInput} onChange={e => setChatInput(e.target.value)} /><button type="submit" className="bg-black text-white px-6 border-4 border-black shadow-[4px_4px_0_0_#6D4AFF] hover:translate-x-1 transition-all"><Send size={20} /></button></form>
+                        <form onSubmit={handleSendChatMessage} className="p-6 border-t-8 border-black bg-white flex gap-4 shrink-0">
+                           <input type="text" placeholder="BALAS ADMIN..." className="flex-1 p-4 border-4 border-black font-black italic uppercase text-xs outline-none" value={chatInput} onChange={e => setChatInput(e.target.value)} />
+                           <button type="submit" className="bg-black text-white px-6 border-4 border-black shadow-[4px_4px_0_0_#6D4AFF] hover:translate-x-1 transition-all"><Send size={20} /></button>
+                        </form>
                       )}
                     </>
                   )}
@@ -488,7 +542,7 @@ export default function EODashboard() {
         </div>
       )}
 
-      {/* ⚡ MODAL EVENT (SIAPKAN PANGGUNG) - 100% BALIK LAGI */}
+      {/* ⚡ MODAL EVENT (SIAPKAN PANGGUNG) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] text-black text-left">
           <div className="bg-white border-8 border-black p-8 md:p-12 w-full max-w-4xl shadow-[20px_20px_0px_0px_rgba(109,74,255,1)] relative max-h-[95vh] overflow-y-auto custom-scrollbar">

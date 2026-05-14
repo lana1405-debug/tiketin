@@ -625,13 +625,20 @@ export default function ExplorePage() {
                         </h3>
                       </div>
                       <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        <div className="flex items-center gap-3">
-                          <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
-                        </div>
-                      </div>
+    <div className="flex items-center gap-3">
+      <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
+    </div>
+    <div className="flex items-center gap-3">
+      <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
+    </div>
+    
+    {/* ⚡ INI TAMBAHAN DESKRIPSI EVENT-NYA */}
+    {event.description && (
+      <p className="mt-4 pt-3 border-t-2 border-slate-200 text-xs font-medium normal-case tracking-normal text-slate-600 italic line-clamp-2">
+        "{event.description}"
+      </p>
+    )}
+  </div>
                       <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
                         <div className="text-left">
                           <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
