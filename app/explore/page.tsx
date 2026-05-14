@@ -698,7 +698,7 @@ export default function ExplorePage() {
               <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic">EVENT MANAGER</div>
               <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.8] -skew-x-6">PUNYA EVENT? <br /> JUAL DI SINI.</h2>
               <Button asChild className="bg-amber-400 border-4 border-slate-900 text-slate-900 px-12 py-8 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:bg-white transition-all -skew-x-6 h-auto">
-                <Link href="/dashboard/upgrade-eo">DAFTAR EO SEKARANG</Link>
+                <Link href="/explore/ajukan">DAFTAR EO SEKARANG</Link>
               </Button>
             </div>
             <TicketIcon size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12" strokeWidth={4} />
