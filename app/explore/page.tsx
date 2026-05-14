@@ -439,10 +439,10 @@ export default function ExplorePage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4"
-                  >
+                    className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
+>
                     {heroEvents[currentHeroIndex]?.title || "LIVE NOW"}
-                  </motion.h2>
+</motion.h2>
                 </AnimatePresence>
 
                 {/* ⚡ INDIKATOR FOMO DI HERO */}
