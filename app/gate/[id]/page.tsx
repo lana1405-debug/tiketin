@@ -145,7 +145,7 @@ export default function GateScanner() {
             <Zap className="text-amber-400" size={32} strokeWidth={3} />
           </div>
           <h1 className="text-4xl font-black italic uppercase -skew-x-6">GATE SYSTEM</h1>
-          <p className="font-bold text-slate-500 uppercase text-xs tracking-widest">SCANNER ARENA</p>
+          <p className="font-bold text-slate-500 uppercase text-xs tracking-widest">SCANNER</p>
         </div>
 
         {!isAuthorized ? (
