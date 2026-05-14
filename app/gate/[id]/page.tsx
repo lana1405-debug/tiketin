@@ -77,29 +77,52 @@ export default function GateScanner() {
     setScanStatus({ status: 'idle', msg: 'MENGECEK DATABASE...' });
 
     try {
-      // 1. Ambil data tiket dulu buat ngecek status aslinya
+      // 1. Ambil data tiket dan nama kategorinya buat tau jenis tiketnya
       const { data: ticket, error: fetchError } = await supabase
         .from("tiket")
-        .select("status_checkin")
+        .select("id, status_checkin, last_scanned_date, seat_info")
         .eq("ticket_code", decodedText)
         .eq("event_id", eventId)
         .single();
 
       if (fetchError || !ticket) {
-        // TIKET GAK ADA DI DATABASE (MERAH)
         setScanStatus({ status: 'error', msg: "TIKET TIDAK VALID / PALSU!" });
-      } else if (ticket.status_checkin === true) {
-        // TIKET SUDAH PERNAH DI SCAN (KUNING)
-        setScanStatus({ status: 'warning', msg: "PERINGATAN: TIKET SUDAH PERNAH DIGUNAKAN!" });
-      } else {
-        // TIKET VALID & BELUM MASUK (HIJAU)
-        const { error: updateError } = await supabase
-          .from("tiket")
-          .update({ status_checkin: true })
-          .eq("ticket_code", decodedText);
+        return;
+      }
 
-        if (updateError) throw updateError;
-        setScanStatus({ status: 'success', msg: `BERHASIL! SILAKAN MASUK.` });
+      // Format tanggal hari ini (YYYY-MM-DD)
+      const hariIni = new Date().toISOString().split('T')[0];
+      const isMultiDayPass = ticket.seat_info.toUpperCase().includes("3-DAY") || ticket.seat_info.toUpperCase().includes("2-DAY");
+
+      // ⚡ LOGIKA PERCABANGAN (SINGLE-DAY vs MULTI-DAY)
+      if (isMultiDayPass) {
+        // TIKET TERUSAN (3-DAY PASS)
+        if (ticket.last_scanned_date === hariIni) {
+          // Udah masuk hari ini
+          setScanStatus({ status: 'warning', msg: "SUDAH CHECK-IN HARI INI! 1 TIKET 1 ORANG." });
+        } else {
+          // Boleh masuk -> Update last_scanned_date jadi hari ini
+          const { error: updateError } = await supabase
+            .from("tiket")
+            .update({ last_scanned_date: hariIni })
+            .eq("id", ticket.id);
+
+          if (updateError) throw updateError;
+          setScanStatus({ status: 'success', msg: `BERHASIL! (MULTI-DAY PASS)` });
+        }
+      } else {
+        // TIKET NORMAL (DAILY PASS)
+        if (ticket.status_checkin === true) {
+          setScanStatus({ status: 'warning', msg: "PERINGATAN: TIKET SUDAH HANGUS / DIPAKAI!" });
+        } else {
+          const { error: updateError } = await supabase
+            .from("tiket")
+            .update({ status_checkin: true })
+            .eq("id", ticket.id);
+
+          if (updateError) throw updateError;
+          setScanStatus({ status: 'success', msg: `BERHASIL! SILAKAN MASUK.` });
+        }
       }
     } catch (err: any) {
       console.error("Error scan:", err);
