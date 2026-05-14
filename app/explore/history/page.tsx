@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
-import { ChevronLeft, Receipt, AlertCircle, Clock, CheckCircle2, ChevronRight, Zap } from "lucide-react";
+import { 
+  ChevronLeft, Receipt, AlertCircle, Clock, 
+  CheckCircle2, ChevronRight, Zap, XCircle 
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const poppins = Poppins({
@@ -62,7 +65,6 @@ export default function HistoryPage() {
     setIsLoading(true);
 
     try {
-      // ⚡ LANGKAH 1: Ambil data transaksi mentah dulu (Anti Error Join)
       const { data: txData, error: txError } = await supabase
         .from("transaksi")
         .select("*")
@@ -72,8 +74,6 @@ export default function HistoryPage() {
       if (txError) throw txError;
 
       if (txData && txData.length > 0) {
-        // ⚡ LANGKAH 2: Mapping manual buat ambil nama Event & Kategori
-        // Cara ini 100% aman biarpun Foreign Key lo belum ke-detect cache Supabase
         const formattedData = await Promise.all(txData.map(async (tx) => {
           let eventDetail = null;
           let catDetail = null;
@@ -87,10 +87,22 @@ export default function HistoryPage() {
             catDetail = c;
           }
 
+          // ⚡ LOGIKA CHECK EXPIRED (12 JAM)
+          const creationTime = new Date(tx.created_at).getTime();
+          const now = new Date().getTime();
+          const diffInHours = (now - creationTime) / (1000 * 60 * 60);
+          
+          let finalStatus = tx.status_pembayaran;
+          if (tx.status_pembayaran === 'pending' && diffInHours > 12) {
+            finalStatus = 'expired';
+          }
+
           return {
             ...tx,
+            status_pembayaran: finalStatus,
             events: eventDetail,
-            ticket_categories: catDetail
+            ticket_categories: catDetail,
+            hours_left: Math.max(0, 12 - diffInHours)
           };
         }));
 
@@ -114,8 +126,13 @@ export default function HistoryPage() {
   };
 
   const handleLanjutBayar = async (tx: any) => {
+    if (tx.status_pembayaran === 'expired') {
+      alert("Waduh! Tagihan ini sudah hangus karena lewat 12 jam.");
+      return;
+    }
+
     if (!tx.snap_token) {
-      alert("Transaksi lama (Token gaada). Bikin transaksi baru aja Man!");
+      alert("Token tidak ditemukan. Silakan checkout ulang.");
       return;
     }
 
@@ -146,12 +163,12 @@ export default function HistoryPage() {
           alert("MANTAP! PEMBAYARAN BERHASIL.");
           router.push("/explore/tickets"); 
         } catch (error) {
-          alert("Sistem error pas cetak tiket. Hubungi Ikman!");
+          alert("Gagal sinkron database. Hubungi Support.");
         }
       },
-      onPending: () => alert("Selesaikan pembayaran lo Man!"),
-      onError: () => alert("Yah, gagal bayar!"),
-      onClose: () => alert("Pop-up ditutup. Tagihan masih ada kok.")
+      onPending: () => alert("Menunggu pembayaran..."),
+      onError: () => alert("Gagal memproses pembayaran."),
+      onClose: () => alert("Selesaikan sebelum 12 jam ya!")
     });
   };
 
@@ -170,10 +187,10 @@ export default function HistoryPage() {
       <main className="max-w-4xl mx-auto px-6 sm:px-12 pt-12 pb-32 text-left">
         <div className="mb-12 border-b-8 border-slate-900 pb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter">
+            <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter text-left">
               RIWAYAT <span className="text-[#6D4AFF] drop-shadow-[4px_4px_0_#000]">TAGIHAN.</span>
             </h1>
-            <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm text-left">Pantau semua transaksi tiket lo di sini.</p>
+            <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm text-left">Maksimal bayar 12 jam setelah checkout.</p>
           </div>
           <Receipt size={64} strokeWidth={2} className="text-amber-400 drop-shadow-[4px_4px_0_#000] hidden md:block" />
         </div>
@@ -181,41 +198,56 @@ export default function HistoryPage() {
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4">
              <div className="w-16 h-16 border-8 border-slate-900 border-t-amber-400 animate-spin"></div>
-             <p className="font-black italic uppercase tracking-widest text-slate-400">Loading Data...</p>
+             <p className="font-black italic uppercase tracking-widest text-slate-400">Syncing...</p>
           </div>
         ) : transactions.length === 0 ? (
           <div className="bg-white border-4 border-slate-900 p-12 text-center brutal-shadow-card">
             <AlertCircle size={48} className="mx-auto mb-4 text-slate-300" strokeWidth={2} />
             <h3 className="text-2xl font-black italic uppercase -skew-x-6 mb-2">Belum Ada Transaksi!</h3>
-            <p className="font-bold text-slate-500 text-sm">Lo belum pernah nyoba war tiket sama sekali nih.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {transactions.map((tx) => (
-              <div key={tx.id} className="bg-white border-4 border-slate-900 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF] transition-all">
+              <div key={tx.id} className={`bg-white border-4 border-slate-900 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] transition-all ${tx.status_pembayaran === 'expired' ? 'opacity-60 grayscale' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF]'}`}>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <span className="bg-slate-900 text-white font-black italic uppercase px-3 py-1 text-xs tracking-widest shadow-[4px_4px_0_0_#FBBF24]">
+                    <span className="bg-slate-900 text-white font-black italic uppercase px-3 py-1 text-xs tracking-widest">
                       {tx.order_id}
                     </span>
-                    {tx.status_pembayaran === 'paid' ? (
+                    
+                    {/* ⚡ STATUS LABELS */}
+                    {tx.status_pembayaran === 'paid' && (
                       <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-emerald-600 bg-emerald-100 border-2 border-emerald-500 px-2 py-0.5">
                         <CheckCircle2 size={12} strokeWidth={3} /> LUNAS
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-red-600 bg-red-100 border-2 border-red-500 px-2 py-0.5 animate-pulse">
+                    )}
+                    {tx.status_pembayaran === 'pending' && (
+                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-amber-600 bg-amber-100 border-2 border-amber-500 px-2 py-0.5 animate-pulse">
                         <Clock size={12} strokeWidth={3} /> PENDING
                       </span>
                     )}
+                    {tx.status_pembayaran === 'expired' && (
+                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-red-600 bg-red-100 border-2 border-red-500 px-2 py-0.5">
+                        <XCircle size={12} strokeWidth={3} /> CANCEL / EXPIRED
+                      </span>
+                    )}
                   </div>
+
                   <div className="text-left">
                     <p className="font-bold text-xs text-slate-400 uppercase tracking-widest">{formatDate(tx.created_at)}</p>
                     <p className="font-black text-xl italic uppercase text-slate-900 leading-tight">
-                      {tx.events?.title || "EVENT TIDAK DIKETAHUI"}
+                      {tx.events?.title || "EVENT"}
                     </p>
                     <p className="font-bold text-sm italic uppercase text-[#6D4AFF] mt-1">
                       {tx.total_qty}x {tx.ticket_categories?.name || "TIKET"}
                     </p>
+                    
+                    {/* ⚡ COUNTDOWN INFO */}
+                    {tx.status_pembayaran === 'pending' && (
+                      <p className="text-[10px] font-black text-red-500 uppercase mt-2 italic bg-red-50 inline-block px-2 border border-red-200">
+                         Sisa Waktu: {tx.hours_left.toFixed(1)} Jam lagi!
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -226,13 +258,17 @@ export default function HistoryPage() {
                       {formatRupiah(tx.total_bayar)}
                     </p>
                   </div>
+                  
                   {tx.status_pembayaran === 'pending' && (
                     <button 
                       onClick={() => handleLanjutBayar(tx)}
-                      className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-[#6D4AFF] hover:text-white"
+                      className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
                     >
                       LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
                     </button>
+                  )}
+                  {tx.status_pembayaran === 'expired' && (
+                    <p className="text-[10px] font-black text-red-500 uppercase italic underline underline-offset-4">Transaction Closed</p>
                   )}
                 </div>
               </div>
