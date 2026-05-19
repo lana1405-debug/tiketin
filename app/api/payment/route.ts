@@ -4,9 +4,9 @@ import midtransClient from 'midtrans-client';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { order_id, gross_amount, first_name, email, item_name } = body;
+    // ⚡ Tambahkan ekstraksi item_id dan quantity dari request frontend
+    const { order_id, gross_amount, first_name, email, item_name, item_id, quantity = 1 } = body;
 
-    // Panggil Midtrans
     let snap = new midtransClient.Snap({
       isProduction: false,
       serverKey: process.env.MIDTRANS_SERVER_KEY as string,
@@ -23,16 +23,15 @@ export async function POST(request: Request) {
         email: email
       },
       item_details: [{
-        id: "TKT-1",
-        price: gross_amount,
-        quantity: 1,
+        id: item_id, // ⚡ Sekarang menggunakan ID dinamis
+        price: gross_amount / quantity, // ⚡ Harga satuan agar validasi Midtrans lolos
+        quantity: quantity, // ⚡ Kuantitas dinamis
         name: item_name
       }]
     };
 
     const transaction = await snap.createTransaction(parameter);
     
-    // Balikin token ke Frontend
     return NextResponse.json({ token: transaction.token });
 
   } catch (error: any) {

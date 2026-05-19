@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle"; // ⚡ Tambahkan ini
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -28,10 +29,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const poppins = Poppins({
+const poppins_font = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
 });
+
+// ⚡ 1. DEFINISI INTERFACE TYPESCRIPT (MENGGANTIKAN ANY)
+interface UserProfile {
+  id: string;
+  full_name: string;
+  avatar_url: string;
+  verification_status: string;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  location: string;
+  description: string;
+  category: string;
+  image_url: string;
+  date: string;
+  price: number;
+  totalRemainingStock: number;
+}
+
+// ⚡ EFEK BACKGROUND MEGA BRUTALIST
+const GLOBAL_STYLES = `
+  .noise::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:999; opacity:.04;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+  .brutal-grid {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(to right, rgba(0, 0, 0, 0.05) 2px, transparent 2px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 2px, transparent 2px);
+  }
+`;
 
 // ─── Marquee Component ───────────────────────────────────────────────────────
 function MarqueeTicker() {
@@ -50,7 +85,7 @@ function MarqueeTicker() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="w-full bg-amber-400 border-b-4 border-slate-900 overflow-hidden h-10 flex items-center"
+      className="w-full bg-amber-400 border-b-4 border-slate-900 overflow-hidden h-10 flex items-center relative z-10"
     >
       <motion.div
         className="flex gap-16 whitespace-nowrap"
@@ -107,16 +142,11 @@ function CategoryBadge({ category }: { category: string }) {
   };
   const style = map[category?.toUpperCase()] ?? { bg: "bg-slate-200 text-slate-700", text: category ?? "EVENT" };
   return (
-    <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-slate-900 ${style.bg}`}>
+    <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-slate-900 ${style.bg} shadow-[2px_2px_0_0_#000]`}>
       {style.text}
     </span>
   );
 }
-
-const poppins_font = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
 
 // ─── ANIMATION VARIANTS ──────────────────────────────────────────────────────
 const fadeInUp = {
@@ -131,28 +161,38 @@ const staggerContainer = {
 
 export default function ExplorePage() {
   const router = useRouter();
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [events, setEvents] = useState<any[]>([]);
+  
+  // ⚡ IMPLEMENTASI TIPE DATA STRICT
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [heroEvents, setHeroEvents] = useState<Event[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
-  const [heroEvents, setHeroEvents] = useState<any[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // ⚡ STATE BARU: Wishlist, Sorting, & Pagination
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
-  const [sortBy, setSortBy] = useState("NEWEST"); // NEWEST, PRICE_ASC, PRICE_DESC, TRENDING
+  const [sortBy, setSortBy] = useState("NEWEST"); 
   const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
+    const styleTag = document.createElement("style");
+    styleTag.innerHTML = GLOBAL_STYLES;
+    document.head.appendChild(styleTag);
+
     setMounted(true);
     fetchData();
 
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      document.head.removeChild(styleTag);
+    };
   }, [router]);
 
   useEffect(() => {
@@ -172,13 +212,11 @@ export default function ExplorePage() {
       .from("profiles").select("*").eq("id", session.user.id).single();
     if (profile) setUserProfile(profile);
 
-    // ⚡ Tarik Data Wishlist (Persistensi)
     const { data: wishlist } = await supabase.from("wishlist").select("event_id").eq("user_id", session.user.id);
     if (wishlist) {
       setLikedEvents(new Set(wishlist.map(w => w.event_id)));
     }
 
-    // Tarik Data Event & Stok
     const { data: eventData } = await supabase
       .from("events")
       .select("*, ticket_categories(stock)")
@@ -201,36 +239,60 @@ export default function ExplorePage() {
     window.location.href = "/login";
   };
   
-  // ⚡ LOGIC WISHLIST DATABASE
+  // ⚡ 2. LOGIC ROLLBACK PADA WISHLIST
   const toggleLike = async (eventId: string) => {
     if (!userProfile) return;
     const isLiked = likedEvents.has(eventId);
     
-    // Update UI instan (Optimistic Update)
+    // Optimistic Update UI
     setLikedEvents((prev) => {
       const next = new Set(prev);
       isLiked ? next.delete(eventId) : next.add(eventId);
       return next;
     });
 
-    // Simpan ke Supabase
-    if (isLiked) {
-      await supabase.from("wishlist").delete().eq("user_id", userProfile.id).eq("event_id", eventId);
-    } else {
-      await supabase.from("wishlist").insert({ user_id: userProfile.id, event_id: eventId });
+    try {
+      if (isLiked) {
+        const { error } = await supabase.from("wishlist").delete().eq("user_id", userProfile.id).eq("event_id", eventId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("wishlist").insert({ user_id: userProfile.id, event_id: eventId });
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Wishlist Update Error:", error);
+      // Rollback ke state sebelumnya jika gagal
+      setLikedEvents((prev) => {
+        const next = new Set(prev);
+        isLiked ? next.add(eventId) : next.delete(eventId);
+        return next;
+      });
+      alert("Koneksi gagal, wishlist tidak tersimpan.");
     }
   };
 
-  const handleBookNow = (eventId: string) => {
+  // ⚡ 3. LOGIC RACE CONDITION MENGGUNAKAN RPC
+  const handleBookNow = async (eventId: string) => {
     if (userProfile?.verification_status !== "approved") {
       alert("⚠️ HOLD UP  harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
       router.push("/verify");
       return;
     }
+
+    // Call prosedur Supabase untuk lock dan cek stok di level database
+    const { data: success, error } = await supabase.rpc('lock_ticket_stock', {
+      p_event_id: eventId,
+      p_qty: 1
+    });
+
+    if (error || !success) {
+      alert("Waduh! Kamu kalah cepat. Tiket barusan saja direbut orang lain.");
+      return;
+    }
+
     router.push(`/explore/checkout/${eventId}`);
   };
 
-  // ⚡ LOGIC FILTER & SORTING
   let processedEvents = events.filter((event) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = (
@@ -244,31 +306,30 @@ export default function ExplorePage() {
 
   if (sortBy === "PRICE_ASC") processedEvents.sort((a,b) => a.price - b.price);
   else if (sortBy === "PRICE_DESC") processedEvents.sort((a,b) => b.price - a.price);
-  else if (sortBy === "TRENDING") processedEvents.sort((a,b) => a.totalRemainingStock - b.totalRemainingStock); // Yg sisa tiketnya dikit = Trending
+  else if (sortBy === "TRENDING") processedEvents.sort((a,b) => a.totalRemainingStock - b.totalRemainingStock);
 
-  // ⚡ PAGINATION LOGIC
   const visibleEvents = processedEvents.slice(0, visibleCount);
 
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
   if (!mounted || isLoading) return (
-    <div className={`min-h-screen flex flex-col items-center justify-center bg-white gap-4 ${poppins_font.className}`}>
+    <div className={`min-h-screen flex flex-col items-center justify-center bg-[#FCFAF1] brutal-grid noise gap-4 ${poppins_font.className}`}>
       <motion.div
         animate={{ rotate: [0, -12, 12, -12, 0], scale: [1, 1.1, 1] }}
         transition={{ repeat: Infinity, duration: 1.2 }}
-        className="h-20 w-20 bg-[#6D4AFF] border-4 border-slate-900 flex items-center justify-center shadow-[8px_8px_0_0_rgba(0,0,0,1)]"
+        className="h-24 w-24 bg-[#6D4AFF] border-4 border-slate-900 flex items-center justify-center shadow-[8px_8px_0_0_rgba(0,0,0,1)]"
       >
-        <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
+        <TicketIcon className="text-amber-400" size={48} strokeWidth={3} />
       </motion.div>
-      <p className="font-black italic text-2xl text-slate-900 uppercase -skew-x-6 tracking-tighter">
-        LOADING TIKETIN<motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>
+      <p className="font-black italic text-3xl text-slate-900 uppercase -skew-x-6 tracking-tighter mt-4 bg-white px-4 border-4 border-black shadow-[4px_4px_0_0_#000]">
+        LOADING ARENA<motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>
       </p>
     </div>
   );
 
   return (
-    <div className={`min-h-screen bg-white text-slate-900 ${poppins_font.className}`}>
+    <div className={`min-h-screen bg-[#FCFAF1] brutal-grid noise text-slate-900 ${poppins_font.className} selection:bg-amber-400 selection:text-black`}>
 
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <nav className="w-full bg-white border-b-4 border-slate-900 sticky top-0 z-[50] shadow-[0_4px_0_0_rgba(0,0,0,1)] h-20">
@@ -283,7 +344,7 @@ export default function ExplorePage() {
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 rounded-2xl transition-all border-2 border-transparent hover:border-slate-900">
+                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 rounded-2xl transition-all border-2 border-transparent hover:border-slate-900 bg-white">
                   <div className="text-right hidden md:block">
                     <p className="text-[8px] font-black uppercase text-slate-400 leading-none mb-1">
                       {userProfile?.verification_status === "approved" ? (
@@ -335,7 +396,7 @@ export default function ExplorePage() {
 
       <MarqueeTicker />
 
-      <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-16 pb-24">
+      <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-16 pb-24 relative z-10">
 
         {/* HERO HEADER */}
         <header className="mb-16 space-y-8 flex flex-col items-start text-left">
@@ -344,11 +405,11 @@ export default function ExplorePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter">
+            <h1 className="text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter drop-shadow-[4px_4px_0_#fff]">
               YO,{" "}
               <span className="relative inline-block">
                 <span className="relative z-10">{userProfile?.full_name?.split(" ")[0].toUpperCase()}!</span>
-                <span className="absolute bottom-0 left-0 right-0 h-4 bg-amber-400 -z-0 -skew-x-6 opacity-70" />
+                <span className="absolute bottom-0 left-0 right-0 h-4 bg-amber-400 -z-0 -skew-x-6 opacity-70 border-b-2 border-black" />
               </span>
             </h1>
           </motion.div>
@@ -359,15 +420,15 @@ export default function ExplorePage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" strokeWidth={3} />
+            <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-5 w-5 md:h-6 md:w-6 text-slate-400 z-10" strokeWidth={3} />
             <input
-              placeholder="CARI KONSER (lokasi dan artis)"
+              placeholder="CARI KONSER..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setVisibleCount(6); // Reset pagination on search
+                setVisibleCount(6); 
               }}
-              className="h-20 w-full pl-16 pr-6 border-4 border-slate-900 bg-white font-black text-lg uppercase shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] outline-none -skew-x-3 focus:bg-slate-50 transition-all"
+              className="h-16 md:h-20 w-full pl-12 md:pl-16 pr-6 border-4 border-slate-900 bg-white font-black text-sm md:text-lg uppercase outline-none -skew-x-3 focus:bg-amber-50 transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24]"
             />
           </motion.div>
         </header>
@@ -412,7 +473,7 @@ export default function ExplorePage() {
             viewport={{ once: true, margin: "-100px" }}
             className="mb-32"
           >
-            <div className="relative w-full h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
+            <div className="relative w-full h-[350px] md:h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
               <AnimatePresence mode="wait">
                 {heroEvents.length > 0 && (
                   <motion.img
@@ -428,8 +489,8 @@ export default function ExplorePage() {
               </AnimatePresence>
               <div className="absolute inset-0 bg-gradient-to-r from-black/90 to-transparent" />
 
-              <div className="relative z-20 h-full p-12 flex flex-col justify-end items-start text-left">
-                <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] -rotate-2 mb-6 italic inline-flex items-center gap-2">
+              <div className="relative z-20 h-full p-6 md:p-12 flex flex-col justify-end items-start text-left">
+                <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] -rotate-2 mb-4 md:mb-6 italic inline-flex items-center gap-2">
                   <Sparkles size={14} /> RECOMMENDED
                 </div>
 
@@ -440,17 +501,16 @@ export default function ExplorePage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
->
+                  >
                     {heroEvents[currentHeroIndex]?.title || "LIVE NOW"}
-</motion.h2>
+                  </motion.h2>
                 </AnimatePresence>
 
-                {/* ⚡ INDIKATOR FOMO DI HERO */}
                 {heroEvents[currentHeroIndex]?.totalRemainingStock > 0 && heroEvents[currentHeroIndex]?.totalRemainingStock <= 20 && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mb-4 bg-red-500 text-white border-2 border-slate-900 px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] animate-pulse inline-flex items-center gap-2"
+                    className="mb-4 bg-red-500 text-white border-2 border-slate-900 px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] animate-pulse inline-flex items-center gap-2"
                   >
                     🔥 Sisa {heroEvents[currentHeroIndex].totalRemainingStock} Tiket! Buruan War!
                   </motion.div>
@@ -461,10 +521,10 @@ export default function ExplorePage() {
                     key={`price-${currentHeroIndex}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="mb-8 flex items-center gap-4"
+                    className="mb-6 md:mb-8 flex items-center gap-4"
                   >
                     <span className="text-purple-200 font-black uppercase text-[10px] tracking-widest">Mulai dari</span>
-                    <span className="bg-[#6D4AFF] border-4 border-white px-4 py-2 font-black text-white text-lg italic -skew-x-6 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+                    <span className="bg-[#6D4AFF] border-4 border-white px-4 py-2 font-black text-white text-base md:text-lg italic -skew-x-6 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
                       {formatRupiah(heroEvents[currentHeroIndex].price)}
                     </span>
                   </motion.div>
@@ -476,7 +536,7 @@ export default function ExplorePage() {
                     const activeHeroId = heroEvents[currentHeroIndex]?.id;
                     if (activeHeroId) handleBookNow(activeHeroId);
                   }}
-                  className={`border-4 border-slate-900 px-10 py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${
+                  className={`border-4 border-slate-900 px-8 md:px-10 py-4 md:py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${
                      heroEvents[currentHeroIndex]?.totalRemainingStock === 0 
                      ? 'bg-slate-500 text-slate-300 cursor-not-allowed' 
                      : 'bg-white text-black hover:bg-amber-400'
@@ -505,15 +565,14 @@ export default function ExplorePage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            className="flex flex-col items-center gap-4"
+            className="flex flex-col items-center gap-4 bg-white p-6 border-4 border-black shadow-[8px_8px_0_0_#000] -rotate-1"
           >
             <div className="flex items-center gap-3">
               <TrendingUp className="text-red-500" size={40} strokeWidth={4} />
-              <h2 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter -skew-x-6 text-center">
-                {searchQuery ? `SEARCHING: "${searchQuery}"` : "NEARBY STAGES"}
+              <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter -skew-x-6 text-center">
+                {searchQuery ? `SEARCHING...` : "NEARBY STAGES"}
               </h2>
             </div>
-            <div className="h-2 w-40 bg-slate-900 -skew-x-12 mt-2" />
           </motion.div>
 
           <motion.div 
@@ -531,10 +590,10 @@ export default function ExplorePage() {
                   key={cat}
                   onClick={() => {
                     setSelectedCategory(cat);
-                    setVisibleCount(6); // Reset pagination on category change
+                    setVisibleCount(6); 
                   }}
-                  className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:shadow-[2px_2px_0_0_#6D4AFF,4px_4px_0_0_#000,6px_6px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 ${
-                    isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-3 translate-y-3" : "bg-white text-slate-900"
+                  className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
+                    isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-1 translate-y-1 md:translate-x-3 md:translate-y-3" : "bg-white text-slate-900"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -549,8 +608,8 @@ export default function ExplorePage() {
           </motion.div>
         </div>
 
-        {/* ⚡ DROPDOWN SORTING & INFO (NEW) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4">
+        {/* ⚡ DROPDOWN SORTING */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
           <p className="font-black italic uppercase text-slate-400 text-sm">
             Menampilkan {visibleEvents.length} dari {processedEvents.length} Event
           </p>
@@ -560,9 +619,9 @@ export default function ExplorePage() {
               value={sortBy}
               onChange={(e) => { 
                 setSortBy(e.target.value); 
-                setVisibleCount(6); // Reset pagination on sort change
+                setVisibleCount(6);
               }}
-              className="w-full md:w-auto p-4 border-4 border-slate-900 bg-white font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] outline-none cursor-pointer hover:bg-amber-400 transition-colors"
+              className="w-full md:w-auto p-4 border-4 border-slate-900 bg-amber-400 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] outline-none cursor-pointer hover:bg-white transition-colors"
             >
               <option value="NEWEST">🔥 Terbaru</option>
               <option value="PRICE_ASC">💵 Harga: Termurah</option>
@@ -583,12 +642,11 @@ export default function ExplorePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.4, delay: (idx % 3) * 0.1 }}
-                    className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
+                    className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
                   >
-                    <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden">
-                      <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden bg-black">
+                      <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-90 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500" />
                       
-                      {/* ⚡ FOMO INDICATOR (SOLD OUT OVERLAY) */}
                       {event.totalRemainingStock === 0 && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-20">
                            <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-3xl italic uppercase -skew-x-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
@@ -601,7 +659,6 @@ export default function ExplorePage() {
                         <CategoryBadge category={event.category} />
                       </div>
 
-                      {/* ⚡ FOMO INDICATOR (HAMPIR HABIS) */}
                       {event.totalRemainingStock > 0 && event.totalRemainingStock <= 20 && (
                         <div className="absolute top-4 left-28 z-30 bg-red-500 text-white border-2 border-slate-900 px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse">
                           🔥 Sisa {event.totalRemainingStock} Tiket!
@@ -625,27 +682,23 @@ export default function ExplorePage() {
                         </h3>
                       </div>
                       <div className="space-y-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-    <div className="flex items-center gap-3">
-      <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
-    </div>
-    <div className="flex items-center gap-3">
-      <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
-    </div>
-    
-    {/* ⚡ INI TAMBAHAN DESKRIPSI EVENT-NYA */}
-    {event.description && (
-      <p className="mt-4 pt-3 border-t-2 border-slate-200 text-xs font-medium normal-case tracking-normal text-slate-600 italic line-clamp-2">
-        "{event.description}"
-      </p>
-    )}
-  </div>
+                        <div className="flex items-center gap-3">
+                          <Calendar size={18} className="text-red-500 shrink-0" /> {event.date}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <MapPin size={18} className="text-[#6D4AFF] shrink-0" /> {event.location}
+                        </div>
+                        {event.description && (
+                          <p className="mt-4 pt-3 border-t-2 border-slate-200 text-xs font-medium normal-case tracking-normal text-slate-600 italic line-clamp-2 bg-slate-50 p-2">
+                            "{event.description}"
+                          </p>
+                        )}
+                      </div>
                       <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
                         <div className="text-left">
                           <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
                           <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
                         </div>
-                        
-                        {/* ⚡ BOOK BUTTON DISABLED LOGIC */}
                         <button 
                           disabled={event.totalRemainingStock === 0}
                           onClick={() => handleBookNow(event.id)} 
@@ -663,7 +716,6 @@ export default function ExplorePage() {
                 ))}
               </div>
 
-              {/* ⚡ LOAD MORE BUTTON (PAGINATION) */}
               {visibleCount < processedEvents.length && (
                 <div className="flex justify-center mb-24">
                   <button 
@@ -676,10 +728,10 @@ export default function ExplorePage() {
               )}
             </>
           ) : (
-            <div className="py-24 text-center border-8 border-dashed border-slate-200 mb-24 relative overflow-hidden">
+            <div className="py-24 text-center border-8 border-black shadow-[8px_8px_0_0_#000] bg-white mb-24 relative overflow-hidden -rotate-1">
               <DotGrid className="opacity-20" />
-              <p className="text-6xl mb-4">🎫</p>
-              <p className="text-4xl font-black italic uppercase text-slate-300">STAGE GAK NEMU</p>
+              <p className="text-6xl mb-4 relative z-10">🎫</p>
+              <p className="text-4xl font-black italic uppercase text-slate-300 relative z-10">STAGE GAK NEMU</p>
             </div>
           )}
         </div>
@@ -691,17 +743,17 @@ export default function ExplorePage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-12 md:p-20 text-white shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left"
+            className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-8 md:p-20 text-white shadow-[8px_8px_0_0_#000] md:shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left"
           >
             <DotGrid className="opacity-10" />
             <div className="relative z-10 space-y-8 max-w-xl">
-              <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic">EVENT MANAGER</div>
-              <h2 className="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.8] -skew-x-6">PUNYA EVENT? <br /> JUAL DI SINI.</h2>
-              <Button asChild className="bg-amber-400 border-4 border-slate-900 text-slate-900 px-12 py-8 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:bg-white transition-all -skew-x-6 h-auto">
+              <div className="bg-white border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] text-slate-900 -rotate-2 inline-block italic shadow-[4px_4px_0_0_#000]">EVENT MANAGER</div>
+              <h2 className="text-4xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.8] -skew-x-6 drop-shadow-[4px_4px_0_#000]">PUNYA EVENT? <br /> JUAL DI SINI.</h2>
+              <Button asChild className="bg-amber-400 border-4 border-slate-900 text-slate-900 px-8 md:px-12 py-6 md:py-8 font-black uppercase text-xs md:text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:bg-white hover:translate-x-1 hover:translate-y-1 hover:shadow-[4px_4px_0_0_#000] transition-all -skew-x-6 h-auto">
                 <Link href="/explore/ajukan">DAFTAR EO SEKARANG</Link>
               </Button>
             </div>
-            <TicketIcon size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12" strokeWidth={4} />
+            <TicketIcon size={250} className="absolute right-[-50px] bottom-[-50px] text-white/10 rotate-12 hidden md:block" strokeWidth={4} />
           </motion.section>
         )}
       </main>
@@ -712,7 +764,7 @@ export default function ExplorePage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left"
+        className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left relative z-20"
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-16">
@@ -723,19 +775,19 @@ export default function ExplorePage() {
                 </div>
                 <span className="text-3xl font-black italic -skew-x-12 tracking-tighter uppercase">TIKETIN</span>
               </div>
-              <p className="text-purple-100 text-sm font-bold italic uppercase">Platform war tiket konser paling gila di Indonesia.</p>
+              <p className="text-purple-100 text-sm font-bold italic uppercase border-l-4 border-amber-400 pl-4">Platform war tiket konser paling gila di Indonesia.</p>
             </div>
             <div className="space-y-6">
-              <h4 className="font-black uppercase tracking-widest text-[10px] text-amber-300 italic underline underline-offset-8 text-left">Support</h4>
+              <h4 className="font-black uppercase tracking-widest text-[10px] text-amber-300 italic underline underline-offset-8 text-left bg-black inline-block px-3 py-1">Support</h4>
               <ul className="space-y-4 text-purple-50 text-sm font-bold text-left uppercase">
-                <li onClick={() => router.push("/explore/complaints")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><MessageSquare size={16} /> PUSAT PENGADUAN</li>
-                <li onClick={() => router.push("/explore/history")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer"><Receipt size={16} /> RIWAYAT PEMBAYARAN</li>
+                <li onClick={() => router.push("/explore/complaints")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer hover:translate-x-2 transition-transform"><MessageSquare size={16} /> PUSAT PENGADUAN</li>
+                <li onClick={() => router.push("/explore/history")} className="flex items-center gap-3 italic hover:text-amber-300 cursor-pointer hover:translate-x-2 transition-transform"><Receipt size={16} /> RIWAYAT PEMBAYARAN</li>
               </ul>
             </div>
           </div>
-          <div className="pt-12 border-t-2 border-white/20 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-200">© 2026 TIKETIN. ALL STAGES PROTECTED.</p>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300 italic -skew-x-12">BUILT BY IKMAN @ UPI</p>
+          <div className="pt-12 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black bg-amber-400 px-4 py-2 border-2 border-black">© 2026 TIKETIN. ALL STAGES PROTECTED.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300 italic -skew-x-12 drop-shadow-[2px_2px_0_#000]">BUILT BY IKMAN @ UPI</p>
           </div>
         </div>
       </motion.footer>
