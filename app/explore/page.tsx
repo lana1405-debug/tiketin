@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Search, MapPin, Calendar, LogOut, Ticket,
