@@ -149,7 +149,9 @@ export default function LoginPage() {
                   <div className="space-y-2 lg:space-y-3">
                     <div className="flex justify-between font-black uppercase italic text-xs lg:text-sm tracking-widest">
                       <Label>Kunci Rahasia</Label>
-                      <span className="text-red-500 cursor-pointer hover:underline decoration-2 lg:decoration-4">LUPA?</span>
+                      <Link href="/forgot-password" className="text-red-500 cursor-pointer hover:underline decoration-2 lg:decoration-4">
+  LUPA?
+</Link>
                     </div>
                     <div className="relative">
                       <div className="absolute inset-0 bg-black translate-x-1 translate-y-1" />

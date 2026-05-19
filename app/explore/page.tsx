@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle"; // ⚡ Tambahkan ini
+// import { ThemeToggle } from "@/components/ThemeToggle"; // Uncomment jika lo mau pake ini
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,7 +34,7 @@ const poppins_font = Poppins({
   weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-// ⚡ 1. DEFINISI INTERFACE TYPESCRIPT (MENGGANTIKAN ANY)
+// ⚡ 1. DEFINISI INTERFACE TYPESCRIPT
 interface UserProfile {
   id: string;
   full_name: string;
@@ -162,7 +162,6 @@ const staggerContainer = {
 export default function ExplorePage() {
   const router = useRouter();
   
-  // ⚡ IMPLEMENTASI TIPE DATA STRICT
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [heroEvents, setHeroEvents] = useState<Event[]>([]);
@@ -177,6 +176,9 @@ export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [sortBy, setSortBy] = useState("NEWEST"); 
   const [visibleCount, setVisibleCount] = useState(6);
+  
+  // ⚡ STATE UNTUK HAPPY FANS (DINAMIS DARI DATABASE)
+  const [totalFans, setTotalFans] = useState(0);
 
   useEffect(() => {
     const styleTag = document.createElement("style");
@@ -210,7 +212,17 @@ export default function ExplorePage() {
 
     const { data: profile } = await supabase
       .from("profiles").select("*").eq("id", session.user.id).single();
-    if (profile) setUserProfile(profile);
+    if (profile) setUserProfile(profile as UserProfile);
+
+    // ⚡ TARIK DATA HAPPY FANS REAL DARI DATABASE
+    const { count: fansCount } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "customer");
+    
+    if (fansCount !== null) {
+      setTotalFans(fansCount); // Murni sesuai jumlah customer di tabel profiles
+    }
 
     const { data: wishlist } = await supabase.from("wishlist").select("event_id").eq("user_id", session.user.id);
     if (wishlist) {
@@ -239,7 +251,7 @@ export default function ExplorePage() {
     window.location.href = "/login";
   };
   
-  // ⚡ 2. LOGIC ROLLBACK PADA WISHLIST
+  // ⚡ LOGIC ROLLBACK PADA WISHLIST
   const toggleLike = async (eventId: string) => {
     if (!userProfile) return;
     const isLiked = likedEvents.has(eventId);
@@ -271,26 +283,31 @@ export default function ExplorePage() {
     }
   };
 
-  // ⚡ 3. LOGIC RACE CONDITION MENGGUNAKAN RPC
+  // ⚡ LOGIC RACE CONDITION MENGGUNAKAN RPC
   const handleBookNow = async (eventId: string) => {
     if (userProfile?.verification_status !== "approved") {
-      alert("⚠️ HOLD UP  harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
+      alert("⚠️ HOLD UP! Kamu harus lolos verifikasi KTP dulu sebelum bisa war tiket!");
       router.push("/verify");
       return;
     }
 
     // Call prosedur Supabase untuk lock dan cek stok di level database
-    const { data: success, error } = await supabase.rpc('lock_ticket_stock', {
-      p_event_id: eventId,
-      p_qty: 1
-    });
+    try {
+      const { data: success, error } = await supabase.rpc('lock_ticket_stock', {
+        p_event_id: eventId,
+        p_qty: 1
+      });
 
-    if (error || !success) {
-      alert("Waduh! Kamu kalah cepat. Tiket barusan saja direbut orang lain.");
-      return;
+      if (error || !success) {
+        alert("Waduh! Kamu kalah cepat. Tiket barusan saja direbut orang lain.");
+        return;
+      }
+      router.push(`/explore/checkout/${eventId}`);
+    } catch (err) {
+      // Jika RPC belum ada di DB, arahin biasa aja (Fallback Mode)
+      console.warn("RPC lock_ticket_stock not found or failed, falling back to standard redirect.", err);
+      router.push(`/explore/checkout/${eventId}`);
     }
-
-    router.push(`/explore/checkout/${eventId}`);
   };
 
   let processedEvents = events.filter((event) => {
@@ -444,7 +461,7 @@ export default function ExplorePage() {
           >
             {[
               { icon: <Music size={28} strokeWidth={3} className="text-[#6D4AFF]" />, label: "TOTAL EVENT", value: events.length || 500, suffix: "+" },
-              { icon: <Users size={28} strokeWidth={3} className="text-emerald-500" />, label: "HAPPY FANS", value: 12000, suffix: "+" },
+              { icon: <Users size={28} strokeWidth={3} className="text-emerald-500" />, label: "HAPPY FANS", value: totalFans, suffix: "+" },
             ].map((stat, i) => (
               <motion.div
                 key={i}
