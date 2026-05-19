@@ -1,13 +1,24 @@
 "use client";
-import { useState } from "react";
+
+import { useState, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ShieldCheck, ArrowRight } from "lucide-react";
 
+// Komponen utama yang dibungkus Suspense
 export default function VerifyOTPPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <VerifyOTPContent />
+    </Suspense>
+  );
+}
+
+// Logika halaman yang pake useSearchParams
+function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email"); // Email dibawa dari halaman sebelumnya
+  const email = searchParams.get("email"); 
   
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,18 +27,16 @@ export default function VerifyOTPPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // ⚡ Validasi OTP ke Supabase
     const { error } = await supabase.auth.verifyOtp({
       email: email || "",
       token: otp,
-      type: "recovery", // 'recovery' untuk reset password
+      type: "recovery",
     });
 
     if (error) {
       alert("Kode salah atau kadaluwarsa, Man! Coba cek lagi.");
       setIsLoading(false);
     } else {
-      // Kalau sukses, lempar ke halaman ganti password baru
       router.push("/auth/update-password");
     }
   };
@@ -40,7 +49,9 @@ export default function VerifyOTPPage() {
             <ShieldCheck size={32} />
           </div>
           <h2 className="text-3xl font-black italic uppercase -skew-x-6">MASUKKIN KODE</h2>
-          <p className="text-xs font-bold text-slate-500 uppercase">Kita udah kirim kode 6 digit ke <span className="text-black font-black">{email}</span></p>
+          <p className="text-xs font-bold text-slate-500 uppercase">
+            Kita udah kirim kode 6 digit ke <span className="text-black font-black">{email}</span>
+          </p>
           
           <input 
             type="text" 
