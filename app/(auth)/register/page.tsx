@@ -121,7 +121,7 @@ export default function RegisterPage() {
 
       if (error) throw error;
 
-      alert("🎉 AKUN AKTIF! Selamat bergabung di Arena.");
+      alert("🎉 AKUN AKTIF! Selamat bergabung.");
       router.push("/explore"); 
     } catch (error: any) {
       alert("Kode OTP Salah atau Kadaluwarsa: " + error.message);
@@ -132,7 +132,7 @@ export default function RegisterPage() {
 
   return (
     <main className={`min-h-screen bg-[#FCFAF1] flex ${poppins.className} noise overflow-hidden`}>
-      <div className="flex flex-col lg:flex-row-reverse w-full min-h-screen">
+      <div className="flex flex-col lg:flex flex-col md:flex-row-reverse w-full min-h-screen">
         
         <aside className="w-full lg:w-1/2 h-[280px] sm:h-[350px] lg:h-auto shrink-0">
           <RegisterIllustration />
@@ -179,7 +179,7 @@ export default function RegisterPage() {
                       </div>
 
                       <div className="space-y-1 lg:space-y-2">
-                        <Label className="font-black uppercase italic text-[10px] tracking-widest ml-1 text-left block">Email Arena</Label>
+                        <Label className="font-black uppercase italic text-[10px] tracking-widest ml-1 text-left block">Email</Label>
                         <div className="relative">
                           <div className="absolute inset-0 bg-black translate-x-1 translate-y-1" />
                           <div className="relative flex items-center bg-white border-[3px] lg:border-4 border-black">

@@ -104,12 +104,12 @@ export default function VerifyEventsPage() {
     <div className={`space-y-12 ${poppins.className} text-black text-left pb-20`}>
       
       {/* HEADER SECTION */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
+      <header className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
         <div className="space-y-4">
           <div className="bg-[#6D4AFF] text-white border-4 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <ShieldAlert size={14} strokeWidth={3} /> Admin Authorization Required
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             Validator <span className="text-[#6D4AFF]">Stages.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl uppercase">

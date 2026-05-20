@@ -54,7 +54,7 @@ export default function AdminWithdrawalsPage() {
     <main className={`min-h-screen bg-white p-6 md:p-12 ${poppins.className} text-black text-left`}>
       <div className="max-w-7xl mx-auto space-y-10">
         
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
           <div className="flex items-start gap-4">
             <button onClick={() => router.back()} className="p-3 bg-white border-4 border-black shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
               <ArrowLeft size={20} strokeWidth={3} />

@@ -132,7 +132,7 @@ export default function AdminComplaintsPage() {
       <div className="max-w-6xl mx-auto space-y-12 text-left">
         
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
+        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
           <div className="flex items-start gap-6">
             <button onClick={() => router.back()} className="p-4 bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
               <ArrowLeft size={24} strokeWidth={3} />
@@ -141,7 +141,7 @@ export default function AdminComplaintsPage() {
               <div className="bg-black text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4">
                 <ShieldAlert size={14} strokeWidth={3} /> Omni-Support Center (User & EO)
               </div>
-              <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-left">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85] text-left">
                 Admin <span className="text-[#6D4AFF]">Inbox.</span>
               </h1>
             </div>

@@ -159,7 +159,7 @@ export default function MyTicketsPage() {
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
               <ChevronLeft className="text-white" size={24} strokeWidth={3} />
             </div>
-            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2">BACK TO ARENA</span>
+            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2">BACK TO </span>
           </Link>
 
           <div className="flex items-center gap-4">
@@ -189,12 +189,12 @@ export default function MyTicketsPage() {
       <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-16 pb-40">
         
         {/* ── PAGE TITLE ── */}
-        <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
+        <header className="mb-16 flex flex-col md:flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div>
             <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_#000] -rotate-2 inline-flex items-center gap-2 mb-6 italic">
               <TicketIcon size={14} /> TICKET INVENTORY
             </div>
-            <h1 className="text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.8] tracking-tighter drop-shadow-[6px_6px_0_#6D4AFF]">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.8] tracking-tighter drop-shadow-[6px_6px_0_#6D4AFF]">
               TIKET <span className="text-amber-400 drop-shadow-[4px_4px_0_#000] md:drop-shadow-[6px_6px_0_#000]">SAYA.</span>
             </h1>
           </div>
@@ -241,7 +241,7 @@ export default function MyTicketsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
+                    className="w-full flex flex-col md:flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
                   >
                     
                     {/* ⚡ OVERLAY TERPAKAI */}
@@ -254,7 +254,7 @@ export default function MyTicketsPage() {
                     )}
 
                     {/* KIRI: Info Event */}
-                    <div className={`flex-1 flex flex-col sm:flex-row ${ticket.status === "TERPAKAI" ? 'opacity-50 grayscale-[100%]' : ''}`}>
+                    <div className={`flex-1 flex flex-col sm:flex flex-col md:flex-row ${ticket.status === "TERPAKAI" ? 'opacity-50 grayscale-[100%]' : ''}`}>
                       <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
                         <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
                         

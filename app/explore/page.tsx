@@ -423,7 +423,7 @@ export default function ExplorePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter drop-shadow-[4px_4px_0_#fff]">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter drop-shadow-[4px_4px_0_#fff]">
               YO,{" "}
               <span className="relative inline-block">
                 <span className="relative z-10">{userProfile?.full_name?.split(" ")[0].toUpperCase()}!</span>
@@ -518,7 +518,7 @@ export default function ExplorePage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="text-4xl sm:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
+                    className="text-4xl sm:text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
                   >
                     {heroEvents[currentHeroIndex]?.title || "LIVE NOW"}
                   </motion.h2>
@@ -587,7 +587,7 @@ export default function ExplorePage() {
           >
             <div className="flex items-center gap-3">
               <TrendingUp className="text-red-500" size={40} strokeWidth={4} />
-              <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter -skew-x-6 text-center">
+              <h2 className="text-4xl md:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic uppercase tracking-tighter -skew-x-6 text-center">
                 {searchQuery ? `SEARCHING...` : "NEARBY STAGES"}
               </h2>
             </div>
@@ -627,7 +627,7 @@ export default function ExplorePage() {
         </div>
 
         {/* ⚡ DROPDOWN SORTING */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
+        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
           <p className="font-black italic uppercase text-slate-400 text-sm">
             Menampilkan {visibleEvents.length} dari {processedEvents.length} Event
           </p>
@@ -748,7 +748,7 @@ export default function ExplorePage() {
           ) : (
             <div className="py-24 text-center border-8 border-black shadow-[8px_8px_0_0_#000] bg-white mb-24 relative overflow-hidden -rotate-1">
               <DotGrid className="opacity-20" />
-              <p className="text-6xl mb-4 relative z-10">🎫</p>
+              <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 relative z-10">🎫</p>
               <p className="text-4xl font-black italic uppercase text-slate-300 relative z-10">STAGE GAK NEMU</p>
             </div>
           )}
@@ -785,7 +785,7 @@ export default function ExplorePage() {
         className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left relative z-20"
       >
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-16">
+          <div className="grid grid-cols-1 md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 mb-16">
             <div className="space-y-8 text-left">
               <div className="flex items-center gap-2">
                 <div className="h-12 w-12 bg-amber-400 border-4 border-white -rotate-12 flex items-center justify-center shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
@@ -803,7 +803,7 @@ export default function ExplorePage() {
               </ul>
             </div>
           </div>
-          <div className="pt-12 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="pt-12 border-t-4 border-black flex flex-col md:flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black bg-amber-400 px-4 py-2 border-2 border-black">© 2026 TIKETIN. ALL STAGES PROTECTED.</p>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300 italic -skew-x-12 drop-shadow-[2px_2px_0_#000]">BUILT BY IKMAN @ UPI</p>
           </div>

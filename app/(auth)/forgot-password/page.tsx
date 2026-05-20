@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Poppins } from "next/font/google";
-import { Mail, ArrowRight, Loader2, Key } from "lucide-react";
+import { Mail, ArrowRight, Loader2, Key, ArrowLeft, RotateCcw } from "lucide-react";
+import Link from "next/link";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -21,6 +22,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -32,19 +34,32 @@ export default function ForgotPasswordPage() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    setErrorMsg("");
+
+    const trimmedEmail = email.trim();
+
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
       redirectTo: `${window.location.origin}/update-password`,
     });
 
-    if (error) alert("Gagal: " + error.message);
-    else setSubmitted(true);
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setSubmitted(true);
+    }
+
     setIsLoading(false);
+  };
+
+  const handleTryAgain = () => {
+    setSubmitted(false);
+    setEmail("");
+    setErrorMsg("");
   };
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-6 bg-[#FCFAF1] noise ${poppins.className}`}>
       <div className="relative w-full max-w-md">
-        {/* Dekorasi Shadow Brutalist */}
         <div className="absolute inset-0 bg-black translate-x-3 translate-y-3" />
         
         <div className="relative bg-white border-[6px] border-black p-10 lg:p-12 shadow-[8px_8px_0_0_#6D4AFF]">
@@ -63,17 +78,34 @@ export default function ForgotPasswordPage() {
                   type="email" 
                   placeholder="EMAIL@GMAIL.COM" 
                   required
+                  value={email}
                   className="w-full p-5 border-4 border-black font-black uppercase text-lg outline-none focus:bg-amber-100 transition-colors"
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {errorMsg && (
+                  <p className="text-sm font-black text-red-600 uppercase tracking-wide border-2 border-red-600 bg-red-50 p-3">
+                    ⚠ {errorMsg}
+                  </p>
+                )}
               </div>
 
-              <button 
-                disabled={isLoading}
-                className="w-full bg-black text-white p-5 font-black uppercase text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2"
-              >
-                {isLoading ? <Loader2 className="animate-spin" /> : <>KIRIM RESET <ArrowRight /></>}
-              </button>
+              <div className="space-y-3">
+                <button 
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-black text-white p-5 font-black uppercase text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? <Loader2 className="animate-spin" /> : <>KIRIM RESET <ArrowRight /></>}
+                </button>
+
+                <Link 
+                  href="/login"
+                  className="w-full border-4 border-black p-4 font-black uppercase text-sm hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={16} />
+                  BALIK KE LOGIN
+                </Link>
+              </div>
             </form>
           ) : (
             <div className="text-center space-y-6 py-6">
@@ -81,7 +113,30 @@ export default function ForgotPasswordPage() {
                 <Mail size={40} className="text-white" />
               </div>
               <h2 className="text-4xl font-black italic uppercase text-emerald-600 -skew-x-6">CEK EMAIL!</h2>
-              <p className="text-sm font-black uppercase tracking-widest text-slate-600">Link reset udah meluncur ke kotak masuk</p>
+              <p className="text-sm font-black uppercase tracking-widest text-slate-600">
+                Link reset udah meluncur ke kotak masuk
+              </p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                Dikirim ke: {email.trim()}
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={handleTryAgain}
+                  className="w-full border-4 border-black p-4 font-black uppercase text-sm hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={16} />
+                  SALAH EMAIL? COBA LAGI
+                </button>
+
+                <Link 
+                  href="/login"
+                  className="w-full bg-black text-white p-4 font-black uppercase text-sm hover:bg-[#6D4AFF] transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={16} />
+                  BALIK KE LOGIN
+                </Link>
+              </div>
             </div>
           )}
         </div>

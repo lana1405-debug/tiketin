@@ -75,12 +75,12 @@ export default function AdminVerifyKTPPage() {
     <div className={`space-y-12 pb-20 ${poppins.className} text-black text-left`}>
       
       {/* HEADER BRUTAL */}
-      <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
+      <header className="flex flex-col xl:flex flex-col md:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
         <div className="space-y-4">
           <div className="bg-red-500 text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <ShieldAlert size={14} strokeWidth={3} /> Security & KYC
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             Verifikasi <span className="text-red-500">KTP.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">

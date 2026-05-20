@@ -93,12 +93,12 @@ export default function AdminLegalPage() {
     <div className={`p-6 md:p-12 space-y-12 bg-white min-h-screen text-black ${poppins.className} text-left`}>
       
       {/* HEADER BRUTAL */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-10">
+      <header className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-10">
         <div className="space-y-4">
           <div className="bg-[#6D4AFF] text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <ShieldCheck size={14} strokeWidth={3} /> Admin Authorization
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             VERIFIKASI <span className="text-[#6D4AFF]">EO.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
@@ -156,7 +156,7 @@ export default function AdminLegalPage() {
                   </a>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <div className="flex flex-col sm:flex flex-col md:flex-row gap-4 pt-4">
                   <button 
                     onClick={() => handleAction(app.id, app.user_id, 'approved')} 
                     className="flex-1 bg-emerald-400 border-4 border-black py-4 font-black italic uppercase text-xs tracking-[0.2em] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"

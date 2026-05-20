@@ -96,7 +96,7 @@ export default function AjukanEventPage() {
           <div className="bg-[#6D4AFF] border-4 border-black p-4 inline-block -rotate-2 shadow-[6px_6px_0_0_#000] mb-8">
             <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase -skew-x-6 tracking-tighter leading-[0.8] mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase -skew-x-6 tracking-tighter leading-[0.8] mb-4">
             VERIFIKASI <span className="text-[#6D4AFF]">PROMOTOR.</span>
           </h1>
           <p className="font-black text-slate-400 uppercase tracking-[0.3em] text-[10px] italic">Tiketin Revolution • Know Your Business (KYB)</p>

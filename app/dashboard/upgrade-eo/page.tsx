@@ -90,15 +90,15 @@ export default function EODashboard() {
     <div className={`space-y-12 pb-20 ${poppins.className} text-black text-left`}>
       
       {/* HEADER SECTION */}
-      <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
+      <header className="flex flex-col xl:flex flex-col md:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
         <div className="space-y-4">
           <div className="bg-emerald-400 text-black border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <Zap size={14} strokeWidth={3} /> EO Performance Radar
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             EO <span className="text-[#6D4AFF]">DASHBOARD.</span>
           </h1>
-          <p className="text-lg font-bold text-slate-500 italic">Pantau cuan dan sisa tiket lo secara real-time, </p>
+          <p className="text-lg font-bold text-slate-500 italic">Pantau cuan dan sisa tiket secara real-time, </p>
         </div>
 
         {/* TOMBOL BUAT EVENT BARU */}
@@ -183,7 +183,7 @@ export default function EODashboard() {
            {events.length === 0 ? (
              <div className="text-center py-10">
                <p className="font-black italic uppercase text-slate-300 text-2xl">Belum Ada Panggung </p>
-               <p className="text-slate-400 font-bold mt-2">Bikin event pertama lo sekarang.</p>
+               <p className="text-slate-400 font-bold mt-2">Bikin event pertama sekarang.</p>
              </div>
            ) : (
              <div className="space-y-4">

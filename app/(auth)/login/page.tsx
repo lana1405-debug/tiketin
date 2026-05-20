@@ -91,7 +91,7 @@ export default function LoginPage() {
 
   return (
     <main className={`min-h-screen bg-[#FCFAF1] ${poppins.className} noise`}>
-      <div className="flex flex-col lg:flex-row min-h-screen w-full">
+      <div className="flex flex-col lg:flex flex-col md:flex-row min-h-screen w-full">
         
         {/* PANEL ILUSTRASI (Muncul di ATAS saat di HP) */}
         <aside className="w-full lg:w-1/2 h-[250px] lg:h-auto">

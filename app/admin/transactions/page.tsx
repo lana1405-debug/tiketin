@@ -71,7 +71,7 @@ export default function GlobalTransactionsPage() {
       <div className="max-w-7xl mx-auto space-y-12">
         
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
+        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
           <div className="flex items-start gap-6">
             <button 
               onClick={() => router.back()} 
@@ -83,7 +83,7 @@ export default function GlobalTransactionsPage() {
               <div className="bg-[#6D4AFF] text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4">
                 <DollarSign size={14} strokeWidth={3} /> Financial Monitoring
               </div>
-              <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
                 Global <span className="text-[#6D4AFF]">Sales.</span>
               </h1>
               <p className="text-lg font-bold text-slate-500 italic mt-4">Pantau arus kas masuk dari seluruh konser di Tiketin.</p>
@@ -112,7 +112,7 @@ export default function GlobalTransactionsPage() {
           <div className="bg-emerald-400 border-8 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between overflow-hidden">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/60 italic">Tiket Terjual</p>
             <div className="mt-6">
-              <h2 className="text-5xl md:text-6xl lg:text-7xl font-black italic -skew-x-6 leading-none whitespace-nowrap truncate pr-4 pb-1">
+              <h2 className="text-5xl md:text-3xl sm:text-4xl md:text-5xl lg:text-6xl lg:text-7xl font-black italic -skew-x-6 leading-none whitespace-nowrap truncate pr-4 pb-1">
                 {ticketsSold}
               </h2>
               <span className="text-sm font-black uppercase italic">Lembar Terverifikasi</span>
@@ -122,7 +122,7 @@ export default function GlobalTransactionsPage() {
           <div className="bg-amber-400 border-8 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between overflow-hidden">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black/60 italic">Pending Tx</p>
             <div className="mt-6">
-              <h2 className="text-5xl md:text-6xl lg:text-7xl font-black italic -skew-x-6 leading-none whitespace-nowrap truncate pr-4 pb-1">
+              <h2 className="text-5xl md:text-3xl sm:text-4xl md:text-5xl lg:text-6xl lg:text-7xl font-black italic -skew-x-6 leading-none whitespace-nowrap truncate pr-4 pb-1">
                 {ticketsPending}
               </h2>
               <span className="text-sm font-black uppercase italic">Menunggu Pembayaran</span>

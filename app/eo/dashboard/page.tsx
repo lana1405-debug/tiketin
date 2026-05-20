@@ -312,7 +312,7 @@ export default function EODashboard() {
   if (!mounted) return null;
 
   return (
-    <main className={`min-h-screen bg-white flex flex-col xl:flex-row ${poppins.className} text-black`}>
+    <main className={`min-h-screen bg-white flex flex-col xl:flex flex-col md:flex-row ${poppins.className} text-black`}>
       {/* SIDEBAR */}
       <aside className="w-full xl:w-80 bg-white border-r-8 border-black xl:min-h-screen flex flex-col p-8 z-20 shrink-0 text-left">
         <div className="mb-12 flex items-center gap-3">
@@ -350,12 +350,12 @@ export default function EODashboard() {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, black 2px, transparent 0)', backgroundSize: '40px 40px' }} />
         <div className="max-w-7xl mx-auto space-y-12 relative z-10">
           
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+          <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
             <div>
               <div className="bg-[#6D4AFF] text-white border-2 border-black px-3 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_#000] mb-4">
                 <Target size={14} strokeWidth={3} /> Event Organizer OS
               </div>
-              <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
                 AGENT <span className="text-amber-400 drop-shadow-[2px_2px_0_#000]">{eoName.split(' ')[0]}.</span>
               </h1>
               <p className="text-slate-500 font-bold italic text-lg mt-4 max-w-xl">Pantau pergerakan penjualan dan atur amunisi event lo di sini.</p>
@@ -370,7 +370,7 @@ export default function EODashboard() {
               <Banknote size={150} className="absolute -bottom-6 -right-6 opacity-20 text-black group-hover:scale-110 transition-transform" />
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.3em] italic mb-2 text-black/60">Estimasi Saldo Tersedia (Net)</p>
-                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black italic -skew-x-6 tracking-tighter leading-none pr-4 pb-1">
+                <h2 className="text-4xl sm:text-5xl lg:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic -skew-x-6 tracking-tighter leading-none pr-4 pb-1">
                   {formatRupiah((totalRevenue * 0.85) - totalWithdrawn)}
                 </h2>
                 <div className="mt-4 flex flex-wrap gap-4">
@@ -623,7 +623,7 @@ export default function EODashboard() {
                 </div>
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {categories.map((cat, index) => (
-                    <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                    <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                       <div className="absolute -top-3 -left-3 bg-black text-white px-2 py-1 font-black italic text-[9px] uppercase border-2 border-black">Tier {index + 1}</div>
                       <div className="flex-1 w-full mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Nama Kategori</label><input type="text" value={cat.name} onChange={e => updateCategory(cat.id, 'name', e.target.value)} disabled={!!editingEventId} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="FESTIVAL" /></div>
                       <div className="flex-1 w-full"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Harga (Rp)</label><input type="number" value={cat.price} onChange={e => updateCategory(cat.id, 'price', e.target.value)} disabled={!!editingEventId} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm text-[#6D4AFF]" placeholder="50000" /></div>
@@ -633,7 +633,7 @@ export default function EODashboard() {
                   ))}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-6 pt-4"><button type="button" onClick={closeModal} className="flex-1 py-5 bg-white border-4 border-black font-black uppercase italic text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-all">Batal</button><button type="submit" disabled={isSubmitting} className="flex-[2] py-5 bg-[#6D4AFF] text-white border-4 border-black font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-2 transition-all flex items-center justify-center">{isSubmitting ? <><Loader2 className="animate-spin mr-2"/> SENDING...</> : (editingEventId ? "SIMPAN PERUBAHAN" : "KIRIM PENGAJUAN EVENT")}</button></div>
+              <div className="flex flex-col sm:flex flex-col md:flex-row gap-6 pt-4"><button type="button" onClick={closeModal} className="flex-1 py-5 bg-white border-4 border-black font-black uppercase italic text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-all">Batal</button><button type="submit" disabled={isSubmitting} className="flex-[2] py-5 bg-[#6D4AFF] text-white border-4 border-black font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-2 transition-all flex items-center justify-center">{isSubmitting ? <><Loader2 className="animate-spin mr-2"/> SENDING...</> : (editingEventId ? "SIMPAN PERUBAHAN" : "KIRIM PENGAJUAN EVENT")}</button></div>
             </form>
           </div>
         </div>

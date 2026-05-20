@@ -102,12 +102,12 @@ export default function AdminDashboard() {
     <div className={`space-y-10 pb-20 ${poppins.className} bg-white text-black text-left`}>
       
       {/* HEADER COMMAND CENTER */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+      <header className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
         <div className="space-y-3">
           <div className="bg-black text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(109,74,255,1)]">
             <Terminal size={14} /> System OS v2.0
           </div>
-          <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
             COMMAND <span className="text-[#6D4AFF]">CENTER.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] italic text-right leading-relaxed">Total Gross<br/>Capital Flow</p>
             </div>
             <div className="space-y-4">
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tighter italic leading-none break-words pr-4 pb-1">
+              <h2 className="text-3xl sm:text-5xl lg:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter italic leading-none break-words pr-4 pb-1">
                 {isLoading ? "SYNC..." : formatRupiah(stats.revenue)}
               </h2>
               <div className="flex items-center gap-4 text-emerald-400 font-black italic uppercase text-[10px] tracking-widest">
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
             </div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-2 text-left">Customer Issues</p>
             <div className="flex items-baseline gap-4">
-                <h2 className="text-6xl font-black text-black tracking-tighter italic leading-none">{stats.complaints}</h2>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-black tracking-tighter italic leading-none">{stats.complaints}</h2>
                 {stats.complaints > 0 && (
                 <div className="bg-black text-white px-2 py-1 text-[8px] font-black uppercase animate-bounce">Pending</div>
                 )}
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* LOGS / SYSTEM HEALTH */}
-        <div className="md:col-span-12 bg-slate-900 border-8 border-black p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center text-white gap-6">
+        <div className="md:col-span-12 bg-slate-900 border-8 border-black p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex flex-col md:flex-row justify-between items-center text-white gap-6">
            <div className="flex items-center gap-4 w-full md:w-auto text-left">
               <div className="bg-white text-black w-14 h-14 border-4 border-black flex items-center justify-center shrink-0">
                 <Activity size={24} strokeWidth={3} />

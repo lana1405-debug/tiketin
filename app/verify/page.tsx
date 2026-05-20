@@ -121,7 +121,7 @@ export default function CustomerVerificationPage() {
             </div>
             <button onClick={() => router.push('/explore')} className="text-[10px] font-black uppercase italic underline hover:text-[#6D4AFF]">Skip ke Explore</button>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">
+          <h1 className="text-4xl md:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic uppercase tracking-tighter leading-none">
             Verifikasi <span className="text-[#6D4AFF]">KTP.</span>
           </h1>
           <p className="font-bold text-slate-500 italic mt-2 text-sm">Wajib verifikasi identitas asli sebelum beli tiket. Lawan Calo!</p>
