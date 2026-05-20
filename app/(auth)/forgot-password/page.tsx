@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setIsLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/update-password`,
+      redirectTo: `${window.location.origin}/update-password`,
     });
 
     if (error) alert("Gagal: " + error.message);
