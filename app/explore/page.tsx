@@ -54,6 +54,9 @@ interface Event {
   end_date?: string | null;
   price: number;
   totalRemainingStock: number;
+  avgRating?: number;
+  totalReviews?: number;
+  hasVoucher?: boolean;
 }
 
 // ⚡ EFEK BACKGROUND MEGA BRUTALIST
@@ -79,6 +82,17 @@ const GLOBAL_STYLES = `
   .brutal-scroll::-webkit-scrollbar-thumb {
     background: #6D4AFF;
     border: 2px solid #000;
+  }
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-marquee-css {
+    display: flex;
+    animation: marquee 28s linear infinite;
+  }
+  .animate-marquee-css:hover {
+    animation-play-state: paused;
   }
 `;
 
@@ -109,17 +123,13 @@ function MarqueeTicker({ items }: { items: string[] }) {
       transition={{ duration: 0.5 }}
       className="w-full bg-amber-400 border-b-4 border-slate-900 overflow-hidden h-10 flex items-center relative z-10"
     >
-      <motion.div
-        className="flex gap-16 whitespace-nowrap"
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-      >
+      <div className="animate-marquee-css gap-16 whitespace-nowrap">
         {activeItems.length > 0 && repeated.map((item, i) => (
           <span key={i} className="font-black uppercase italic text-[11px] tracking-widest text-slate-900 shrink-0">
             {item}
           </span>
         ))}
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -167,6 +177,43 @@ function CategoryBadge({ category }: { category: string }) {
     <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-slate-900 ${style.bg} shadow-[2px_2px_0_0_#000]`}>
       {style.text}
     </span>
+  );
+}
+
+function EventCardSkeleton() {
+  return (
+    <div className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_rgba(109,74,255,0.2),12px_12px_0_0_rgba(0,0,0,1)] flex flex-col relative overflow-hidden animate-pulse">
+      {/* Banner */}
+      <div className="h-64 bg-slate-200 border-b-4 border-slate-900 relative">
+        <div className="absolute top-4 left-4 h-6 w-16 bg-slate-300 border-2 border-slate-400" />
+        <div className="absolute top-4 right-4 h-10 w-10 bg-slate-300 border-4 border-slate-400" />
+      </div>
+      {/* Content */}
+      <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
+        <div className="space-y-2">
+          <div className="h-5 bg-slate-300 w-3/4" />
+          <div className="h-5 bg-slate-300 w-1/2" />
+        </div>
+        <div className="space-y-3 pt-2">
+          <div className="h-4 bg-slate-200 w-1/2" />
+          <div className="h-4 bg-slate-200 w-2/3" />
+        </div>
+        <div className="bg-slate-50 border-2 border-dashed border-slate-300 h-14 w-full" />
+        <div className="pt-6 border-t-4 border-slate-200 flex flex-col gap-4 mt-auto">
+          <div className="flex justify-between items-center">
+            <div className="space-y-1">
+              <div className="h-3 bg-slate-200 w-8" />
+              <div className="h-6 bg-slate-300 w-24" />
+            </div>
+            <div className="h-4 bg-slate-200 w-12" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="h-10 bg-slate-200 border-2 border-slate-300" />
+            <div className="h-10 bg-slate-200 border-2 border-slate-300" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -264,14 +311,36 @@ export default function ExplorePage() {
 
     const { data: eventData } = await supabase
       .from("events")
-      .select("*, ticket_categories(stock)")
+      .select("*, ticket_categories(stock), reviews(rating), vouchers(*)")
       .eq("status", "approved")
       .order("created_at", { ascending: false });
 
     if (eventData) {
-      const formattedEvents = eventData.map(ev => {
+      const formattedEvents = eventData.map((ev: any) => {
         const totalRemainingStock = ev.ticket_categories?.reduce((acc: number, cat: any) => acc + (cat.stock || 0), 0) || 0;
-        return { ...ev, totalRemainingStock };
+        
+        // Kalkulasi rating rata-rata
+        const reviewList = ev.reviews || [];
+        const avgRating = reviewList.length > 0
+          ? reviewList.reduce((acc: number, r: any) => acc + r.rating, 0) / reviewList.length
+          : 0;
+        const totalReviews = reviewList.length;
+
+        // Cek apakah ada voucher aktif
+        const activeVouchers = ev.vouchers?.filter((v: any) => {
+          const isValidTo = !v.valid_to || new Date(v.valid_to) > new Date();
+          const hasRemainingUses = v.max_uses === null || (v.uses_count || 0) < v.max_uses;
+          return isValidTo && hasRemainingUses;
+        }) || [];
+        const hasVoucher = activeVouchers.length > 0;
+
+        return { 
+          ...ev, 
+          totalRemainingStock,
+          avgRating,
+          totalReviews,
+          hasVoucher
+        };
       });
       setEvents(formattedEvents);
       setHeroEvents(formattedEvents.slice(0, 3));
@@ -429,7 +498,7 @@ export default function ExplorePage() {
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
-  if (!mounted || isLoading) return (
+  if (!mounted) return (
     <div className={`min-h-screen flex flex-col items-center justify-center bg-[#FCFAF1] brutal-grid noise gap-4 ${poppins_font.className}`}>
       <motion.div
         animate={{ rotate: [0, -12, 12, -12, 0], scale: [1, 1.1, 1] }}
@@ -642,7 +711,6 @@ export default function ExplorePage() {
             ))}
           </motion.section>
         )}
-
         {/* SCROLL REVEAL: HERO CAROUSEL */}
         {!searchQuery && (
           <motion.section
@@ -652,94 +720,103 @@ export default function ExplorePage() {
             viewport={{ once: true, margin: "-100px" }}
             className="mb-32"
           >
-            <div className="relative w-full h-[350px] md:h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
-              <AnimatePresence mode="wait">
-                {heroEvents.length > 0 && (
-                  <motion.img
-                    key={currentHeroIndex}
-                    src={heroEvents[currentHeroIndex]?.image_url}
-                    initial={{ opacity: 0, scale: 1.05 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.6 }}
-                    className="absolute inset-0 w-full h-full object-cover grayscale-[20%]"
-                  />
-                )}
-              </AnimatePresence>
-              <div className="absolute inset-0 bg-gradient-to-r from-black/90 to-transparent" />
+            {isLoading ? (
+              <div className="relative w-full h-[350px] md:h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8 animate-pulse flex flex-col justify-end p-6 md:p-12 gap-4">
+                <div className="absolute inset-0 bg-slate-800" />
+                <div className="h-6 w-32 bg-slate-700 relative z-10" />
+                <div className="h-14 w-2/3 bg-slate-700 relative z-10" />
+                <div className="h-10 w-48 bg-slate-700 relative z-10" />
+              </div>
+            ) : (
+              <div className="relative w-full h-[350px] md:h-[450px] border-8 border-slate-900 overflow-hidden bg-slate-900 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] mb-8">
+                <AnimatePresence mode="wait">
+                  {heroEvents.length > 0 && (
+                    <motion.img
+                      key={currentHeroIndex}
+                      src={heroEvents[currentHeroIndex]?.image_url}
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.6 }}
+                      className="absolute inset-0 w-full h-full object-cover grayscale-[20%]"
+                    />
+                  )}
+                </AnimatePresence>
+                <div className="absolute inset-0 bg-gradient-to-r from-black/90 to-transparent" />
 
-              <div className="relative z-20 h-full p-6 md:p-12 flex flex-col justify-end items-start text-left">
-                <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] -rotate-2 mb-4 md:mb-6 italic inline-flex items-center gap-2">
-                  <Sparkles size={14} /> RECOMMENDED
+                <div className="relative z-20 h-full p-6 md:p-12 flex flex-col justify-end items-start text-left">
+                  <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] -rotate-2 mb-4 md:mb-6 italic inline-flex items-center gap-2">
+                    <Sparkles size={14} /> RECOMMENDED
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    <motion.h2
+                      key={currentHeroIndex}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="text-4xl sm:text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
+                    >
+                      {heroEvents[currentHeroIndex]?.title || "LIVE NOW"}
+                    </motion.h2>
+                  </AnimatePresence>
+
+                  {heroEvents[currentHeroIndex]?.totalRemainingStock > 0 && heroEvents[currentHeroIndex]?.totalRemainingStock <= 20 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mb-4 bg-red-500 text-white border-2 border-slate-900 px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] animate-pulse inline-flex items-center gap-2"
+                    >
+                      🔥 Sisa {heroEvents[currentHeroIndex].totalRemainingStock} Tiket! Buruan War!
+                    </motion.div>
+                  )}
+
+                  {heroEvents[currentHeroIndex]?.price && (
+                    <motion.div
+                      key={`price-${currentHeroIndex}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="mb-6 md:mb-8 flex items-center gap-4"
+                    >
+                      <span className="text-purple-200 font-black uppercase text-[10px] tracking-widest">Mulai dari</span>
+                      <span className="bg-[#6D4AFF] border-4 border-white px-4 py-2 font-black text-white text-base md:text-lg italic -skew-x-6 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+                        {formatRupiah(heroEvents[currentHeroIndex].price)}
+                      </span>
+                    </motion.div>
+                  )}
+
+                  {(() => {
+                    const activeHero = heroEvents[currentHeroIndex];
+                    const isHeroEnded = activeHero ? (activeHero.end_date ? activeHero.end_date < today : activeHero.date < today) : false;
+                    return (
+                      <button
+                        disabled={heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded}
+                        onClick={() => {
+                          const activeHeroId = heroEvents[currentHeroIndex]?.id;
+                          if (activeHeroId) handleBookNow(activeHeroId);
+                        }}
+                        className={`border-4 border-slate-900 px-8 md:px-10 py-4 md:py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${(heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded)
+                          ? 'bg-slate-500 text-slate-300 cursor-not-allowed'
+                          : 'bg-white text-black hover:bg-amber-400'
+                          }`}
+                      >
+                        {isHeroEnded ? "STAGE SELESAI" : heroEvents[currentHeroIndex]?.totalRemainingStock === 0 ? "SOLD OUT" : "BOOK NOW"}
+                      </button>
+                    );
+                  })()}
                 </div>
 
-                <AnimatePresence mode="wait">
-                  <motion.h2
-                    key={currentHeroIndex}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="text-4xl sm:text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase text-white tracking-tighter drop-shadow-[4px_4px_0_rgba(0,0,0,1)] -skew-x-6 mb-4 break-words leading-none"
-                  >
-                    {heroEvents[currentHeroIndex]?.title || "LIVE NOW"}
-                  </motion.h2>
-                </AnimatePresence>
-
-                {heroEvents[currentHeroIndex]?.totalRemainingStock > 0 && heroEvents[currentHeroIndex]?.totalRemainingStock <= 20 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="mb-4 bg-red-500 text-white border-2 border-slate-900 px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest shadow-[4px_4px_0_0_#000] animate-pulse inline-flex items-center gap-2"
-                  >
-                    🔥 Sisa {heroEvents[currentHeroIndex].totalRemainingStock} Tiket! Buruan War!
-                  </motion.div>
-                )}
-
-                {heroEvents[currentHeroIndex]?.price && (
-                  <motion.div
-                    key={`price-${currentHeroIndex}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="mb-6 md:mb-8 flex items-center gap-4"
-                  >
-                    <span className="text-purple-200 font-black uppercase text-[10px] tracking-widest">Mulai dari</span>
-                    <span className="bg-[#6D4AFF] border-4 border-white px-4 py-2 font-black text-white text-base md:text-lg italic -skew-x-6 shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
-                      {formatRupiah(heroEvents[currentHeroIndex].price)}
-                    </span>
-                  </motion.div>
-                )}
-
-                {(() => {
-                  const activeHero = heroEvents[currentHeroIndex];
-                  const isHeroEnded = activeHero ? (activeHero.end_date ? activeHero.end_date < today : activeHero.date < today) : false;
-                  return (
+                <div className="absolute bottom-6 right-6 z-30 flex gap-3">
+                  {heroEvents.map((_, i) => (
                     <button
-                      disabled={heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded}
-                      onClick={() => {
-                        const activeHeroId = heroEvents[currentHeroIndex]?.id;
-                        if (activeHeroId) handleBookNow(activeHeroId);
-                      }}
-                      className={`border-4 border-slate-900 px-8 md:px-10 py-4 md:py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${(heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded)
-                        ? 'bg-slate-500 text-slate-300 cursor-not-allowed'
-                        : 'bg-white text-black hover:bg-amber-400'
-                        }`}
-                    >
-                      {isHeroEnded ? "STAGE SELESAI" : heroEvents[currentHeroIndex]?.totalRemainingStock === 0 ? "SOLD OUT" : "BOOK NOW"}
-                    </button>
-                  );
-                })()}
+                      key={i}
+                      onClick={() => setCurrentHeroIndex(i)}
+                      className={`transition-all border-2 border-white ${i === currentHeroIndex ? "w-8 h-3 bg-amber-400" : "w-3 h-3 bg-white/50 hover:bg-white"}`}
+                    />
+                  ))}
+                </div>
               </div>
-
-              <div className="absolute bottom-6 right-6 z-30 flex gap-3">
-                {heroEvents.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentHeroIndex(i)}
-                    className={`transition-all border-2 border-white ${i === currentHeroIndex ? "w-8 h-3 bg-amber-400" : "w-3 h-3 bg-white/50 hover:bg-white"}`}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
           </motion.section>
         )}
 
@@ -816,7 +893,13 @@ export default function ExplorePage() {
         </div>
 
         <div className="mt-12">
-          {visibleEvents.length > 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
+              {[...Array(6)].map((_, i) => (
+                <EventCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : visibleEvents.length > 0 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-16">
                 {visibleEvents.map((event, idx) => (
@@ -855,28 +938,53 @@ export default function ExplorePage() {
                         return null;
                       })()}
 
-                      <div className="absolute top-4 left-4 z-30">
+                      <div className="absolute top-4 left-4 z-30 flex flex-col gap-2 items-start">
                         <CategoryBadge category={event.category} />
+                        {event.hasVoucher && (
+                          <span className="bg-[#FF6B6B] text-white border-2 border-slate-900 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse flex items-center gap-1">
+                            <Zap size={10} fill="white" strokeWidth={3} /> PROMO VOUCHER
+                          </span>
+                        )}
                       </div>
 
                       {event.totalRemainingStock > 0 && event.totalRemainingStock <= 20 && (
-                        <div className="absolute top-4 left-28 z-30 bg-red-500 text-white border-2 border-slate-900 px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse">
+                        <div className="absolute top-4 left-32 z-30 bg-red-500 text-white border-2 border-slate-900 px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse">
                           🔥 Sisa {event.totalRemainingStock} Tiket!
                         </div>
                       )}
 
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleLike(event.id); }}
-                        className={`absolute top-4 right-4 z-30 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
+                        className={`absolute top-4 right-4 z-30 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all active:scale-95 hover:scale-110 ${likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
                           }`}
                       >
-                        <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
+                        <motion.div
+                          whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
+                        </motion.div>
                       </button>
                     </div>
 
                     <div className="p-8 space-y-6 flex-grow flex flex-col text-left">
+                      {/* Rating Rata-rata & Total Ulasan */}
+                      <div className="flex items-center gap-2">
+                        {event.totalReviews && event.totalReviews > 0 ? (
+                          <div className="flex items-center gap-1.5 bg-amber-400 border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase shadow-[2px_2px_0_0_#000] italic">
+                            <Star size={10} fill="black" strokeWidth={3} />
+                            <span>{Number(event.avgRating || 0).toFixed(1)} ({event.totalReviews} Ulasan)</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 bg-white border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase text-slate-500 shadow-[2px_2px_0_0_#000] italic">
+                            <Star size={10} strokeWidth={3} />
+                            <span>Belum Ada Ulasan</span>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="h-[3.5rem] overflow-hidden pr-2">
-                        <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal">
+                        <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-all truncate whitespace-normal group-hover:text-[#6D4AFF] transition-colors">
                           {event.title}
                         </h3>
                       </div>

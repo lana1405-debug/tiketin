@@ -39,7 +39,18 @@ export default function GlobalTransactionsPage() {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setTransactions(data);
+      // ⚡ LOGIKA AUTO-EXPIRED: Pending > 12 jam = expired
+      const now = new Date().getTime();
+      const processed = data.map((tx: any) => {
+        const creationTime = new Date(tx.created_at).getTime();
+        const diffInHours = (now - creationTime) / (1000 * 60 * 60);
+        let finalStatus = tx.status_pembayaran;
+        if (tx.status_pembayaran === 'pending' && diffInHours > 12) {
+          finalStatus = 'expired';
+        }
+        return { ...tx, status_pembayaran: finalStatus };
+      });
+      setTransactions(processed);
     }
     
     setIsLoading(false);
@@ -56,6 +67,7 @@ export default function GlobalTransactionsPage() {
   const getPrice = (t: any) => Number(t.total_bayar || 0);
   const getStatus = (t: any) => String(t.status_pembayaran || "pending").toLowerCase();
   const isSuccess = (status: string) => status === "paid";
+  const isExpired = (status: string) => status === "expired";
 
   const totalRevenue = transactions
     .filter(t => isSuccess(getStatus(t)))
@@ -64,7 +76,8 @@ export default function GlobalTransactionsPage() {
   const ticketsSold = transactions
     .filter(t => isSuccess(getStatus(t)))
     .reduce((acc, curr) => acc + (curr.total_qty || 0), 0);
-  const ticketsPending = transactions.filter(t => !isSuccess(getStatus(t))).length;
+  const ticketsPending = transactions.filter(t => getStatus(t) === 'pending').length;
+  const ticketsExpired = transactions.filter(t => isExpired(getStatus(t))).length;
 
   if (!mounted) return null;
 
@@ -94,7 +107,7 @@ export default function GlobalTransactionsPage() {
         </div>
 
         {/* STATS TRANSAKSI */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
           <div className="bg-black border-8 border-black p-8 text-white shadow-[12px_12px_0px_0px_rgba(109,74,255,1)] relative overflow-hidden group">
             <div className="absolute top-[-20px] right-[-20px] opacity-10 group-hover:rotate-12 transition-transform">
               <Wallet size={150} />
@@ -128,6 +141,16 @@ export default function GlobalTransactionsPage() {
                 {ticketsPending}
               </h2>
               <span className="text-sm font-black uppercase italic">Menunggu Pembayaran</span>
+            </div>
+          </div>
+
+          <div className="bg-red-500 border-8 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between overflow-hidden text-white">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/70 italic">Expired Tx</p>
+            <div className="mt-6">
+              <h2 className="text-5xl md:text-3xl sm:text-4xl md:text-5xl lg:text-6xl lg:text-7xl font-black italic -skew-x-6 leading-none whitespace-nowrap truncate pr-4 pb-1">
+                {ticketsExpired}
+              </h2>
+              <span className="text-sm font-black uppercase italic">Hangus (&gt;12 Jam)</span>
             </div>
           </div>
         </div>
@@ -182,10 +205,10 @@ export default function GlobalTransactionsPage() {
                         </td>
                         <td className="p-6 border-r-4 border-black text-center">
                           <div className={`inline-flex items-center gap-2 px-4 py-2 border-2 border-black font-black uppercase italic text-[9px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
-                            success ? 'bg-emerald-400' : 'bg-amber-400'
+                            success ? 'bg-emerald-400' : isExpired(status) ? 'bg-red-500 text-white' : 'bg-amber-400'
                           }`}>
-                             {success ? <ArrowUpRight size={14} strokeWidth={3} /> : <Clock size={14} strokeWidth={3} />}
-                             {status}
+                             {success ? <ArrowUpRight size={14} strokeWidth={3} /> : isExpired(status) ? <Zap size={14} strokeWidth={3} /> : <Clock size={14} strokeWidth={3} />}
+                             {isExpired(status) ? 'EXPIRED' : status}
                           </div>
                         </td>
                         <td className="p-6 text-center">
