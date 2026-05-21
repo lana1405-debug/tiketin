@@ -26,6 +26,8 @@ export default function AdminDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [marqueeInput, setMarqueeInput] = useState("");
+  const [isUpdatingMarquee, setIsUpdatingMarquee] = useState(false);
 
   const fetchRealData = async () => {
     setIsLoading(true);
@@ -73,6 +75,16 @@ export default function AdminDashboard() {
       profit: platformProfit
     });
     
+    // Fetch Marquee Settings
+    const { data: marqueeData } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "marquee_ticker")
+      .single();
+    if (marqueeData && Array.isArray(marqueeData.value)) {
+      setMarqueeInput(marqueeData.value.join(", "));
+    }
+    
     setIsLoading(false);
   };
 
@@ -94,6 +106,20 @@ export default function AdminDashboard() {
 
   const formatRupiah = (angka: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
+  };
+
+  const saveMarquee = async () => {
+    setIsUpdatingMarquee(true);
+    const items = marqueeInput.split(",").map(i => i.trim()).filter(i => i.length > 0);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "marquee_ticker", value: items, updated_at: new Date().toISOString() });
+    if (error) {
+      alert("Gagal mengupdate marquee: " + error.message);
+    } else {
+      alert("Teks Marquee berhasil diperbarui!");
+    }
+    setIsUpdatingMarquee(false);
   };
 
   if (!mounted) return null;
@@ -252,6 +278,33 @@ export default function AdminDashboard() {
                   <div className="bg-[#6D4AFF] h-full w-[100%] animate-pulse" />
                </div>
            </div>
+        </div>
+
+        {/* DYNAMIC SETTINGS: MARQUEE EDITOR */}
+        <div className="md:col-span-12 bg-white border-8 border-black p-8 shadow-[10px_10px_0px_0px_#6D4AFF] text-black text-left">
+          <div className="flex items-center gap-3 mb-4">
+            <Globe className="text-[#6D4AFF]" size={28} strokeWidth={3} />
+            <h3 className="text-2xl font-black italic uppercase tracking-tighter">📢 Marquee Ticker Settings</h3>
+          </div>
+          <p className="text-xs text-slate-500 font-bold mb-4 uppercase">
+            Ubah teks berjalan di halaman explore secara dinamis. Pisahkan setiap kalimat dengan tanda koma (,).
+          </p>
+          <div className="flex flex-col md:flex-row gap-4">
+            <input
+              type="text"
+              value={marqueeInput}
+              onChange={(e) => setMarqueeInput(e.target.value)}
+              placeholder="Contoh: TIKET LIVE NOW, TIKET TERBATAS, PROMO BARU"
+              className="flex-1 p-4 border-4 border-black font-black italic uppercase text-xs outline-none focus:bg-slate-50 text-left"
+            />
+            <button
+              onClick={saveMarquee}
+              disabled={isUpdatingMarquee}
+              className="bg-black text-white px-8 py-4 border-4 border-black font-black italic uppercase text-xs shadow-[4px_4px_0_0_#6D4AFF] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"
+            >
+              {isUpdatingMarquee ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
         </div>
 
         {/* LOGS / SYSTEM HEALTH */}

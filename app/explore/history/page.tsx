@@ -140,30 +140,25 @@ export default function HistoryPage() {
     window.snap.pay(tx.snap_token, {
       onSuccess: async function (result: any) {
         try {
-          await supabase.from("transaksi").update({ status_pembayaran: "paid" }).eq("id", tx.id);
+          // Panggil API status pembayaran di server-side untuk memproses DB secara aman
+          const statusResponse = await fetch("/api/payment/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order_id: tx.order_id })
+          });
           
-          const ticketsToInsert = Array.from({ length: tx.total_qty }).map((_, idx) => ({
-            transaksi_id: tx.id,
-            event_id: tx.event_id,
-            ticket_category_id: tx.category_id, 
-            ticket_code: `TKT-${tx.order_id}-${idx}`, 
-            seat_info: tx.ticket_categories?.name || "REGULAR", 
-            status_checkin: false
-          }));
-
-          await supabase.from("tiket").insert(ticketsToInsert);
-
-          if (tx.category_id) {
-             const { data: cat } = await supabase.from("ticket_categories").select("stock").eq("id", tx.category_id).single();
-             if (cat) {
-                await supabase.from("ticket_categories").update({ stock: cat.stock - tx.total_qty }).eq("id", tx.category_id);
-             }
+          const statusData = await statusResponse.json();
+          if (statusData.success) {
+            alert("MANTAP! PEMBAYARAN BERHASIL. 🎉");
+          } else {
+            console.warn("Verifikasi status gagal:", statusData.message);
+            alert("Pembayaran berhasil dicatat. Tiket sedang diproses.");
           }
-
-          alert("MANTAP! PEMBAYARAN BERHASIL.");
           router.push("/explore/tickets"); 
         } catch (error) {
-          alert("Gagal sinkron database. Hubungi Support.");
+          console.error(error);
+          alert("Pembayaran sukses! Sistem sedang melakukan sinkronisasi otomatis, silakan cek Tiket Saya beberapa saat lagi.");
+          router.push("/explore/tickets");
         }
       },
       onPending: () => alert("Menunggu pembayaran..."),

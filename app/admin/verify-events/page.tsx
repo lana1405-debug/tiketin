@@ -6,7 +6,7 @@ import {
   Check, X, Eye, Loader2, Calendar, MapPin, Zap, 
   AlertCircle, X as CloseIcon, Ticket, Clock, 
   ShieldAlert, Trash2, Tag, ListFilter, User, 
-  CheckCircle2, hourglass
+  CheckCircle2
 } from "lucide-react";
 import { Poppins } from "next/font/google";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,11 @@ export default function VerifyEventsPage() {
   // State buat Modal Detail Event
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const openDetail = (event: any) => {
+    setSelectedEvent(event);
+    setIsDetailOpen(true);
+  };
 
   useEffect(() => {
     checkAdminAccess();

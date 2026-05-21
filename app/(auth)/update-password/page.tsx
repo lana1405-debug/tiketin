@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { ArrowRight, Loader2, Lock, ShieldAlert, CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
+
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -32,18 +34,53 @@ export default function UpdatePasswordPage() {
     style.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(style);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        // Token valid — tampilkan form
-        setIsReady(true);
-      } else if (event === "SIGNED_OUT") {
-        // Hanya event ini yang berarti token benar-benar invalid/expired
-        router.push("/forgot-password");
+    let isMounted = true;
+    let resolved = false;
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const hasRecoveryParams = 
+        window.location.hash.includes("type=recovery") || 
+        window.location.hash.includes("access_token=") || 
+        window.location.search.includes("code=") || 
+        window.location.search.includes("type=recovery");
+
+      if (session) {
+        resolved = true;
+        if (isMounted) setIsReady(true);
+      } else if (!hasRecoveryParams) {
+        resolved = true;
+        if (isMounted) router.push("/forgot-password");
       }
-      // Event lain (TOKEN_REFRESHED, SIGNED_IN, USER_UPDATED, dll) — dibiarkan saja
+    };
+
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        resolved = true;
+        if (isMounted) setIsReady(true);
+      } else if (session) {
+        resolved = true;
+        if (isMounted) setIsReady(true);
+      } else if (event === "SIGNED_OUT") {
+        resolved = true;
+        if (isMounted) router.push("/forgot-password");
+      }
     });
 
+    const fallbackTimeout = setTimeout(async () => {
+      if (!resolved && isMounted) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session && isMounted) {
+          router.push("/forgot-password");
+        }
+      }
+    }, 4000);
+
     return () => { 
+      isMounted = false;
+      clearTimeout(fallbackTimeout);
       document.head.removeChild(style);
       subscription.unsubscribe();
     };
@@ -80,42 +117,65 @@ export default function UpdatePasswordPage() {
 
   if (!isReady) {
     return (
-      <div className={`min-h-screen flex items-center justify-center bg-[#FCFAF1] noise ${poppins.className}`}>
-        <div className="bg-white border-[6px] border-black p-8 shadow-[8px_8px_0_0_#6D4AFF] flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-black" size={48} />
-          <h2 className="text-xl font-black uppercase italic -skew-x-6">VERIFIKASI LINK...</h2>
-        </div>
+      <div className={`min-h-screen flex items-center justify-center p-4 bg-[#FCFAF1] noise ${poppins.className}`}>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white border-4 sm:border-[6px] border-black p-6 sm:p-8 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] flex flex-col items-center gap-4 text-center max-w-xs w-full"
+        >
+          <Loader2 className="animate-spin text-black" size={40} />
+          <h2 className="text-lg sm:text-xl font-black uppercase italic -skew-x-6">VERIFIKASI LINK...</h2>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-6 bg-[#FCFAF1] noise ${poppins.className}`}>
-      <div className="relative w-full max-w-md">
-        <div className="absolute inset-0 bg-black translate-x-3 translate-y-3" />
+    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FCFAF1] noise ${poppins.className}`}>
+      <motion.div 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+        className="relative w-full max-w-md"
+      >
+        <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 sm:translate-x-3 sm:translate-y-3" />
         
-        <form onSubmit={handleUpdate} className="relative bg-white border-[6px] border-black p-8 lg:p-10 shadow-[8px_8px_0_0_#6D4AFF] space-y-6">
+        <form onSubmit={handleUpdate} className="relative bg-white border-4 sm:border-[6px] border-black p-6 sm:p-8 lg:p-10 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] space-y-6">
           
           <div className="space-y-2">
-            <div className="bg-[#6D4AFF] p-3 w-max mb-4 -rotate-3 border-4 border-black">
+            <motion.div 
+              initial={{ rotate: 10, scale: 0.9 }}
+              animate={{ rotate: -3, scale: 1 }}
+              whileHover={{ rotate: 3, scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="bg-[#6D4AFF] p-3 w-max mb-4 border-4 border-black cursor-pointer"
+            >
               <Lock size={32} className="text-white" strokeWidth={3} />
-            </div>
-            <h2 className="text-4xl font-black italic uppercase -skew-x-6 tracking-tighter">PASSWORD BARU</h2>
+            </motion.div>
+            <h2 className="text-3xl sm:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter">PASSWORD BARU</h2>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Masukkan kunci baru lo biar bisa explore tiket lagi.</p>
           </div>
 
           {errorMsg && (
-            <div className="bg-red-500 p-4 border-4 border-black flex items-center gap-3 text-white">
-              <ShieldAlert size={24} />
-              <p className="font-black text-sm uppercase">{errorMsg}</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500 p-4 border-4 border-black flex items-center gap-3 text-white"
+            >
+              <ShieldAlert size={24} className="shrink-0" />
+              <p className="font-black text-xs sm:text-sm uppercase">{errorMsg}</p>
+            </motion.div>
           )}
 
           {successMsg && (
-            <div className="bg-emerald-500 p-4 border-4 border-black flex items-center gap-3 text-white">
-              <CheckCircle size={24} />
-              <p className="font-black text-sm uppercase">{successMsg}</p>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-emerald-500 p-4 border-4 border-black flex items-center gap-3 text-white"
+            >
+              <CheckCircle size={24} className="shrink-0" />
+              <p className="font-black text-xs sm:text-sm uppercase">{successMsg}</p>
+            </motion.div>
           )}
 
           <div className="space-y-4">
@@ -124,7 +184,7 @@ export default function UpdatePasswordPage() {
               required 
               value={password}
               placeholder="PASSWORD BARU..."
-              className="w-full p-4 border-4 border-black font-black uppercase outline-none focus:bg-amber-100 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 transition-colors"
               onChange={(e) => setPassword(e.target.value)}
             />
             <input 
@@ -132,20 +192,22 @@ export default function UpdatePasswordPage() {
               required 
               value={confirmPassword}
               placeholder="ULANGI PASSWORD..."
-              className="w-full p-4 border-4 border-black font-black uppercase outline-none focus:bg-amber-100 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 transition-colors"
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
 
-          <button 
+          <motion.button 
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={isLoading || !!successMsg}
-            className="w-full bg-black text-white p-5 font-black uppercase text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-black text-white p-4 sm:p-5 font-black uppercase text-lg sm:text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="animate-spin"/> : <>UPDATE KUNCI <ArrowRight /></>}
-          </button>
+          </motion.button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

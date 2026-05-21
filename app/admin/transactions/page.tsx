@@ -61,7 +61,9 @@ export default function GlobalTransactionsPage() {
     .filter(t => isSuccess(getStatus(t)))
     .reduce((acc, curr) => acc + getPrice(curr), 0);
 
-  const ticketsSold = transactions.filter(t => isSuccess(getStatus(t))).length;
+  const ticketsSold = transactions
+    .filter(t => isSuccess(getStatus(t)))
+    .reduce((acc, curr) => acc + (curr.total_qty || 0), 0);
   const ticketsPending = transactions.filter(t => !isSuccess(getStatus(t))).length;
 
   if (!mounted) return null;

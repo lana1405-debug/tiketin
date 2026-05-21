@@ -48,6 +48,12 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [alreadyBought, setAlreadyBought] = useState(0);
 
+  // Voucher states
+  const [voucherCodeInput, setVoucherCodeInput] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
+  const [voucherError, setVoucherError] = useState("");
+  const [isVoucherChecking, setIsVoucherChecking] = useState(false);
+
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = GLOBAL_STYLES;
@@ -104,6 +110,18 @@ export default function CheckoutPage() {
   const stockAvailable = selectedCategory ? selectedCategory.stock : 0;
   const absoluteMaxQty = Math.min(availableUserQuota, stockAvailable);
 
+  // Voucher Calculations
+  const originalTotal = (selectedCategory?.price || 0) * qty;
+  let discountAmount = 0;
+  if (appliedVoucher) {
+    if (appliedVoucher.discount_type === "percentage") {
+      discountAmount = Math.floor(originalTotal * (appliedVoucher.discount_value / 100));
+    } else if (appliedVoucher.discount_type === "fixed") {
+      discountAmount = appliedVoucher.discount_value;
+    }
+  }
+  const totalBayar = Math.max(0, originalTotal - discountAmount);
+
   useEffect(() => {
     if (qty > absoluteMaxQty) {
       setQty(Math.max(1, absoluteMaxQty));
@@ -111,13 +129,78 @@ export default function CheckoutPage() {
     if (absoluteMaxQty === 0) setQty(0);
   }, [selectedCatId, absoluteMaxQty]);
 
+  const handleApplyVoucher = async () => {
+    if (!voucherCodeInput.trim()) return;
+    setIsVoucherChecking(true);
+    setVoucherError("");
+    setAppliedVoucher(null);
+
+    try {
+      const codeUpper = voucherCodeInput.trim().toUpperCase();
+      const { data, error } = await supabase
+        .from("vouchers")
+        .select("*")
+        .eq("code", codeUpper)
+        .single();
+
+      if (error || !data) {
+        setVoucherError("KODE VOUCHER TIDAK VALID!");
+        setIsVoucherChecking(false);
+        return;
+      }
+
+      const now = new Date();
+      const validFrom = new Date(data.valid_from);
+      const validTo = new Date(data.valid_to);
+
+      if (now < validFrom) {
+        setVoucherError("VOUCHER BELUM DAPAT DIGUNAKAN!");
+        setIsVoucherChecking(false);
+        return;
+      }
+
+      if (now > validTo) {
+        setVoucherError("VOUCHER SUDAH KEDALUWARSA!");
+        setIsVoucherChecking(false);
+        return;
+      }
+
+      if (data.max_uses !== null && data.uses_count >= data.max_uses) {
+        setVoucherError("KUOTA VOUCHER SUDAH HABIS!");
+        setIsVoucherChecking(false);
+        return;
+      }
+
+      if (data.event_id && data.event_id !== eventId) {
+        setVoucherError("VOUCHER TIDAK BERLAKU UNTUK EVENT INI!");
+        setIsVoucherChecking(false);
+        return;
+      }
+
+      setAppliedVoucher(data);
+      setVoucherError("");
+    } catch (err) {
+      console.error(err);
+      setVoucherError("GAGAL MEMVERIFIKASI VOUCHER.");
+    } finally {
+      setIsVoucherChecking(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCodeInput("");
+    setVoucherError("");
+  };
+
   const handleCheckout = async () => {
     if (!user || !event || !selectedCategory || qty <= 0) return;
     setIsProcessing(true);
 
     try {
-      const orderId = `INV-${Date.now().toString().slice(-6)}`;
-      const totalBayar = selectedCategory.price * qty;
+      const orderId = appliedVoucher 
+        ? `INV-${Date.now().toString().slice(-6)}-VCHR-${appliedVoucher.code.toUpperCase()}`
+        : `INV-${Date.now().toString().slice(-6)}`;
 
       const response = await fetch("/api/payment", {
         method: "POST",
@@ -155,6 +238,17 @@ export default function CheckoutPage() {
       window.snap.pay(data.token, {
         onSuccess: async function (result: any) {
           try {
+            // Panggil API status pembayaran di server-side untuk memproses DB & voucher secara aman
+            try {
+              await fetch("/api/payment/status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ order_id: orderId })
+              });
+            } catch (err) {
+              console.error("Gagal memanggil API status:", err);
+            }
+
             await supabase.from("transaksi").update({ status_pembayaran: "paid" }).eq("id", txData.id);
 
             const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
@@ -332,6 +426,12 @@ export default function CheckoutPage() {
                         <span>{selectedCategory?.name} x {qty}</span>
                         <span>{formatRupiah((selectedCategory?.price || 0) * qty)}</span>
                       </div>
+                      {appliedVoucher && (
+                        <div className="flex justify-between text-red-500 bg-red-50 p-2 border-2 border-red-200">
+                          <span>DISKON ({appliedVoucher.code})</span>
+                          <span>- {formatRupiah(discountAmount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-emerald-500 bg-emerald-50 p-2 border-2 border-emerald-200">
                         <span>ESTIMASI REWARDS</span>
                         <span>+ {qty * 50} PTS</span>
@@ -341,10 +441,53 @@ export default function CheckoutPage() {
                 )}
               </AnimatePresence>
 
+              {/* VOUCHER PROMO BOX */}
+              {availableUserQuota > 0 && stockAvailable > 0 && (
+                <div className="border-t-4 border-slate-900 pt-6 mb-6">
+                  <span className="font-black uppercase text-[10px] text-slate-400 block tracking-widest italic mb-2">VOUCHER PROMO</span>
+                  {!appliedVoucher ? (
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={voucherCodeInput} 
+                        onChange={(e) => setVoucherCodeInput(e.target.value)} 
+                        placeholder="KODE VOUCHER" 
+                        className="flex-1 bg-white border-2 border-slate-900 p-2 font-bold uppercase placeholder-slate-400 text-xs focus:outline-none" 
+                      />
+                      <button 
+                        onClick={handleApplyVoucher} 
+                        disabled={isVoucherChecking} 
+                        className="bg-amber-400 hover:bg-amber-300 text-slate-900 border-2 border-slate-900 px-4 py-2 font-black text-xs italic uppercase shadow-[2px_2px_0_0_#000]"
+                      >
+                        {isVoucherChecking ? "CEK..." : "APPLY"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-emerald-100 border-2 border-emerald-500 p-3 font-bold text-xs">
+                      <div>
+                        <span className="text-emerald-700 font-black">{appliedVoucher.code.toUpperCase()} TERAPLIKASI!</span>
+                        <p className="text-[10px] text-emerald-600 mt-0.5">
+                          Potongan: {appliedVoucher.discount_type === "percentage" ? `${appliedVoucher.discount_value}%` : formatRupiah(appliedVoucher.discount_value)}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={handleRemoveVoucher} 
+                        className="bg-red-500 text-white border-2 border-slate-900 px-2 py-1 text-[10px] font-black uppercase hover:bg-red-600 transition-colors"
+                      >
+                        BATAL
+                      </button>
+                    </div>
+                  )}
+                  {voucherError && (
+                    <p className="text-[10px] font-black text-red-500 mt-2 uppercase italic">{voucherError}</p>
+                  )}
+                </div>
+              )}
+
               <div className="mt-auto border-t-4 border-slate-900 pt-6 mb-8">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 italic">TOTAL TAGIHAN</p>
                 <p className="text-5xl font-black text-[#6D4AFF] italic tracking-tighter leading-none drop-shadow-[2px_2px_0_#FBBF24]">
-                  {formatRupiah((selectedCategory?.price || 0) * qty)}
+                  {formatRupiah(totalBayar)}
                 </p>
               </div>
 

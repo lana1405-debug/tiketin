@@ -13,7 +13,7 @@ import {
   Loader2, Mail, Phone, Camera, Send, Play,
   Trophy, MessageSquare, PlusCircle, Zap, TrendingUp,
   Ticket as TicketIcon, ShieldCheck, ArrowUp, Star,
-  Users, Globe, Music, Receipt, Filter
+  Users, Globe, Music, Receipt, Filter, X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -51,6 +51,7 @@ interface Event {
   category: string;
   image_url: string;
   date: string;
+  end_date?: string | null;
   price: number;
   totalRemainingStock: number;
 }
@@ -67,11 +68,30 @@ const GLOBAL_STYLES = `
       linear-gradient(to right, rgba(0, 0, 0, 0.05) 2px, transparent 2px),
       linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 2px, transparent 2px);
   }
+  .brutal-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .brutal-scroll::-webkit-scrollbar-track {
+    background: #FCFAF1;
+    border-left: 2px solid #000;
+  }
+  .brutal-scroll::-webkit-scrollbar-thumb {
+    background: #6D4AFF;
+    border: 2px solid #000;
+  }
 `;
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // ─── Marquee Component ───────────────────────────────────────────────────────
-function MarqueeTicker() {
-  const items = [
+function MarqueeTicker({ items }: { items: string[] }) {
+  const fallbackItems = [
     "🎸 KONSER TERBARU UDAH LIVE",
     "🎫 TIKET LIMITED — GASKEUN SEKARANG",
     "🎭 TEATER EKSKLUSIF HADIR DI TIKETIN",
@@ -79,7 +99,8 @@ function MarqueeTicker() {
     "🏆 #1 PLATFORM TIKET KONSER INDONESIA",
     "✨ DAFTARIN EVENT DI TIKETIN",
   ];
-  const repeated = [...items, ...items];
+  const activeItems = items && items.length > 0 ? items : fallbackItems;
+  const repeated = [...activeItems, ...activeItems];
 
   return (
     <motion.div 
@@ -93,7 +114,7 @@ function MarqueeTicker() {
         animate={{ x: ["0%", "-50%"] }}
         transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
       >
-        {repeated.map((item, i) => (
+        {activeItems.length > 0 && repeated.map((item, i) => (
           <span key={i} className="font-black uppercase italic text-[11px] tracking-widest text-slate-900 shrink-0">
             {item}
           </span>
@@ -138,7 +159,7 @@ function DotGrid({ className = "" }: { className?: string }) {
 
 function CategoryBadge({ category }: { category: string }) {
   const map: Record<string, { bg: string; text: string }> = {
-    MUSIK:  { bg: "bg-[#6D4AFF] text-white",  text: "MUSIK"  },
+    MUSIK: { bg: "bg-[#6D4AFF] text-white", text: "MUSIK" },
     TEATER: { bg: "bg-emerald-400 text-slate-900", text: "TEATER" },
   };
   const style = map[category?.toUpperCase()] ?? { bg: "bg-slate-200 text-slate-700", text: category ?? "EVENT" };
@@ -153,7 +174,7 @@ function CategoryBadge({ category }: { category: string }) {
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
-};
+} as const;
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -162,11 +183,12 @@ const staggerContainer = {
 
 export default function ExplorePage() {
   const router = useRouter();
-  
+  const today = getLocalDateString();
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [heroEvents, setHeroEvents] = useState<Event[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -175,11 +197,21 @@ export default function ExplorePage() {
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
-  const [sortBy, setSortBy] = useState("NEWEST"); 
+  const [sortBy, setSortBy] = useState("NEWEST");
   const [visibleCount, setVisibleCount] = useState(6);
-  
+
+  // State for Event Details Modal
+  const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
+  const [eventTiers, setEventTiers] = useState<any[]>([]);
+  const [isLoadingTiers, setIsLoadingTiers] = useState(false);
+
+  // State for Event Reviews
+  const [eventReviews, setEventReviews] = useState<any[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
   // ⚡ STATE UNTUK HAPPY FANS (DINAMIS DARI DATABASE)
   const [totalFans, setTotalFans] = useState(0);
+  const [marqueeItems, setMarqueeItems] = useState<string[]>([]);
 
   useEffect(() => {
     const styleTag = document.createElement("style");
@@ -191,7 +223,7 @@ export default function ExplorePage() {
 
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
-    
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
       document.head.removeChild(styleTag);
@@ -220,7 +252,7 @@ export default function ExplorePage() {
       .from("profiles")
       .select("*", { count: "exact", head: true })
       .eq("role", "customer");
-    
+
     if (fansCount !== null) {
       setTotalFans(fansCount); // Murni sesuai jumlah customer di tabel profiles
     }
@@ -244,6 +276,20 @@ export default function ExplorePage() {
       setEvents(formattedEvents);
       setHeroEvents(formattedEvents.slice(0, 3));
     }
+    // ⚡ TARIK DATA MARQUEE SETTINGS DARI DATABASE
+    try {
+      const { data: setting } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marquee_ticker")
+        .single();
+      if (setting && Array.isArray(setting.value)) {
+        setMarqueeItems(setting.value as string[]);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil settings marquee:", err);
+    }
+
     setIsLoading(false);
   };
 
@@ -251,12 +297,12 @@ export default function ExplorePage() {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
-  
+
   // ⚡ LOGIC ROLLBACK PADA WISHLIST
   const toggleLike = async (eventId: string) => {
     if (!userProfile) return;
     const isLiked = likedEvents.has(eventId);
-    
+
     // Optimistic Update UI
     setLikedEvents((prev) => {
       const next = new Set(prev);
@@ -311,6 +357,54 @@ export default function ExplorePage() {
     }
   };
 
+  const openDetailModal = async (event: Event) => {
+    setSelectedEventDetails(event);
+    setIsLoadingTiers(true);
+    setEventTiers([]);
+    setIsLoadingReviews(true);
+    setEventReviews([]);
+    
+    try {
+      const { data, error } = await supabase
+        .from("ticket_categories")
+        .select("*")
+        .eq("event_id", event.id)
+        .order("price", { ascending: true });
+      if (!error && data) {
+        setEventTiers(data);
+      }
+    } catch (err) {
+      console.error("Gagal mengambil tier tiket:", err);
+    } finally {
+      setIsLoadingTiers(false);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          user_id,
+          profiles (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("event_id", event.id)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setEventReviews(data);
+      }
+    } catch (err) {
+      console.error("Gagal mengambil ulasan:", err);
+    } finally {
+      setIsLoadingReviews(false);
+    }
+  };
+
   let processedEvents = events.filter((event) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = (
@@ -318,13 +412,17 @@ export default function ExplorePage() {
       event.location?.toLowerCase().includes(query) ||
       event.description?.toLowerCase().includes(query)
     );
-    const matchesCategory = selectedCategory === "ALL" || event.category?.toUpperCase() === selectedCategory;
+    const matchesCategory =
+      selectedCategory === "ALL" ||
+      (selectedCategory === "FAVORIT"
+        ? likedEvents.has(event.id)
+        : event.category?.toUpperCase() === selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
-  if (sortBy === "PRICE_ASC") processedEvents.sort((a,b) => a.price - b.price);
-  else if (sortBy === "PRICE_DESC") processedEvents.sort((a,b) => b.price - a.price);
-  else if (sortBy === "TRENDING") processedEvents.sort((a,b) => a.totalRemainingStock - b.totalRemainingStock);
+  if (sortBy === "PRICE_ASC") processedEvents.sort((a, b) => a.price - b.price);
+  else if (sortBy === "PRICE_DESC") processedEvents.sort((a, b) => b.price - a.price);
+  else if (sortBy === "TRENDING") processedEvents.sort((a, b) => a.totalRemainingStock - b.totalRemainingStock);
 
   const visibleEvents = processedEvents.slice(0, visibleCount);
 
@@ -341,7 +439,7 @@ export default function ExplorePage() {
         <TicketIcon className="text-amber-400" size={48} strokeWidth={3} />
       </motion.div>
       <p className="font-black italic text-3xl text-slate-900 uppercase -skew-x-6 tracking-tighter mt-4 bg-white px-4 border-4 border-black shadow-[4px_4px_0_0_#000]">
-        LOADING ARENA<motion.span animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>
+        LOADING ARENA<motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1 }}>...</motion.span>
       </p>
     </div>
   );
@@ -400,8 +498,8 @@ export default function ExplorePage() {
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
-                <DropdownMenuItem 
-                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer" 
+                <DropdownMenuItem
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -412,9 +510,61 @@ export default function ExplorePage() {
         </div>
       </nav>
 
-      <MarqueeTicker />
+      <MarqueeTicker items={marqueeItems} />
 
-      <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-16 pb-24 relative z-10">
+      <AnimatePresence>
+        {userProfile && userProfile.verification_status !== "approved" && (
+          <motion.div
+            initial={{ opacity: 0, y: -30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -30, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 120, damping: 14 }}
+            className="w-full max-w-7xl mx-auto px-6 sm:px-12 mt-6 relative z-30"
+          >
+            {userProfile.verification_status === "pending" ? (
+              <div className="bg-amber-400 border-4 border-slate-900 p-5 md:p-6 shadow-[8px_8px_0_0_#000] flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-left w-full">
+                  <div className="h-12 w-12 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 -rotate-3 shadow-[3px_3px_0_0_#000]">
+                    <span className="text-2xl animate-pulse">⏳</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-black uppercase italic text-slate-900 leading-tight">
+                      KYC SEDANG DIPROSES
+                    </h3>
+                    <p className="font-bold text-xs text-slate-700 uppercase tracking-wider mt-0.5">
+                      Dokumen KTP kamu sedang diverifikasi oleh admin. Harap tunggu proses verifikasi selesai!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-red-500 border-4 border-slate-900 p-5 md:p-6 shadow-[8px_8px_0_0_#000] flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 text-left w-full">
+                  <div className="h-12 w-12 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 rotate-3 shadow-[3px_3px_0_0_#000]">
+                    <span className="text-2xl animate-bounce">⚠️</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-black uppercase italic text-white leading-tight">
+                      BELUM VERIFIKASI KTP!
+                    </h3>
+                    <p className="font-bold text-xs text-red-100 uppercase tracking-wider mt-0.5">
+                      Verifikasi sekarang agar kamu bisa berpartisipasi dalam war tiket event terpopuler!
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push("/verify")}
+                  className="w-full md:w-auto bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-6 py-3 font-black italic uppercase text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 text-center"
+                >
+                  VERIFIKASI SEKARANG!
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-10 pb-24 relative z-10">
 
         {/* HERO HEADER */}
         <header className="mb-16 space-y-8 flex flex-col items-start text-left">
@@ -444,10 +594,21 @@ export default function ExplorePage() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setVisibleCount(6); 
+                setVisibleCount(6);
               }}
-              className="h-16 md:h-20 w-full pl-12 md:pl-16 pr-6 border-4 border-slate-900 bg-white font-black text-sm md:text-lg uppercase outline-none -skew-x-3 focus:bg-amber-50 transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24]"
+              className="h-16 md:h-20 w-full pl-12 md:pl-16 pr-12 md:pr-16 border-4 border-slate-900 bg-white font-black text-sm md:text-lg uppercase outline-none -skew-x-3 focus:bg-amber-50 transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24]"
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setVisibleCount(6);
+                }}
+                className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 border-2 border-transparent hover:border-slate-900 rounded-none transition-all z-10"
+              >
+                <X className="h-5 w-5 md:h-6 md:w-6 text-slate-900" strokeWidth={3} />
+              </button>
+            )}
           </motion.div>
         </header>
 
@@ -484,7 +645,7 @@ export default function ExplorePage() {
 
         {/* SCROLL REVEAL: HERO CAROUSEL */}
         {!searchQuery && (
-          <motion.section 
+          <motion.section
             variants={fadeInUp}
             initial="hidden"
             whileInView="visible"
@@ -548,20 +709,25 @@ export default function ExplorePage() {
                   </motion.div>
                 )}
 
-                <button 
-                  disabled={heroEvents[currentHeroIndex]?.totalRemainingStock === 0}
-                  onClick={() => {
-                    const activeHeroId = heroEvents[currentHeroIndex]?.id;
-                    if (activeHeroId) handleBookNow(activeHeroId);
-                  }}
-                  className={`border-4 border-slate-900 px-8 md:px-10 py-4 md:py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${
-                     heroEvents[currentHeroIndex]?.totalRemainingStock === 0 
-                     ? 'bg-slate-500 text-slate-300 cursor-not-allowed' 
-                     : 'bg-white text-black hover:bg-amber-400'
-                  }`}
-                >
-                  {heroEvents[currentHeroIndex]?.totalRemainingStock === 0 ? "SOLD OUT" : "BOOK NOW"}
-                </button>
+                {(() => {
+                  const activeHero = heroEvents[currentHeroIndex];
+                  const isHeroEnded = activeHero ? (activeHero.end_date ? activeHero.end_date < today : activeHero.date < today) : false;
+                  return (
+                    <button
+                      disabled={heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded}
+                      onClick={() => {
+                        const activeHeroId = heroEvents[currentHeroIndex]?.id;
+                        if (activeHeroId) handleBookNow(activeHeroId);
+                      }}
+                      className={`border-4 border-slate-900 px-8 md:px-10 py-4 md:py-5 font-black uppercase text-sm shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all -skew-x-6 ${(heroEvents[currentHeroIndex]?.totalRemainingStock === 0 || isHeroEnded)
+                        ? 'bg-slate-500 text-slate-300 cursor-not-allowed'
+                        : 'bg-white text-black hover:bg-amber-400'
+                        }`}
+                    >
+                      {isHeroEnded ? "STAGE SELESAI" : heroEvents[currentHeroIndex]?.totalRemainingStock === 0 ? "SOLD OUT" : "BOOK NOW"}
+                    </button>
+                  );
+                })()}
               </div>
 
               <div className="absolute bottom-6 right-6 z-30 flex gap-3">
@@ -577,8 +743,8 @@ export default function ExplorePage() {
           </motion.section>
         )}
 
-        <div className="flex flex-col items-center justify-center space-y-16 mb-16 mt-32 pt-10">
-          <motion.div 
+        <div className="flex flex-col items-center justify-center space-y-10 mb-22 mt-10 pt-10">
+          <motion.div
             variants={fadeInUp}
             initial="hidden"
             whileInView="visible"
@@ -593,14 +759,14 @@ export default function ExplorePage() {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 w-full max-w-4xl mx-auto pt-6 px-4"
+            className="flex flex-row justify-center w-full max-w-5xl mx-auto pt-6 px-4 gap-4 sm:gap-6 md:gap-8"
           >
-            {["ALL", "MUSIK", "TEATER"].map((cat) => {
+            {["ALL", "MUSIK", "TEATER", "FAVORIT"].map((cat) => {
               const isActive = selectedCategory === cat;
               return (
                 <motion.button
@@ -608,17 +774,17 @@ export default function ExplorePage() {
                   key={cat}
                   onClick={() => {
                     setSelectedCategory(cat);
-                    setVisibleCount(6); 
+                    setVisibleCount(6);
                   }}
-                  className={`group relative w-full h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
-                    isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-1 translate-y-1 md:translate-x-3 md:translate-y-3" : "bg-white text-slate-900"
-                  }`}
+                  className={`group relative flex-1 min-w-[75px] max-w-[220px] h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 font-black italic uppercase transition-all shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000] md:shadow-[4px_4px_0_0_#6D4AFF,8px_8px_0_0_#000,12px_12px_0_0_#FBBF24] hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${isActive ? "bg-[#6D4AFF] text-white shadow-none translate-x-1 translate-y-1 md:translate-x-3 md:translate-y-3" : "bg-white text-slate-900"
+                    }`}
                 >
-                  <div className="flex items-center gap-3">
-                    {cat === "MUSIK" && <Music size={24} strokeWidth={3} className={isActive ? "text-amber-400" : "text-slate-900"} />}
-                    {cat === "TEATER" && <Sparkles size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
-                    {cat === "ALL" && <TicketIcon size={24} strokeWidth={3} className={isActive ? "text-amber-300" : "text-slate-900"} />}
-                    <span className="tracking-[0.15em] text-base md:text-lg">{cat}</span>
+                  <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3">
+                    {cat === "MUSIK" && <Music className={`h-5 w-5 md:h-6 md:w-6 stroke-[3] ${isActive ? "text-amber-400" : "text-slate-900"}`} />}
+                    {cat === "TEATER" && <Sparkles className={`h-5 w-5 md:h-6 md:w-6 stroke-[3] ${isActive ? "text-amber-300" : "text-slate-900"}`} />}
+                    {cat === "ALL" && <TicketIcon className={`h-5 w-5 md:h-6 md:w-6 stroke-[3] ${isActive ? "text-amber-300" : "text-slate-900"}`} />}
+                    {cat === "FAVORIT" && <HeartIcon className={`h-5 w-5 md:h-6 md:w-6 stroke-[3] ${isActive ? "text-white animate-pulse" : "text-slate-900"}`} fill={isActive ? "white" : "none"} />}
+                    <span className="tracking-[0.1em] sm:tracking-[0.15em] text-[10px] sm:text-xs md:text-sm lg:text-base">{cat}</span>
                   </div>
                 </motion.button>
               );
@@ -627,7 +793,7 @@ export default function ExplorePage() {
         </div>
 
         {/* ⚡ DROPDOWN SORTING */}
-        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-center mt-8 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
+        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-center mt-12 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
           <p className="font-black italic uppercase text-slate-400 text-sm">
             Menampilkan {visibleEvents.length} dari {processedEvents.length} Event
           </p>
@@ -635,8 +801,8 @@ export default function ExplorePage() {
             <Filter size={20} className="hidden md:block text-slate-400" />
             <select
               value={sortBy}
-              onChange={(e) => { 
-                setSortBy(e.target.value); 
+              onChange={(e) => {
+                setSortBy(e.target.value);
                 setVisibleCount(6);
               }}
               className="w-full md:w-auto p-4 border-4 border-slate-900 bg-amber-400 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] outline-none cursor-pointer hover:bg-white transition-colors"
@@ -660,18 +826,34 @@ export default function ExplorePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: "-60px" }}
                     transition={{ duration: 0.4, delay: (idx % 3) * 0.1 }}
-                    className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group"
+                    className="bg-white border-4 border-slate-900 shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000] md:shadow-[6px_6px_0_0_#6D4AFF,12px_12px_0_0_#000,18px_18px_0_0_#FBBF24] hover:shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000,24px_24px_0_0_#FBBF24] hover:-translate-x-1 hover:-translate-y-1 transition-all flex flex-col group cursor-pointer"
+                    onClick={() => openDetailModal(event)}
                   >
                     <div className="relative h-64 border-b-4 border-slate-900 overflow-hidden bg-black">
                       <img src={event.image_url} alt={event.title} className="w-full h-full object-cover opacity-90 group-hover:scale-110 group-hover:opacity-100 transition-all duration-500" />
-                      
-                      {event.totalRemainingStock === 0 && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-20">
-                           <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-3xl italic uppercase -skew-x-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
-                             SOLD OUT
-                           </div>
-                        </div>
-                      )}
+
+                      {(() => {
+                        const isEventEnded = event.end_date ? event.end_date < today : event.date < today;
+                        if (isEventEnded) {
+                          return (
+                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-[2px] z-20">
+                              <div className="bg-slate-900 text-amber-400 border-4 border-amber-400 px-6 py-2 font-black text-3xl italic uppercase -skew-x-12 shadow-[4px_4px_0_0_rgba(251,191,36,1)]">
+                                STAGE SELESAI
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (event.totalRemainingStock === 0) {
+                          return (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-20">
+                              <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-3xl italic uppercase -skew-x-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
+                                SOLD OUT
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       <div className="absolute top-4 left-4 z-30">
                         <CategoryBadge category={event.category} />
@@ -685,9 +867,8 @@ export default function ExplorePage() {
 
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleLike(event.id); }}
-                        className={`absolute top-4 right-4 z-30 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${
-                          likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
-                        }`}
+                        className={`absolute top-4 right-4 z-30 p-3 border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)] transition-all ${likedEvents.has(event.id) ? "bg-red-500 text-white" : "bg-white hover:bg-red-500 hover:text-white"
+                          }`}
                       >
                         <HeartIcon size={18} strokeWidth={3} fill={likedEvents.has(event.id) ? "white" : "none"} />
                       </button>
@@ -712,22 +893,45 @@ export default function ExplorePage() {
                           </p>
                         )}
                       </div>
-                      <div className="pt-6 border-t-4 border-slate-900 flex items-center justify-between mt-auto">
-                        <div className="text-left">
-                          <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
-                          <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
+                      <div className="pt-6 border-t-4 border-slate-900 flex flex-col gap-4 mt-auto">
+                        <div className="flex items-center justify-between">
+                          <div className="text-left">
+                            <p className="text-[8px] font-black text-slate-400 mb-1 uppercase italic">From</p>
+                            <p className="text-2xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">{formatRupiah(event.price)}</p>
+                          </div>
+                          {event.totalRemainingStock > 0 ? (
+                            <span className="bg-emerald-400 border-2 border-slate-900 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000]">
+                              Tersedia
+                            </span>
+                          ) : (
+                            <span className="bg-red-500 text-white border-2 border-slate-900 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000]">
+                              Sold Out
+                            </span>
+                          )}
                         </div>
-                        <button 
-                          disabled={event.totalRemainingStock === 0}
-                          onClick={() => handleBookNow(event.id)} 
-                          className={`h-14 w-14 flex items-center justify-center border-4 border-slate-900 shadow-[4px_4px_0_0_rgba(109,74,255,1)] rotate-12 transition-all ${
-                             event.totalRemainingStock === 0 
-                             ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none rotate-0' 
-                             : 'bg-slate-900 text-white hover:rotate-0 hover:bg-[#6D4AFF]'
-                          }`}
-                        >
-                          <ChevronRight size={24} strokeWidth={4} />
-                        </button>
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openDetailModal(event); }}
+                            className="w-full py-3 bg-white hover:bg-amber-400 text-slate-900 border-4 border-slate-900 font-black italic uppercase text-[10px] tracking-wider shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all text-center"
+                          >
+                            DETAIL INFO
+                          </button>
+                          {(() => {
+                            const isEventEnded = event.end_date ? event.end_date < today : event.date < today;
+                            return (
+                              <button
+                                disabled={event.totalRemainingStock === 0 || isEventEnded}
+                                onClick={(e) => { e.stopPropagation(); handleBookNow(event.id); }}
+                                className={`w-full py-3 border-4 border-slate-900 font-black italic uppercase text-[10px] tracking-wider shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all text-center ${(event.totalRemainingStock === 0 || isEventEnded)
+                                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                                  : 'bg-[#6D4AFF] text-white hover:bg-slate-900'
+                                  }`}
+                              >
+                                {isEventEnded ? "SELESAI" : "WAR TIKET"}
+                              </button>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -736,7 +940,7 @@ export default function ExplorePage() {
 
               {visibleCount < processedEvents.length && (
                 <div className="flex justify-center mb-24">
-                  <button 
+                  <button
                     onClick={() => setVisibleCount(prev => prev + 6)}
                     className="bg-white border-4 border-slate-900 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3"
                   >
@@ -746,17 +950,28 @@ export default function ExplorePage() {
               )}
             </>
           ) : (
-            <div className="py-24 text-center border-8 border-black shadow-[8px_8px_0_0_#000] bg-white mb-24 relative overflow-hidden -rotate-1">
+            <div className="py-24 text-center border-8 border-black shadow-[8px_8px_0_0_#000] bg-white mb-24 relative overflow-hidden -rotate-1 flex flex-col items-center justify-center gap-6">
               <DotGrid className="opacity-20" />
-              <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 relative z-10">🎫</p>
+              <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-2 relative z-10">🎫</p>
               <p className="text-4xl font-black italic uppercase text-slate-300 relative z-10">STAGE GAK NEMU</p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("ALL");
+                  setSortBy("NEWEST");
+                  setVisibleCount(6);
+                }}
+                className="relative z-10 bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-8 py-4 font-black italic uppercase text-xs shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all -skew-x-3"
+              >
+                RESET PENCARIAN & FILTER
+              </button>
             </div>
           )}
         </div>
 
         {/* SCROLL REVEAL: CTA EO */}
         {!searchQuery && (
-          <motion.section 
+          <motion.section
             variants={fadeInUp}
             initial="hidden"
             whileInView="visible"
@@ -777,7 +992,7 @@ export default function ExplorePage() {
       </main>
 
       {/* SCROLL REVEAL: FOOTER */}
-      <motion.footer 
+      <motion.footer
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
@@ -821,6 +1036,227 @@ export default function ExplorePage() {
           >
             <ArrowUp size={24} strokeWidth={4} />
           </motion.button>
+        )}
+      </AnimatePresence>
+      {/* ─── EVENT DETAILS MODAL ─── */}
+      <AnimatePresence>
+        {selectedEventDetails && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-10 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedEventDetails(null)}
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              transition={{ type: "spring", stiffness: 150, damping: 18 }}
+              className="bg-[#FCFAF1] border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row my-8"
+            >
+              {/* Left Side: Banner Image & Category */}
+              <div className="w-full md:w-1/2 relative min-h-[250px] md:min-h-[450px] border-b-8 md:border-b-0 md:border-r-8 border-slate-900 bg-black">
+                <img
+                  src={selectedEventDetails.image_url}
+                  alt={selectedEventDetails.title}
+                  className="w-full h-full object-cover opacity-90"
+                />
+                <div className="absolute top-4 left-4 z-20">
+                  <CategoryBadge category={selectedEventDetails.category} />
+                </div>
+
+                {/* Expired / Soldout overlay */}
+                {(() => {
+                  const isEnded = selectedEventDetails.end_date ? selectedEventDetails.end_date < today : selectedEventDetails.date < today;
+                  if (isEnded) {
+                    return (
+                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-[2px] z-10">
+                        <div className="bg-slate-900 text-amber-400 border-4 border-amber-400 px-6 py-2 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(251,191,36,1)]">
+                          STAGE SELESAI
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (selectedEventDetails.totalRemainingStock === 0) {
+                    return (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-10">
+                        <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
+                          SOLD OUT
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
+              {/* Right Side: Details Info */}
+              <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto max-h-[90vh] md:max-h-[600px] text-left relative">
+                {/* Close Button */}
+                <button
+                  onClick={() => setSelectedEventDetails(null)}
+                  className="absolute top-4 right-4 z-30 h-10 w-10 bg-white hover:bg-red-500 hover:text-white border-4 border-slate-900 shadow-[3px_3px_0_0_#000] flex items-center justify-center font-black transition-all hover:rotate-90"
+                >
+                  <X size={20} strokeWidth={3} />
+                </button>
+
+                <div className="space-y-6">
+                  {/* Event Title */}
+                  <h2 className="text-2xl md:text-3xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-words mt-4 pr-10">
+                    {selectedEventDetails.title}
+                  </h2>
+
+                  {/* Metadata */}
+                  <div className="space-y-3 border-y-4 border-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    <div className="flex items-center gap-3">
+                      <Calendar size={18} className="text-red-500 shrink-0" />
+                      <span>
+                        Mulai: {selectedEventDetails.date}
+                        {selectedEventDetails.end_date && ` s/d ${selectedEventDetails.end_date}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <MapPin size={18} className="text-[#6D4AFF] shrink-0" />
+                      <span>{selectedEventDetails.location}</span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deskripsi Event</p>
+                    <div className="bg-white border-4 border-slate-900 p-4 font-medium text-xs sm:text-sm text-slate-700 max-h-[150px] overflow-y-auto brutal-scroll">
+                      {selectedEventDetails.description || "Tidak ada deskripsi untuk event ini."}
+                    </div>
+                  </div>
+
+                  {/* Tiers/Kategori Tiket */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Kategori Tiket Tersedia</p>
+                    {isLoadingTiers ? (
+                      <div className="flex items-center gap-2 text-slate-500 text-xs font-bold italic py-2">
+                        <Loader2 className="animate-spin text-[#6D4AFF]" size={14} />
+                        MENGAMBIL TIER TIKET...
+                      </div>
+                    ) : eventTiers.length > 0 ? (
+                      <div className="space-y-2 max-h-[180px] overflow-y-auto brutal-scroll pr-1">
+                        {eventTiers.map((tier) => (
+                          <div
+                            key={tier.id}
+                            className="bg-white border-2 border-slate-900 p-3 flex justify-between items-center shadow-[3px_3px_0_0_#000] gap-2"
+                          >
+                            <div className="text-left">
+                              <p className="font-black text-xs md:text-sm uppercase italic text-slate-900">{tier.name}</p>
+                              {tier.description && (
+                                <p className="text-[9px] text-slate-500 font-bold uppercase">{tier.description}</p>
+                              )}
+                              <p className="text-[9px] text-red-500 font-bold uppercase mt-0.5">Sisa: {tier.stock} Tiket</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-black text-xs md:text-sm text-[#6D4AFF] italic">{formatRupiah(tier.price)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold text-red-500 italic py-2">KATEGORI TIKET BELUM DIATUR EO!</p>
+                    )}
+                  </div>
+
+                  {/* Ulasan Pembeli */}
+                  <div className="space-y-2 border-t-4 border-slate-900 pt-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Ulasan Pembeli</p>
+                      {eventReviews.length > 0 && (
+                        <span className="bg-amber-400 border-2 border-slate-900 px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] flex items-center gap-1">
+                          ★ {(eventReviews.reduce((acc, r) => acc + r.rating, 0) / eventReviews.length).toFixed(1)} / 5.0 ({eventReviews.length})
+                        </span>
+                      )}
+                    </div>
+
+                    {isLoadingReviews ? (
+                      <div className="flex items-center gap-2 text-slate-500 text-xs font-bold italic py-2">
+                        <Loader2 className="animate-spin text-[#6D4AFF]" size={14} />
+                        MENGAMBIL ULASAN...
+                      </div>
+                    ) : eventReviews.length > 0 ? (
+                      <div className="space-y-3 max-h-[200px] overflow-y-auto brutal-scroll pr-1">
+                        {eventReviews.map((review) => (
+                          <div key={review.id} className="bg-white border-2 border-slate-900 p-3 shadow-[3px_3px_0_0_#000] space-y-1">
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6 border-2 border-slate-900 rounded-none shadow-[1px_1px_0_0_rgba(0,0,0,1)]">
+                                  <AvatarImage src={review.profiles?.avatar_url} />
+                                  <AvatarFallback className="bg-amber-400 text-slate-900 font-black text-[9px]">
+                                    {review.profiles?.full_name?.charAt(0) || "U"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-[10px] font-black uppercase text-slate-900 leading-none">
+                                    {review.profiles?.full_name || "Anonymous"}
+                                  </p>
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase">
+                                    {new Date(review.created_at).toLocaleDateString("id-ID")}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex gap-0.5">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    size={10}
+                                    className={i < review.rating ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-xs font-medium text-slate-600 normal-case tracking-normal italic pl-8">
+                              "{review.comment}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold text-slate-400 italic py-2">Belum ada ulasan untuk event ini.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="pt-6 border-t-4 border-slate-900 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mt-6">
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase italic">Harga Mulai Dari</p>
+                    <p className="text-3xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
+                      {formatRupiah(selectedEventDetails.price)}
+                    </p>
+                  </div>
+                  {(() => {
+                    const isEnded = selectedEventDetails.end_date ? selectedEventDetails.end_date < today : selectedEventDetails.date < today;
+                    return (
+                      <button
+                        disabled={selectedEventDetails.totalRemainingStock === 0 || isEnded}
+                        onClick={() => {
+                          setSelectedEventDetails(null);
+                          handleBookNow(selectedEventDetails.id);
+                        }}
+                        className={`py-4 px-8 border-4 border-slate-900 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#6D4AFF] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${selectedEventDetails.totalRemainingStock === 0 || isEnded
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                          : "bg-amber-400 text-slate-900 hover:bg-[#6D4AFF] hover:text-white"
+                          }`}
+                      >
+                        {selectedEventDetails.totalRemainingStock === 0 ? "SOLD OUT" : isEnded ? "EVENT SELESAI" : "BELI TIKET"}
+                        <ChevronRight size={18} strokeWidth={4} />
+                      </button>
+                    );
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

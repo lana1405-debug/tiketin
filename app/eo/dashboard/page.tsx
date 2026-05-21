@@ -9,9 +9,23 @@ import {
   PlusCircle, Calendar, Edit2, Trash2,
   ImageIcon, Box, Zap, X, UploadCloud, Tag,
   Banknote, QrCode, Users, Activity, Target, ShieldCheck,
-  Landmark, HandCoins, Clock, CheckCircle2, LifeBuoy, MessageSquare, Send
+  Landmark, HandCoins, Clock, CheckCircle2, LifeBuoy, MessageSquare, Send,
+  Percent, Star, ChevronLeft
 } from "lucide-react";
 import Link from "next/link";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  BarChart,
+  Bar,
+  Cell
+} from "recharts";
 
 import {
   DropdownMenu,
@@ -25,8 +39,16 @@ const poppins = Poppins({
   weight: ["400", "700", "900"] 
 });
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function EODashboard() {
   const router = useRouter();
+  const today = getLocalDateString();
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [eoId, setEoId] = useState<string | null>(null);
@@ -34,12 +56,35 @@ export default function EODashboard() {
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ⚡ TAB ACTIVE STATE
+  const [activeTab, setActiveTab] = useState<"events" | "analytics" | "vouchers" | "feedback">("events");
+
+  // ⚡ STATE ANALYTICS
+  const [analyticsDaily, setAnalyticsDaily] = useState<any[]>([]);
+  const [analyticsCategories, setAnalyticsCategories] = useState<any[]>([]);
+
+  // ⚡ STATE VOUCHERS
+  const [vouchersList, setVouchersList] = useState<any[]>([]);
+  const [isVoucherSubmitting, setIsVoucherSubmitting] = useState(false);
+  const [voucherForm, setVoucherForm] = useState({
+    code: "",
+    event_id: "",
+    discount_type: "percentage",
+    discount_value: "",
+    max_uses: "",
+    valid_from: getLocalDateString(),
+    valid_to: ""
+  });
+
+  // ⚡ STATE REVIEWS
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+
   // ⚡ STATE KEUANGAN
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
   const [totalTicketsSold, setTotalTicketsSold] = useState(0);
   const [tierStats, setTierStats] = useState<{name: string, sold: number, rev: number}[]>([]);
-  const [withdrawals, setWithdrawals] = useState<Record<string, string>>({});
+  const [withdrawals, setWithdrawals] = useState<Record<string, { status: string, receipt_url: string | null }>>({});
 
   // ⚡ STATE LIVE CHAT
   const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
@@ -66,18 +111,23 @@ export default function EODashboard() {
     title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "",
   });
 
-  const [categories, setCategories] = useState([{ id: Date.now(), name: "REGULAR", price: "", stock: "" }]);
+  const [categories, setCategories] = useState<any[]>([{ id: Date.now(), name: "REGULAR", price: "", stock: "", isNew: true }]);
+  const [deletedCategoryIds, setDeletedCategoryIds] = useState<any[]>([]);
 
   // ⚡ LOGIC MANIPULASI ARRAY KATEGORI (TIER TIKET)
   const addCategory = () => {
-    setCategories([...categories, { id: Date.now(), name: "", price: "", stock: "" }]);
+    setCategories([...categories, { id: Date.now(), name: "", price: "", stock: "", isNew: true }]);
   };
 
-  const removeCategory = (idToRemove: number) => {
-    setCategories(categories.filter(cat => cat.id !== idToRemove));
+  const removeCategory = (idToRemove: any) => {
+    const cat = categories.find(c => c.id === idToRemove);
+    if (cat && !cat.isNew) {
+      setDeletedCategoryIds(prev => [...prev, cat.id]);
+    }
+    setCategories(categories.filter(c => c.id !== idToRemove));
   };
 
-  const updateCategory = (id: number, field: string, value: string) => {
+  const updateCategory = (id: any, field: string, value: string) => {
     setCategories(categories.map(cat => cat.id === id ? { ...cat, [field]: value } : cat));
   };
 
@@ -87,11 +137,28 @@ export default function EODashboard() {
     const defaultStock = "500";
     const newCat = {
       id: Date.now(),
-      name: ` - ${type} PASS`,
+      name: `${type} PASS`,
       price: defaultPrice,
-      stock: defaultStock
+      stock: defaultStock,
+      isNew: true
     };
     setCategories([...categories, newCat]);
+  };
+
+  // ⚡ LOGIC AUTO-GENERATE TIKET HARIAN (DAILY PASSES)
+  const handleGenerateDailyPasses = () => {
+    const days = getEventDurationInDays();
+    const newCats = [];
+    for (let i = 1; i <= days; i++) {
+      newCats.push({
+        id: Date.now() + i,
+        name: `DAY ${i} PASS`,
+        price: "150000",
+        stock: "200",
+        isNew: true
+      });
+    }
+    setCategories([...categories, ...newCats]);
   };
 
   // ⚡ MENGHITUNG DURASI EVENT UNTUK MENAMPILKAN TOMBOL MULTI-DAY
@@ -130,15 +197,89 @@ export default function EODashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [router, eoId]);
 
+  const fetchVouchers = async (eventIds: string[]) => {
+    if (eventIds.length === 0) {
+      setVouchersList([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("vouchers")
+      .select("*, events(title)")
+      .in("event_id", eventIds)
+      .order("created_at", { ascending: false });
+    if (data) setVouchersList(data);
+  };
+
+  const fetchReviews = async (eventIds: string[]) => {
+    if (eventIds.length === 0) {
+      setReviewsList([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("reviews")
+      .select("*, events(title), profiles(full_name)")
+      .in("event_id", eventIds)
+      .order("created_at", { ascending: false });
+    if (data) setReviewsList(data);
+  };
+
+  const fetchSalesAnalytics = async (eventIds: string[]) => {
+    if (eventIds.length === 0) {
+      setAnalyticsDaily([]);
+      setAnalyticsCategories([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("transaksi")
+      .select("total_bayar, total_qty, created_at, category_id, ticket_categories(name)")
+      .in("event_id", eventIds)
+      .eq("status_pembayaran", "paid")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Gagal fetch analytics:", error);
+      return;
+    }
+
+    // Group revenue by day
+    const revByDay: Record<string, number> = {};
+    // Group category performance
+    const catSales: Record<string, { name: string, sold: number, revenue: number }> = {};
+
+    data?.forEach(tx => {
+      const dateStr = getLocalDateString(new Date(tx.created_at));
+      revByDay[dateStr] = (revByDay[dateStr] || 0) + Number(tx.total_bayar);
+
+      const catName = (Array.isArray(tx.ticket_categories)
+        ? tx.ticket_categories[0]?.name
+        : (tx.ticket_categories as any)?.name) || "Unknown";
+      if (!catSales[catName]) {
+        catSales[catName] = { name: catName, sold: 0, revenue: 0 };
+      }
+      catSales[catName].sold += Number(tx.total_qty || 1);
+      catSales[catName].revenue += Number(tx.total_bayar);
+    });
+
+    const dailyData = Object.entries(revByDay).map(([date, revenue]) => ({
+      date,
+      revenue
+    }));
+
+    const catData = Object.values(catSales);
+
+    setAnalyticsDaily(dailyData);
+    setAnalyticsCategories(catData);
+  };
+
   const fetchMyEvents = async (id: string) => {
     setIsLoading(true);
     const { data: eventData } = await supabase.from("events").select("*").eq("organizer_id", id).order("created_at", { ascending: false });
-    const { data: withdrawData } = await supabase.from("withdrawals").select("event_id, status, net_amount").eq("organizer_id", id);
+    const { data: withdrawData } = await supabase.from("withdrawals").select("event_id, status, net_amount, receipt_url").eq("organizer_id", id);
     
-    const wMap: Record<string, string> = {};
+    const wMap: Record<string, { status: string, receipt_url: string | null }> = {};
     let cairCount = 0;
     withdrawData?.forEach(w => {
-      wMap[w.event_id] = w.status;
+      wMap[w.event_id] = { status: w.status, receipt_url: w.receipt_url };
       if (w.status === 'completed') cairCount += Number(w.net_amount || 0);
     });
     setWithdrawals(wMap);
@@ -168,7 +309,19 @@ export default function EODashboard() {
         setTierStats(Object.values(tStats));
       }
       setEvents(eventData.map(e => ({ ...e, revenue: eventRevenues[e.id] || 0 })));
-    } else { setEvents([]); }
+      
+      // Fetch vouchers, reviews, and analytics
+      fetchVouchers(eventIds);
+      fetchReviews(eventIds);
+      fetchSalesAnalytics(eventIds);
+      setVoucherForm(prev => ({ ...prev, event_id: prev.event_id || eventData[0].id }));
+    } else { 
+      setEvents([]); 
+      setVouchersList([]);
+      setReviewsList([]);
+      setAnalyticsDaily([]);
+      setAnalyticsCategories([]);
+    }
     setIsLoading(false);
   };
 
@@ -202,6 +355,59 @@ export default function EODashboard() {
     setIsSendingComplaint(false);
   };
 
+  const handleSubmitVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!voucherForm.code || !voucherForm.event_id || !voucherForm.discount_value || !voucherForm.valid_to) {
+      return alert("Harap isi semua kolom wajib!");
+    }
+
+    setIsVoucherSubmitting(true);
+    try {
+      const payload = {
+        code: voucherForm.code.toUpperCase().replace(/\s+/g, ""),
+        event_id: voucherForm.event_id,
+        discount_type: voucherForm.discount_type,
+        discount_value: Number(voucherForm.discount_value),
+        max_uses: voucherForm.max_uses ? Number(voucherForm.max_uses) : null,
+        valid_from: new Date(voucherForm.valid_from).toISOString(),
+        valid_to: new Date(voucherForm.valid_to).toISOString(),
+        uses_count: 0
+      };
+
+      const { error } = await supabase.from("vouchers").insert([payload]);
+      if (error) throw error;
+
+      alert("Voucher berhasil dibuat!");
+      setVoucherForm({
+        code: "",
+        event_id: events[0]?.id || "",
+        discount_type: "percentage",
+        discount_value: "",
+        max_uses: "",
+        valid_from: getLocalDateString(),
+        valid_to: ""
+      });
+      const eventIds = events.map(e => e.id);
+      fetchVouchers(eventIds);
+    } catch (err: any) {
+      alert("Gagal membuat voucher: " + err.message);
+    } finally {
+      setIsVoucherSubmitting(false);
+    }
+  };
+
+  const handleDeleteVoucher = async (id: string) => {
+    if (!confirm("Hapus voucher ini?")) return;
+    const { error } = await supabase.from("vouchers").delete().eq("id", id);
+    if (error) {
+      alert("Gagal menghapus voucher: " + error.message);
+    } else {
+      alert("Voucher berhasil dihapus!");
+      const eventIds = events.map(e => e.id);
+      fetchVouchers(eventIds);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -216,6 +422,16 @@ export default function EODashboard() {
   const handleSubmitEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eoId) return;
+
+    // Validasi tanggal real-time
+    const todayStr = getLocalDateString();
+    if (formData.date < todayStr) {
+      return alert("Bro, tanggal mulai tidak boleh di masa lalu!");
+    }
+    if (formData.end_date && formData.end_date < formData.date) {
+      return alert("Bro, tanggal selesai tidak boleh sebelum tanggal mulai!");
+    }
+
     for (let cat of categories) { if (!cat.name || !cat.price || !cat.stock) return alert("Bro, data kategori tiket masih ada yang kosong!"); }
     setIsSubmitting(true);
     try {
@@ -249,6 +465,48 @@ export default function EODashboard() {
       if (editingEventId) {
         const { error: err } = await supabase.from("events").update(payload).eq("id", editingEventId);
         if (err) throw err;
+
+        // Sinkronisasi kategori tiket
+        if (deletedCategoryIds.length > 0) {
+          const { error: delErr } = await supabase
+            .from("ticket_categories")
+            .delete()
+            .in("id", deletedCategoryIds);
+          if (delErr) throw delErr;
+        }
+
+        const categoriesToInsert = categories
+          .filter(cat => cat.isNew)
+          .map(cat => ({
+            event_id: editingEventId,
+            name: cat.name,
+            price: Number(cat.price),
+            stock: Number(cat.stock)
+          }));
+
+        const categoriesToUpdate = categories
+          .filter(cat => !cat.isNew)
+          .map(cat => ({
+            id: cat.id,
+            event_id: editingEventId,
+            name: cat.name,
+            price: Number(cat.price),
+            stock: Number(cat.stock)
+          }));
+
+        if (categoriesToInsert.length > 0) {
+          const { error: insErr } = await supabase
+            .from("ticket_categories")
+            .insert(categoriesToInsert);
+          if (insErr) throw insErr;
+        }
+
+        if (categoriesToUpdate.length > 0) {
+          const { error: upsertErr } = await supabase
+            .from("ticket_categories")
+            .upsert(categoriesToUpdate);
+          if (upsertErr) throw upsertErr;
+        }
       } else {
         const { data: eventData, error: err } = await supabase.from("events").insert([payload]).select().single();
         if (err) throw err;
@@ -259,7 +517,7 @@ export default function EODashboard() {
     } catch (err: any) { alert(err.message); } finally { setIsSubmitting(false); }
   };
 
-  const openEditModal = (event: any) => {
+  const openEditModal = async (event: any) => {
     setEditingEventId(event.id);
     setFormData({ 
       title: event.title, 
@@ -271,14 +529,34 @@ export default function EODashboard() {
       max_buy: event.max_buy?.toString() || "4", 
       description: event.description || "" 
     });
-    setCategories([{ id: Date.now(), name: "DEFAULT TIER", price: event.price.toString(), stock: event.stock.toString() }]);
+
+    const { data: catData, error } = await supabase
+      .from("ticket_categories")
+      .select("*")
+      .eq("event_id", event.id);
+
+    if (error) {
+      alert("Gagal mengambil data kategori tiket: " + error.message);
+    } else if (catData && catData.length > 0) {
+      setCategories(catData.map(c => ({
+        id: c.id,
+        name: c.name,
+        price: c.price.toString(),
+        stock: c.stock.toString(),
+        isNew: false
+      })));
+    } else {
+      setCategories([{ id: Date.now(), name: "REGULAR", price: event.price.toString(), stock: event.stock.toString(), isNew: true }]);
+    }
+
     setImagePreview(event.image_url); setImageFile(null); setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false); setEditingEventId(null);
     setFormData({ title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "" });
-    setCategories([{ id: Date.now(), name: "REGULAR", price: "", stock: "" }]);
+    setCategories([{ id: Date.now(), name: "REGULAR", price: "", stock: "", isNew: true }]);
+    setDeletedCategoryIds([]);
     setImageFile(null); setImagePreview(null);
   };
 
@@ -393,95 +671,404 @@ export default function EODashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
-            <div className="xl:col-span-4 bg-black text-white border-8 border-black p-8 shadow-[12px_12px_0px_0px_#FCD34D]">
-               <div className="flex items-center gap-3 mb-8 pb-4 border-b-4 border-white/20">
-                  <Tag size={24} className="text-amber-400" />
-                  <h3 className="text-2xl font-black italic uppercase tracking-tighter">Tier Insight</h3>
-               </div>
-               <div className="space-y-6">
-                 {tierStats.length === 0 ? <p className="text-xs font-black uppercase text-white/50 italic text-center py-10">Belum ada penjualan man.</p> : tierStats.sort((a,b) => b.rev - a.rev).map((tier, idx) => (
-                    <div key={idx} className="bg-white/10 p-4 border-2 border-white hover:bg-white/20 transition-colors">
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="font-black italic uppercase text-lg text-amber-400">{tier.name}</span>
-                        <span className="font-black italic text-xs">{tier.sold} Lbr</span>
-                      </div>
-                      <p className="font-black text-xl italic tracking-tighter text-emerald-400">{formatRupiah(tier.rev)}</p>
-                    </div>
-                 ))}
-               </div>
-            </div>
+          {/* ⚡ TAB NAVIGATION */}
+          <div className="flex border-b-4 border-black mb-8 gap-4 overflow-x-auto pb-2 shrink-0">
+            <button
+              onClick={() => setActiveTab("events")}
+              className={`px-6 py-4 border-4 border-black font-black uppercase italic text-xs tracking-wider transition-all shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] cursor-pointer ${
+                activeTab === "events" ? "bg-black text-white" : "bg-white text-black"
+              }`}
+            >
+              <span className="flex items-center gap-2"><LayoutDashboard size={14}/> Operation Log</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-6 py-4 border-4 border-black font-black uppercase italic text-xs tracking-wider transition-all shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] cursor-pointer ${
+                activeTab === "analytics" ? "bg-[#6D4AFF] text-white" : "bg-white text-black"
+              }`}
+            >
+              <span className="flex items-center gap-2"><Activity size={14}/> Sales Analytics</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("vouchers")}
+              className={`px-6 py-4 border-4 border-black font-black uppercase italic text-xs tracking-wider transition-all shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] cursor-pointer ${
+                activeTab === "vouchers" ? "bg-amber-400 text-black" : "bg-white text-black"
+              }`}
+            >
+              <span className="flex items-center gap-2"><Percent size={14}/> Promo Voucher</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("feedback")}
+              className={`px-6 py-4 border-4 border-black font-black uppercase italic text-xs tracking-wider transition-all shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] cursor-pointer ${
+                activeTab === "feedback" ? "bg-emerald-400 text-black" : "bg-white text-black"
+              }`}
+            >
+              <span className="flex items-center gap-2"><Star size={14}/> Feedback Ulasan</span>
+            </button>
+          </div>
 
-            <div className="xl:col-span-8 bg-white border-8 border-black shadow-[15px_15px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col">
-              <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
-                <h3 className="text-3xl font-black italic uppercase tracking-tighter">Operation Log</h3>
-                <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{events.length} Events</span>
+          {/* ⚡ TAB 1: OPERATION LOG (EVENTS) */}
+          {activeTab === "events" && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
+              <div className="xl:col-span-4 bg-black text-white border-8 border-black p-8 shadow-[12px_12px_0px_0px_#FCD34D]">
+                 <div className="flex items-center gap-3 mb-8 pb-4 border-b-4 border-white/20">
+                    <Tag size={24} className="text-amber-400" />
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Tier Insight</h3>
+                 </div>
+                 <div className="space-y-6">
+                   {tierStats.length === 0 ? <p className="text-xs font-black uppercase text-white/50 italic text-center py-10">Belum ada penjualan man.</p> : tierStats.sort((a,b) => b.rev - a.rev).map((tier, idx) => (
+                      <div key={idx} className="bg-white/10 p-4 border-2 border-white hover:bg-white/20 transition-colors">
+                        <div className="flex justify-between items-end mb-2">
+                          <span className="font-black italic uppercase text-lg text-amber-400">{tier.name}</span>
+                          <span className="font-black italic text-xs">{tier.sold} Lbr</span>
+                        </div>
+                        <p className="font-black text-xl italic tracking-tighter text-emerald-400">{formatRupiah(tier.rev)}</p>
+                      </div>
+                   ))}
+                 </div>
               </div>
-              <div className="overflow-x-auto flex-1">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 text-black text-[10px] font-black uppercase tracking-[0.2em] border-b-4 border-black text-left">
-                      <th className="p-6 border-r-4 border-black">Deploy Details</th>
-                      <th className="p-6 border-r-4 border-black">Timeline & Status Duit</th>
-                      <th className="p-6 text-center">Execution</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y-4 divide-black">
-                    {isLoading ? <tr><td colSpan={3} className="p-24 text-center font-black italic text-2xl uppercase tracking-widest text-[#6D4AFF] animate-pulse">Syncing Database...</td></tr> : events.map((event) => {
-                      const wStatus = withdrawals[event.id];
-                      return (
-                        <tr key={event.id} className="hover:bg-amber-50 transition-colors">
-                          <td className="p-6 border-r-4 border-black text-left">
-                            <div className="flex items-center gap-4">
-                              <div className="w-16 h-16 bg-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0">
-                                 {event.image_url ? <img src={event.image_url} className="w-full h-full object-cover" alt="Poster" /> : <ImageIcon size={20} className="m-auto mt-5 text-slate-300" />}
-                              </div>
-                              <div>
-                                <span className="font-black text-lg uppercase italic -skew-x-3 block leading-none mb-1 line-clamp-1">{event.title}</span>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  <span className={`text-[8px] font-black px-2 py-0.5 border border-black uppercase italic ${event.status === 'approved' ? 'bg-emerald-400' : 'bg-amber-400'}`}>{event.status}</span>
-                                  <span className="text-[8px] font-black px-2 py-0.5 border border-black uppercase italic bg-black text-white">{event.category || 'EVENT'}</span>
+
+              <div className="xl:col-span-8 bg-white border-8 border-black shadow-[15px_15px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col">
+                <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
+                  <h3 className="text-3xl font-black italic uppercase tracking-tighter">Operation Log</h3>
+                  <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{events.length} Events</span>
+                </div>
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 text-black text-[10px] font-black uppercase tracking-[0.2em] border-b-4 border-black text-left">
+                        <th className="p-6 border-r-4 border-black">Deploy Details</th>
+                        <th className="p-6 border-r-4 border-black">Timeline & Status Duit</th>
+                        <th className="p-6 text-center">Execution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y-4 divide-black">
+                      {isLoading ? <tr><td colSpan={3} className="p-24 text-center font-black italic text-2xl uppercase tracking-widest text-[#6D4AFF] animate-pulse">Syncing Database...</td></tr> : events.map((event) => {
+                        const wStatus = withdrawals[event.id];
+                        return (
+                          <tr key={event.id} className="hover:bg-amber-50 transition-colors">
+                            <td className="p-6 border-r-4 border-black text-left">
+                              <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0">
+                                   {event.image_url ? <img src={event.image_url} className="w-full h-full object-cover" alt="Poster" /> : <ImageIcon size={20} className="m-auto mt-5 text-slate-300" />}
+                                </div>
+                                <div>
+                                  <span className="font-black text-lg uppercase italic -skew-x-3 block leading-none mb-1 line-clamp-1">{event.title}</span>
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    <span className={`text-[8px] font-black px-2 py-0.5 border border-black uppercase italic ${event.status === 'approved' ? 'bg-emerald-400' : 'bg-amber-400'}`}>{event.status}</span>
+                                    <span className="text-[8px] font-black px-2 py-0.5 border border-black uppercase italic bg-black text-white">{event.category || 'EVENT'}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="p-6 border-r-4 border-black font-black uppercase italic text-[10px] space-y-2 text-slate-600 text-left">
-                            <div className="flex items-center gap-2 text-left"><Calendar size={14} className="text-black" /> {event.date}</div>
-                            <div className="mt-2 text-left">
-                              <p className="text-[8px] text-slate-400 uppercase">Gross Revenue</p>
-                              <div className="text-lg tracking-tighter text-[#6D4AFF] leading-none mb-2">{formatRupiah(event.revenue)}</div>
-                              {event.revenue > 0 && wStatus && (
-                                <div className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-black text-[8px] font-black uppercase italic shadow-[2px_2px_0_0_#000] ${
-                                  wStatus === 'pending' ? 'bg-amber-100 text-amber-600' : wStatus === 'processing' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
-                                }`}>
-                                  {wStatus === 'pending' ? <Clock size={10}/> : wStatus === 'processing' ? <Loader2 size={10} className="animate-spin"/> : <CheckCircle2 size={10}/>}
-                                  {wStatus === 'pending' ? "Menunggu Admin" : wStatus === 'processing' ? "Sedang Ditransfer" : "Dana Cair / Selesai"}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-6 text-center">
-                            <div className="flex flex-col gap-2">
-                              {event.revenue > 0 && !wStatus && (
-                                <button onClick={() => openWithdrawModal(event)} className="w-full bg-emerald-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><HandCoins size={14} /> Cairkan Cuan</button>
-                              )}
-                              {event.status === 'approved' && (
-                                <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
-                              )}
-                              <div className="flex gap-2 text-black">
-                                <button onClick={() => openEditModal(event)} className="flex-1 bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Edit2 size={14} strokeWidth={3} /></button>
-                                <button onClick={() => { if(confirm("Hapus?")) supabase.from("events").delete().eq("id", event.id).then(() => fetchMyEvents(eoId!)) }} className="flex-1 bg-white border-2 border-black p-2 text-red-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Trash2 size={14} strokeWidth={3} /></button>
+                            </td>
+                            <td className="p-6 border-r-4 border-black font-black uppercase italic text-[10px] space-y-2 text-slate-600 text-left">
+                              <div className="flex items-center gap-2 text-left"><Calendar size={14} className="text-black" /> {event.date}</div>
+                              <div className="mt-2 text-left">
+                                <p className="text-[8px] text-slate-400 uppercase">Gross Revenue</p>
+                                <div className="text-lg tracking-tighter text-[#6D4AFF] leading-none mb-2">{formatRupiah(event.revenue)}</div>
+                                {event.revenue > 0 && wStatus?.status && (
+                                  <div className="flex flex-col gap-1.5 items-start">
+                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-black text-[8px] font-black uppercase italic shadow-[2px_2px_0_0_#000] ${
+                                      wStatus.status === 'pending' ? 'bg-amber-100 text-amber-600' : wStatus.status === 'processing' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                                    }`}>
+                                      {wStatus.status === 'pending' ? <Clock size={10}/> : wStatus.status === 'processing' ? <Loader2 size={10} className="animate-spin"/> : <CheckCircle2 size={10}/>}
+                                      {wStatus.status === 'pending' ? "Menunggu Admin" : wStatus.status === 'processing' ? "Sedang Ditransfer" : "Dana Cair / Selesai"}
+                                    </div>
+                                    {wStatus.status === 'completed' && wStatus.receipt_url && (
+                                      <a
+                                        href={wStatus.receipt_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase italic bg-[#6D4AFF] text-white px-2 py-0.5 border border-black shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                                      >
+                                        Lihat Bukti Transfer 🧾
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            </td>
+                            <td className="p-6 text-center">
+                              <div className="flex flex-col gap-2">
+                                {event.revenue > 0 && !wStatus?.status && (
+                                  <button onClick={() => openWithdrawModal(event)} className="w-full bg-emerald-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><HandCoins size={14} /> Cairkan Cuan</button>
+                                )}
+                                {event.status === 'approved' && (
+                                  <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
+                                )}
+                                <div className="flex gap-2 text-black">
+                                  <button onClick={() => openEditModal(event)} className="flex-1 bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Edit2 size={14} strokeWidth={3} /></button>
+                                  <button onClick={() => { if(confirm("Hapus?")) supabase.from("events").delete().eq("id", event.id).then(() => fetchMyEvents(eoId!)) }} className="flex-1 bg-white border-2 border-black p-2 text-red-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Trash2 size={14} strokeWidth={3} /></button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ⚡ TAB 2: SALES ANALYTICS */}
+          {activeTab === "analytics" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+              <div className="lg:col-span-8 bg-white border-8 border-black p-8 shadow-[12px_12px_0_0_#000] flex flex-col">
+                <h3 className="text-2xl font-black italic uppercase mb-6 tracking-tighter border-b-4 border-black pb-2 flex items-center gap-2">
+                  <Activity size={24} /> Tren Pendapatan Harian (IDR)
+                </h3>
+                {analyticsDaily.length === 0 ? (
+                  <div className="h-80 flex items-center justify-center font-black uppercase text-slate-400 italic">Belum ada data penjualan.</div>
+                ) : (
+                  <div className="h-80 w-full flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analyticsDaily} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                        <XAxis dataKey="date" stroke="#000" tick={{ fontWeight: 'bold', fontSize: 10 }} />
+                        <YAxis stroke="#000" tick={{ fontWeight: 'bold', fontSize: 10 }} tickFormatter={(v) => `Rp ${v/1000}k`} />
+                        <Tooltip formatter={(value) => [formatRupiah(value as number), 'Revenue']} contentStyle={{ background: '#fff', border: '4px solid #000', fontWeight: 'bold' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="revenue" name="Pendapatan" stroke="#6D4AFF" strokeWidth={4} activeDot={{ r: 8, stroke: '#000', strokeWidth: 2 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+              <div className="lg:col-span-4 bg-white border-8 border-black p-8 shadow-[12px_12px_0_0_#FCD34D] flex flex-col">
+                <h3 className="text-2xl font-black italic uppercase mb-6 tracking-tighter border-b-4 border-black pb-2 flex items-center gap-2">
+                  <Ticket size={24} /> Per Kategori Tiket
+                </h3>
+                {analyticsCategories.length === 0 ? (
+                  <div className="h-80 flex items-center justify-center font-black uppercase text-slate-400 italic">Belum ada data penjualan.</div>
+                ) : (
+                  <div className="h-80 w-full flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analyticsCategories} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                        <XAxis dataKey="name" stroke="#000" tick={{ fontWeight: 'bold', fontSize: 10 }} />
+                        <YAxis stroke="#000" tick={{ fontWeight: 'bold', fontSize: 10 }} />
+                        <Tooltip formatter={(value, name) => [value, name === 'sold' ? 'Terjual (Pcs)' : 'Pendapatan (IDR)']} contentStyle={{ background: '#fff', border: '4px solid #000', fontWeight: 'bold' }} />
+                        <Bar dataKey="sold" name="Terjual" fill="#FCD34D" stroke="#000" strokeWidth={3}>
+                          {analyticsCategories.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#FCD34D' : '#6D4AFF'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ⚡ TAB 3: PROMO VOUCHER */}
+          {activeTab === "vouchers" && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
+              {/* Form Bikin Voucher */}
+              <div className="xl:col-span-4 bg-white border-8 border-black p-8 shadow-[12px_12px_0_0_#FCD34D]">
+                <h3 className="text-2xl font-black italic uppercase mb-6 tracking-tighter border-b-4 border-black pb-2 flex items-center gap-2">
+                  <PlusCircle size={24} /> Bikin Voucher Baru
+                </h3>
+                <form onSubmit={handleSubmitVoucher} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Kode Promo</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="MISAL: TIKETASIK10"
+                      className="w-full p-3 border-4 border-black font-black uppercase italic bg-white outline-none focus:bg-amber-50"
+                      value={voucherForm.code}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Event Terkait</label>
+                    <select
+                      className="w-full p-3 border-4 border-black font-black uppercase bg-white cursor-pointer outline-none"
+                      value={voucherForm.event_id}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, event_id: e.target.value })}
+                    >
+                      {events.map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Jenis Diskon</label>
+                      <select
+                        className="w-full p-3 border-4 border-black font-black uppercase bg-white cursor-pointer outline-none"
+                        value={voucherForm.discount_type}
+                        onChange={(e) => setVoucherForm({ ...voucherForm, discount_type: e.target.value })}
+                      >
+                        <option value="percentage">Persentase (%)</option>
+                        <option value="fixed">Potongan (Rp)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Nilai Diskon</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder={voucherForm.discount_type === "percentage" ? "10" : "50000"}
+                        className="w-full p-3 border-4 border-black font-black bg-white outline-none"
+                        value={voucherForm.discount_value}
+                        onChange={(e) => setVoucherForm({ ...voucherForm, discount_value: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Kuota Penggunaan</label>
+                      <input
+                        type="number"
+                        placeholder="Tak terbatas"
+                        className="w-full p-3 border-4 border-black font-black bg-white outline-none"
+                        value={voucherForm.max_uses}
+                        onChange={(e) => setVoucherForm({ ...voucherForm, max_uses: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-slate-400 block mb-1 italic">Tanggal Berakhir</label>
+                      <input
+                        type="date"
+                        required
+                        min={today}
+                        className="w-full p-3 border-4 border-black font-black bg-white outline-none"
+                        value={voucherForm.valid_to}
+                        onChange={(e) => setVoucherForm({ ...voucherForm, valid_to: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isVoucherSubmitting}
+                    className="w-full py-4 bg-black text-white font-black uppercase italic text-xs tracking-wider border-4 border-black shadow-[4px_4px_0_0_#6D4AFF] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex justify-center items-center gap-2 cursor-pointer"
+                  >
+                    {isVoucherSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Zap className="text-amber-400" size={16} />}
+                    {isVoucherSubmitting ? "MEMPROSES..." : "SEBARKAN VOUCHER"}
+                  </button>
+                </form>
+              </div>
+
+              {/* List Voucher */}
+              <div className="xl:col-span-8 bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col">
+                <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
+                  <h3 className="text-3xl font-black italic uppercase tracking-tighter">Voucher List</h3>
+                  <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{vouchersList.length} Active Vouchers</span>
+                </div>
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 text-black text-[10px] font-black uppercase tracking-[0.2em] border-b-4 border-black text-left">
+                        <th className="p-6 border-r-4 border-black">Kode & Event</th>
+                        <th className="p-6 border-r-4 border-black">Spesifikasi Diskon</th>
+                        <th className="p-6 border-r-4 border-black">Kuota & Masa Berlaku</th>
+                        <th className="p-6 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y-4 divide-black">
+                      {vouchersList.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-24 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF]">
+                            Belum ada voucher yang dibuat.
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ) : (
+                        vouchersList.map((v) => {
+                          const isExpired = new Date(v.valid_to) < new Date();
+                          const isFull = v.max_uses !== null && v.uses_count >= v.max_uses;
+                          return (
+                            <tr key={v.id} className="hover:bg-amber-50 transition-colors">
+                              <td className="p-6 border-r-4 border-black text-left">
+                                <span className="font-black text-xl tracking-tighter bg-amber-200 border-2 border-black px-2 py-0.5 shadow-[2px_2px_0_0_#000] inline-block mb-2">
+                                  {v.code}
+                                </span>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase line-clamp-1">Event: {v.events?.title || "Global Event"}</p>
+                              </td>
+                              <td className="p-6 border-r-4 border-black text-left font-black uppercase italic text-xs">
+                                {v.discount_type === "percentage" ? (
+                                  <span className="text-[#6D4AFF] font-black text-lg">{v.discount_value}% OFF</span>
+                                ) : (
+                                  <span className="text-emerald-600 font-black text-lg">-{formatRupiah(v.discount_value)}</span>
+                                )}
+                              </td>
+                              <td className="p-6 border-r-4 border-black text-left text-[10px] font-bold uppercase space-y-1 text-slate-600">
+                                <div>Terpakai: {v.uses_count} / {v.max_uses ?? "∞"}</div>
+                                <div className="flex items-center gap-1">
+                                  <Clock size={12} />
+                                  Selesai: {getLocalDateString(new Date(v.valid_to))}
+                                </div>
+                                <div className="mt-2">
+                                  {isExpired ? (
+                                    <span className="bg-red-100 text-red-500 border border-red-500 px-2 py-0.5 text-[8px] font-black uppercase italic">Expired</span>
+                                  ) : isFull ? (
+                                    <span className="bg-orange-100 text-orange-500 border border-orange-500 px-2 py-0.5 text-[8px] font-black uppercase italic">Penuh</span>
+                                  ) : (
+                                    <span className="bg-emerald-100 text-emerald-600 border border-emerald-500 px-2 py-0.5 text-[8px] font-black uppercase italic">Aktif</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-6 text-center">
+                                <button
+                                  onClick={() => handleDeleteVoucher(v.id)}
+                                  className="bg-red-100 hover:bg-red-500 text-red-500 hover:text-white border-2 border-black p-2 shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all cursor-pointer"
+                                >
+                                  <Trash2 size={16} strokeWidth={3} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ⚡ TAB 4: FEEDBACK ULASAN */}
+          {activeTab === "feedback" && (
+            <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
+              <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
+                <h3 className="text-3xl font-black italic uppercase tracking-tighter">Feedback & Ulasan</h3>
+                <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{reviewsList.length} Reviews</span>
+              </div>
+              <div className="p-8 space-y-6">
+                {reviewsList.length === 0 ? (
+                  <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
+                    Belum ada ulasan dari pembeli.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {reviewsList.map((rev) => (
+                      <div key={rev.id} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] hover:-translate-y-1 transition-all">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">{rev.profiles?.full_name || "Customer"}</h4>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {rev.events?.title}</p>
+                          </div>
+                          <div className="flex items-center gap-1 bg-black text-amber-400 px-2 py-1 border-2 border-black font-black text-xs">
+                            <Star className="fill-amber-400 text-amber-400" size={14} />
+                            {rev.rating}
+                          </div>
+                        </div>
+                        <p className="text-slate-700 italic font-medium text-sm">"{rev.comment}"</p>
+                        <div className="mt-4 text-[9px] text-slate-400 font-bold uppercase text-right">
+                          {new Date(rev.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -592,8 +1179,8 @@ export default function EODashboard() {
                 </div>
                 <div className="space-y-6 text-black flex flex-col justify-between text-left">
                   <div className="grid grid-cols-2 gap-4 text-left">
-                    <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Tgl Mulai</label><input type="date" required className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] cursor-text" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} /></div>
-                    <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Tgl Selesai (Ops)</label><input type="date" className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Tgl Mulai</label><input type="date" required min={today} className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] cursor-text" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Tgl Selesai (Ops)</label><input type="date" min={formData.date || today} className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} /></div>
                     <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Jam Mulai</label><input type="time" className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} /></div>
                     <div><label className="text-[10px] font-black uppercase text-[#FF6B6B] mb-1 block italic text-left">Maks Beli/Akun</label><input type="number" required className="w-full p-4 border-4 border-black bg-red-50 font-black shadow-[4px_4px_0_0_rgba(239,68,68,1)]" value={formData.max_buy} onChange={(e) => setFormData({...formData, max_buy: e.target.value})} /></div>
                   </div>
@@ -608,27 +1195,28 @@ export default function EODashboard() {
                     {getEventDurationInDays() > 1 && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button type="button" disabled={!!editingEventId} className="bg-emerald-400 text-black px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-1 transition-all flex items-center gap-1">
+                          <button type="button" className="bg-emerald-400 text-black px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:translate-x-1 transition-all flex items-center gap-1">
                             <PlusCircle size={12}/> Multi-Day
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="z-[200] bg-white border-4 border-black rounded-none shadow-[8px_8px_0_0_#000]">
                           {getEventDurationInDays() >= 2 && <DropdownMenuItem onClick={() => handleGenerateMultiDayPass('2-DAY')} className="font-black italic text-xs uppercase cursor-pointer hover:bg-emerald-100">Bikin Tiket Terusan 2 Hari</DropdownMenuItem>}
                           {getEventDurationInDays() >= 3 && <DropdownMenuItem onClick={() => handleGenerateMultiDayPass('3-DAY')} className="font-black italic text-xs uppercase cursor-pointer hover:bg-emerald-100">Bikin Tiket Terusan 3 Hari</DropdownMenuItem>}
+                          <DropdownMenuItem onClick={handleGenerateDailyPasses} className="font-black italic text-xs uppercase cursor-pointer hover:bg-emerald-100">Bikin Tiket Harian</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
-                    <button type="button" onClick={addCategory} disabled={!!editingEventId} className="bg-black text-white px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(255,255,255,1)] hover:translate-x-1 transition-all">Tambah Tier</button>
+                    <button type="button" onClick={addCategory} className="bg-black text-white px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0_0_rgba(255,255,255,1)] hover:translate-x-1 transition-all">Tambah Tier</button>
                   </div>
                 </div>
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {categories.map((cat, index) => (
                     <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                       <div className="absolute -top-3 -left-3 bg-black text-white px-2 py-1 font-black italic text-[9px] uppercase border-2 border-black">Tier {index + 1}</div>
-                      <div className="flex-1 w-full mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Nama Kategori</label><input type="text" value={cat.name} onChange={e => updateCategory(cat.id, 'name', e.target.value)} disabled={!!editingEventId} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="FESTIVAL" /></div>
-                      <div className="flex-1 w-full"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Harga (Rp)</label><input type="number" value={cat.price} onChange={e => updateCategory(cat.id, 'price', e.target.value)} disabled={!!editingEventId} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm text-[#6D4AFF]" placeholder="50000" /></div>
-                      <div className="w-full md:w-32"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Stok</label><input type="number" value={cat.stock} onChange={e => updateCategory(cat.id, 'stock', e.target.value)} disabled={!!editingEventId} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="100" /></div>
-                      {!editingEventId && categories.length > 1 && (<button type="button" onClick={() => removeCategory(cat.id)} className="w-full md:w-auto mt-4 bg-red-100 text-red-500 border-2 border-black p-2 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20} strokeWidth={3} /></button>)}
+                      <div className="flex-1 w-full mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Nama Kategori</label><input type="text" value={cat.name} onChange={e => updateCategory(cat.id, 'name', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="FESTIVAL" /></div>
+                      <div className="flex-1 w-full"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Harga (Rp)</label><input type="number" value={cat.price} onChange={e => updateCategory(cat.id, 'price', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm text-[#6D4AFF]" placeholder="50000" /></div>
+                      <div className="w-full md:w-32"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Stok</label><input type="number" value={cat.stock} onChange={e => updateCategory(cat.id, 'stock', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="100" /></div>
+                      {categories.length > 1 && (<button type="button" onClick={() => removeCategory(cat.id)} className="w-full md:w-auto mt-4 bg-red-100 text-red-500 border-2 border-black p-2 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20} strokeWidth={3} /></button>)}
                     </div>
                   ))}
                 </div>

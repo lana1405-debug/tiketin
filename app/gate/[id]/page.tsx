@@ -77,10 +77,19 @@ export default function GateScanner() {
     setScanStatus({ status: 'idle', msg: 'MENGECEK DATABASE...' });
 
     try {
-      // 1. Ambil data tiket dan nama kategorinya buat tau jenis tiketnya
+      // 1. Ambil data tiket beserta tanggal mulai & selesai event
       const { data: ticket, error: fetchError } = await supabase
         .from("tiket")
-        .select("id, status_checkin, last_scanned_date, seat_info")
+        .select(`
+          id, 
+          status_checkin, 
+          last_scanned_date, 
+          seat_info,
+          events (
+            date,
+            end_date
+          )
+        `)
         .eq("ticket_code", decodedText)
         .eq("event_id", eventId)
         .single();
@@ -90,25 +99,79 @@ export default function GateScanner() {
         return;
       }
 
+      // Format tanggal lokal (YYYY-MM-DD)
+      const getLocalDateString = (d: Date = new Date()) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      // Helper function tambah hari menggunakan tanggal lokal
+      const addDays = (dateStr: string, days: number): string => {
+        const date = new Date(dateStr);
+        date.setDate(date.getDate() + days);
+        return getLocalDateString(date);
+      };
+
       // Format tanggal hari ini (YYYY-MM-DD)
-      const hariIni = new Date().toISOString().split('T')[0];
-      const isMultiDayPass = ticket.seat_info.toUpperCase().includes("3-DAY") || ticket.seat_info.toUpperCase().includes("2-DAY");
+      const hariIni = getLocalDateString();
+      const seatUpper = ticket.seat_info.toUpperCase();
+
+      // Gunakan Regex /(?:DAY|HARI)\s*([1-9])/ untuk parsing hari harian secara dinamis
+      const match = seatUpper.match(/(?:DAY|HARI)\s*([1-9])/);
+      const specificDayNum = match ? parseInt(match[1]) : null;
+      const isDaySpecific = specificDayNum !== null;
+
+      // Multi-day pass if it contains DAY/TERUSAN/PASS but is NOT a specific single day pass
+      const isMultiDayPass = 
+        (seatUpper.includes("DAY") || 
+         seatUpper.includes("TERUSAN") || 
+         seatUpper.includes("PASS")) && !isDaySpecific;
+
+      // ⚡ LOGIKA PEMBATASAN TANGGAL SINGLE-DAY TIKET SPESIFIK
+      let restrictedDate: string | null = null;
+      if (isDaySpecific && (ticket.events as any)?.date) {
+        restrictedDate = addDays((ticket.events as any).date, specificDayNum - 1);
+      }
+
+      if (restrictedDate && hariIni !== restrictedDate) {
+        setScanStatus({ 
+          status: 'error', 
+          msg: `TIKET HANYA VALID UNTUK HARI ${specificDayNum} (TGL: ${restrictedDate})! HARI INI: ${hariIni}` 
+        });
+        return;
+      }
 
       // ⚡ LOGIKA PERCABANGAN (SINGLE-DAY vs MULTI-DAY)
       if (isMultiDayPass) {
-        // TIKET TERUSAN (3-DAY PASS)
-        if (ticket.last_scanned_date === hariIni) {
+        // TIKET TERUSAN (MULTI-DAY PASS)
+        if (ticket.status_checkin === true) {
+          setScanStatus({ status: 'warning', msg: "PERINGATAN: TIKET SUDAH HANGUS / DIPAKAI!" });
+        } else if (ticket.last_scanned_date === hariIni) {
           // Udah masuk hari ini
           setScanStatus({ status: 'warning', msg: "SUDAH CHECK-IN HARI INI! 1 TIKET 1 ORANG." });
         } else {
           // Boleh masuk -> Update last_scanned_date jadi hari ini
+          // Jika hari ini adalah hari terakhir event atau setelahnya, set status_checkin = true
+          const lastDayOfEvent = (ticket.events as any)?.end_date || (ticket.events as any)?.date;
+          const isLastDayOrLater = lastDayOfEvent ? hariIni >= lastDayOfEvent : true;
+
+          const updatePayload: any = { last_scanned_date: hariIni };
+          if (isLastDayOrLater) {
+            updatePayload.status_checkin = true;
+          }
+
           const { error: updateError } = await supabase
             .from("tiket")
-            .update({ last_scanned_date: hariIni })
+            .update(updatePayload)
             .eq("id", ticket.id);
 
           if (updateError) throw updateError;
-          setScanStatus({ status: 'success', msg: `BERHASIL! (MULTI-DAY PASS)` });
+          setScanStatus({ 
+            status: 'success', 
+            msg: `BERHASIL! (MULTI-DAY PASS${isLastDayOrLater ? ' - HARI TERAKHIR' : ''})` 
+          });
         }
       } else {
         // TIKET NORMAL (DAILY PASS)

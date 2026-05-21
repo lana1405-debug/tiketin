@@ -18,6 +18,10 @@ export default function AdminWithdrawalsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
+  // Upload receipt states
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [receiptFiles, setReceiptFiles] = useState<Record<string, File>>({});
+
   useEffect(() => {
     setMounted(true);
     fetchWithdrawals();
@@ -32,6 +36,70 @@ export default function AdminWithdrawalsPage() {
 
     if (!error) setRequests(data || []);
     setIsLoading(false);
+  };
+
+  const handleFileChange = (id: string, file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran file terlalu besar! Maksimal 2MB.");
+      return;
+    }
+    setReceiptFiles(prev => ({ ...prev, [id]: file }));
+  };
+
+  const handleSendAndFinish = async (id: string) => {
+    const file = receiptFiles[id];
+    if (!file) {
+      alert("Silakan pilih file bukti transfer terlebih dahulu!");
+      return;
+    }
+
+    setUploadingId(id);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload file to 'withdrawal_receipts' bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('withdrawal_receipts')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw new Error("Gagal mengupload bukti transfer: " + uploadError.message);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('withdrawal_receipts')
+        .getPublicUrl(filePath);
+
+      // Update withdrawals status and receipt_url
+      const { error: updateError } = await supabase
+        .from("withdrawals")
+        .update({ 
+          status: "completed",
+          receipt_url: publicUrl
+        })
+        .eq("id", id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      alert("Pencairan dana berhasil diselesaikan dengan bukti transfer! ✅");
+      setReceiptFiles(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+      fetchWithdrawals();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Terjadi kesalahan saat memproses data.");
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
@@ -109,11 +177,56 @@ export default function AdminWithdrawalsPage() {
                                <Clock size={14} /> Mark as Processing
                              </button>
                            )}
-                           {req.status === 'processing' && (
-                             <button onClick={() => updateStatus(req.id, 'completed')} className="bg-[#6D4AFF] text-white border-2 border-black p-2 font-black italic uppercase text-[10px] shadow-[3px_3px_0_0_#000] hover:shadow-none transition-all flex items-center justify-center gap-2">
-                               <Send size={14} /> Send & Finish
-                             </button>
-                           )}
+                            {req.status === 'processing' && (
+                              <div className="flex flex-col gap-2">
+                                {!receiptFiles[req.id] ? (
+                                  <label className="cursor-pointer bg-white text-slate-900 border-2 border-black p-2 font-black italic uppercase text-[10px] shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all flex items-center justify-center gap-2">
+                                    <span>UPLOAD BUKTI 📸</span>
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      className="hidden" 
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleFileChange(req.id, file);
+                                      }} 
+                                    />
+                                  </label>
+                                ) : (
+                                  <div className="flex flex-col gap-2 text-left">
+                                    <p className="text-[8px] font-bold text-slate-500 uppercase line-clamp-1 italic">
+                                      {receiptFiles[req.id].name}
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <button 
+                                        onClick={() => {
+                                          setReceiptFiles(prev => {
+                                            const copy = { ...prev };
+                                            delete copy[req.id];
+                                            return copy;
+                                          });
+                                        }}
+                                        className="flex-1 bg-red-500 text-white border-2 border-black p-1.5 font-black italic uppercase text-[8px] shadow-[2px_2px_0_0_#000]"
+                                      >
+                                        BATAL
+                                      </button>
+                                      <button 
+                                        onClick={() => handleSendAndFinish(req.id)} 
+                                        disabled={uploadingId === req.id}
+                                        className="flex-[2] bg-[#6D4AFF] text-white border-2 border-black p-1.5 font-black italic uppercase text-[8px] shadow-[2px_2px_0_0_#000] hover:shadow-none transition-all flex items-center justify-center gap-1"
+                                      >
+                                        {uploadingId === req.id ? (
+                                          <Loader2 className="animate-spin" size={10} />
+                                        ) : (
+                                          <Send size={10} />
+                                        )}
+                                        KIRIM
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                            {req.status === 'completed' && (
                              <div className="bg-emerald-100 text-emerald-600 border-2 border-emerald-600 p-2 font-black italic uppercase text-[10px] flex items-center justify-center gap-2">
                                <CheckCircle2 size={14} /> Dana Terkirim

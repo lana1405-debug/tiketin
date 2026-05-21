@@ -184,7 +184,7 @@ export default function EventAnalyticsPage() {
                    <XAxis dataKey="date" tick={{fontSize: 10, fontWeight: 900, fill: '#000'}} stroke="#000" strokeWidth={3} />
                    <YAxis tickFormatter={(value) => `Rp${(value/1000000).toFixed(0)}M`} tick={{fontSize: 10, fontWeight: 900, fill: '#000'}} stroke="#000" strokeWidth={3} />
                    <Tooltip 
-                      formatter={(value: number) => formatRupiah(value)}
+                      formatter={(value: any) => formatRupiah(value)}
                       labelStyle={{fontWeight: 900, color: '#000'}}
                       contentStyle={{border: '4px solid #000', borderRadius: 0, fontWeight: 900, textTransform: 'uppercase'}}
                    />

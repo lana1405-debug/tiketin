@@ -6,7 +6,7 @@ import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, ChevronLeft, Calendar, MapPin, 
-  Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard, Star, Clock
+  Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard, Star, Clock, X
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -24,6 +24,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
 });
+
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const GLOBAL_STYLES = `
   .noise::after {
@@ -47,6 +54,7 @@ const GLOBAL_STYLES = `
 
 export default function MyTicketsPage() {
   const router = useRouter();
+  const today = getLocalDateString();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +62,17 @@ export default function MyTicketsPage() {
   // ⚡ Tiga Tab Baru
   const [activeTab, setActiveTab] = useState("AKTIF"); // "PENDING", "AKTIF", "TERPAKAI"
   const [mounted, setMounted] = useState(false);
+
+  // ⚡ STATE UNTUK REVIEW/ULASAN
+  const [reviewedEvents, setReviewedEvents] = useState<Set<string>>(new Set());
+  const [reviewModal, setReviewModal] = useState<{ isOpen: boolean; eventId: string | null; eventTitle: string }>({
+    isOpen: false,
+    eventId: null,
+    eventTitle: ""
+  });
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -81,6 +100,18 @@ export default function MyTicketsPage() {
     
     if (profile) setUserProfile(profile);
 
+    // Fetch user reviews
+    const { data: userReviews } = await supabase
+      .from("reviews")
+      .select("event_id")
+      .eq("user_id", session.user.id);
+    
+    const reviewedSet = new Set<string>();
+    if (userReviews) {
+      userReviews.forEach((r: any) => reviewedSet.add(r.event_id));
+    }
+    setReviewedEvents(reviewedSet);
+
     const { data: ticketData, error } = await supabase
       .from("tiket")
       .select(`
@@ -93,6 +124,7 @@ export default function MyTicketsPage() {
           id,
           title,
           date,
+          end_date,
           location,
           category,
           image_url,
@@ -101,9 +133,11 @@ export default function MyTicketsPage() {
         transaksi!inner (
           id,
           status_pembayaran,
-          total_bayar
+          total_bayar,
+          user_id
         )
       `)
+      .eq("transaksi.user_id", session.user.id)
       .order("created_at", { ascending: false });
 
     if (!error && ticketData) {
@@ -122,6 +156,7 @@ export default function MyTicketsPage() {
           transaksi_id: t.transaksi.id,
           title: t.events.title,
           date: t.events.date,
+          end_date: t.events.end_date,
           location: t.events.location,
           category: t.events.category,
           price: t.transaksi.total_bayar, 
@@ -140,6 +175,62 @@ export default function MyTicketsPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
+  };
+
+  const openReviewModal = (eventId: string, eventTitle: string) => {
+    setRating(5);
+    setComment("");
+    setReviewModal({ isOpen: true, eventId, eventTitle });
+  };
+
+  const handleSubmitReview = async () => {
+    if (!comment.trim()) {
+      alert("Tulis komentar ulasan terlebih dahulu!");
+      return;
+    }
+    if (rating < 1 || rating > 5) {
+      alert("Rating harus antara 1-5 bintang!");
+      return;
+    }
+    
+    setIsSubmittingReview(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("Silakan login kembali.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("reviews")
+        .insert({
+          event_id: reviewModal.eventId,
+          user_id: session.user.id,
+          rating,
+          comment: comment.trim()
+        });
+
+      if (error) {
+        if (error.code === "23505") {
+          alert("Anda sudah memberikan ulasan untuk event ini!");
+        } else {
+          throw error;
+        }
+      } else {
+        alert("Terima kasih! Ulasan Anda berhasil dikirim.");
+        setReviewModal({ isOpen: false, eventId: null, eventTitle: "" });
+        setReviewedEvents(prev => {
+          const next = new Set(prev);
+          if (reviewModal.eventId) next.add(reviewModal.eventId);
+          return next;
+        });
+      }
+    } catch (err) {
+      console.error("Gagal mengirim ulasan:", err);
+      alert("Terjadi kesalahan saat mengirim ulasan.");
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const filteredTickets = tickets.filter(t => t.status === activeTab);
@@ -229,10 +320,20 @@ export default function MyTicketsPage() {
               </div>
             ) : filteredTickets.length > 0 ? (
               filteredTickets.map((ticket, idx) => {
-                // ⚡ LOGIKA DETEKSI MULTI-DAY & SCAN
-                const isMultiDay = ticket.seat.toUpperCase().includes("DAY");
-                const today = new Date().toISOString().split('T')[0];
+                // ⚡ LOGIKA DETEKSI MULTI-DAY & SCAN MENGGUNAKAN REGEX
+                const seatUpper = ticket.seat.toUpperCase();
+                
+                // Match "DAY X" atau "HARI X"
+                const match = seatUpper.match(/(?:DAY|HARI)\s*([1-9])/);
+                const specificDayNum = match ? parseInt(match[1]) : null;
+                const isDaySpecific = specificDayNum !== null;
+                
+                // Multi-day is if the ticket represents a multi-day pass (contains "DAY" or "TERUSAN" or "PASS" but is NOT a specific single day pass)
+                const isMultiDay = (seatUpper.includes("DAY") || seatUpper.includes("TERUSAN") || seatUpper.includes("PASS")) && !isDaySpecific;
+
                 const alreadyScannedToday = ticket.last_scanned_date === today;
+                const isEventEnded = ticket.end_date ? ticket.end_date < today : ticket.date < today;
+                const canReview = ticket.status !== "PENDING" && (ticket.status === "TERPAKAI" || isEventEnded) && !reviewedEvents.has(ticket.event_id);
 
                 return (
                   <motion.div
@@ -254,7 +355,7 @@ export default function MyTicketsPage() {
                     )}
 
                     {/* KIRI: Info Event */}
-                    <div className={`flex-1 flex flex-col sm:flex flex-col md:flex-row ${ticket.status === "TERPAKAI" ? 'opacity-50 grayscale-[100%]' : ''}`}>
+                    <div className={`flex-1 flex flex-col sm:flex flex-col md:flex-row ${(ticket.status === "TERPAKAI" || isEventEnded) ? 'opacity-50 grayscale-[100%]' : ''}`}>
                       <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
                         <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
                         
@@ -262,9 +363,19 @@ export default function MyTicketsPage() {
                            <div className="bg-slate-900 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white">
                              {ticket.category}
                            </div>
+                           {isEventEnded && (
+                             <div className="bg-red-500 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white flex items-center gap-1 shadow-[2px_2px_0_0_#000] animate-pulse">
+                               EVENT SELESAI
+                             </div>
+                           )}
                            {isMultiDay && (
                              <div className="bg-amber-400 text-slate-900 px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-slate-900 flex items-center gap-1 shadow-[2px_2px_0_0_#000]">
                                <Star size={10} fill="currentColor" /> MULTI-DAY
+                             </div>
+                           )}
+                           {isDaySpecific && (
+                             <div className="bg-blue-400 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-slate-900 flex items-center gap-1 shadow-[2px_2px_0_0_#000]">
+                               <Calendar size={10} /> HARI {specificDayNum} ONLY
                              </div>
                            )}
                         </div>
@@ -319,15 +430,22 @@ export default function MyTicketsPage() {
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TICKET ID</p>
                             <p className="text-base font-black uppercase bg-slate-100 px-4 py-1 border-2 border-slate-900 mb-6">{ticket.id}</p>
                             
-                            <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative">
+                            <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative overflow-hidden flex items-center justify-center">
                               <QRCodeSVG 
                                 id={`qr-${ticket.id}`} 
                                 value={ticket.id} 
                                 size={120}
                                 level="H"
                                 includeMargin={false}
-                                fgColor={alreadyScannedToday ? "#94a3b8" : "#0f172a"} 
+                                fgColor={(alreadyScannedToday || isEventEnded) ? "#cbd5e1" : "#0f172a"} 
                               />
+                              {isEventEnded && (
+                                <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+                                  <span className="font-black italic text-xl border-4 border-red-500 text-red-500 bg-white px-3 py-1 -rotate-12 shadow-[2px_2px_0_0_#000] tracking-widest uppercase">
+                                    EXPIRED
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             {/* ⚡ INDIKATOR STATUS SCAN HARIAN */}
@@ -354,6 +472,21 @@ export default function MyTicketsPage() {
                                 <Download size={14} strokeWidth={3} /> E-TICKET
                               </button>
                             )}
+
+                            {canReview && (
+                              <button 
+                                onClick={() => openReviewModal(ticket.event_id, ticket.title)}
+                                className="mt-4 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2"
+                              >
+                                <Star size={14} fill="currentColor" strokeWidth={3} /> BERI ULASAN
+                              </button>
+                            )}
+
+                            {reviewedEvents.has(ticket.event_id) && (
+                              <div className="mt-4 px-4 py-2 border-2 border-emerald-500 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase tracking-wider inline-flex items-center justify-center gap-1.5 shadow-[2px_2px_0_0_#10B981] w-full">
+                                ✓ Ulasan Terkirim
+                              </div>
+                            )}
                          </>
                       )}
                     </div>
@@ -368,6 +501,116 @@ export default function MyTicketsPage() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* ─── REVIEW MODAL ─── */}
+      <AnimatePresence>
+        {reviewModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isSubmittingReview && setReviewModal({ isOpen: false, eventId: null, eventTitle: "" })}
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="bg-[#FCFAF1] border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
+            >
+              {/* Close Button */}
+              <button
+                disabled={isSubmittingReview}
+                onClick={() => setReviewModal({ isOpen: false, eventId: null, eventTitle: "" })}
+                className="absolute top-4 right-4 z-30 h-10 w-10 bg-white hover:bg-red-500 hover:text-white border-4 border-slate-900 shadow-[3px_3px_0_0_#000] flex items-center justify-center font-black transition-all hover:rotate-90"
+              >
+                <X size={20} strokeWidth={3} />
+              </button>
+
+              <div className="space-y-6">
+                <div>
+                  <div className="bg-amber-400 border-4 border-slate-900 px-3 py-1 font-black uppercase text-[10px] shadow-[3px_3px_0_0_#000] -rotate-1 inline-flex items-center gap-1.5 italic mb-3">
+                    <Star size={12} fill="currentColor" /> SHARE YOUR EXPERIENCE
+                  </div>
+                  <h2 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter leading-tight break-words pr-10">
+                    Beri Ulasan
+                  </h2>
+                  <p className="text-xs font-black uppercase text-slate-400 mt-1">{reviewModal.eventTitle}</p>
+                </div>
+
+                {/* Star Selection */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Rating Bintang</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className={`h-12 w-12 border-4 border-slate-900 shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#000] transition-all flex items-center justify-center ${
+                          star <= rating ? "bg-amber-400 text-slate-900" : "bg-white text-slate-200"
+                        }`}
+                      >
+                        <Star size={24} fill={star <= rating ? "currentColor" : "none"} strokeWidth={2.5} />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] font-black italic uppercase tracking-wider text-amber-500 mt-1">
+                    {rating === 5 && "⭐ LUAR BIASA! OVERPOWERED!"}
+                    {rating === 4 && "⭐ BAGUS BANGET! PUAS!"}
+                    {rating === 3 && "⭐ LUMAYAN OKE!"}
+                    {rating === 2 && "⭐ KURANG MEMUASKAN."}
+                    {rating === 1 && "⭐ MENGECEWAKAN. PERLU EVALUASI!"}
+                  </p>
+                </div>
+
+                {/* Comment Text Area */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Komentar / Ulasan</label>
+                  <textarea
+                    rows={4}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Ceritakan pengalaman gila kamu nonton event ini..."
+                    className="w-full p-4 border-4 border-slate-900 bg-white font-medium text-xs sm:text-sm outline-none focus:bg-amber-50 shadow-[4px_4px_0_0_#000] transition-all"
+                  />
+                </div>
+
+                {/* Submit Action */}
+                <div className="pt-4 border-t-4 border-slate-900 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    disabled={isSubmittingReview}
+                    onClick={() => setReviewModal({ isOpen: false, eventId: null, eventTitle: "" })}
+                    className="px-6 py-3 border-4 border-slate-900 bg-white text-slate-900 hover:bg-slate-100 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmittingReview}
+                    onClick={handleSubmitReview}
+                    className="px-6 py-3 border-4 border-slate-900 bg-[#6D4AFF] text-white hover:bg-slate-900 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
+                  >
+                    {isSubmittingReview ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        MENGIRIM...
+                      </>
+                    ) : (
+                      "KIRIM ULASAN"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
