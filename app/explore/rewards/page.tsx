@@ -2,8 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Zap, Trophy, Loader2, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Poppins } from "next/font/google";
+import { 
+  Zap, Trophy, Loader2, ArrowLeft, 
+  ShieldCheck, Ticket, MessageSquare, Receipt, LogOut 
+} from "lucide-react";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
 
 interface ClaimedVoucher {
   code: string;
@@ -13,12 +32,18 @@ interface ClaimedVoucher {
 }
 
 export default function RewardsPage() {
+  const router = useRouter();
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [claimedVouchers, setClaimedVouchers] = useState<ClaimedVoucher[]>([]);
   const [isRedeeming, setIsRedeeming] = useState<string | null>(null);
   const [successVoucher, setSuccessVoucher] = useState<{ code: string; name: string } | null>(null);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
 
   useEffect(() => {
     const getPoints = async () => {
@@ -138,29 +163,82 @@ export default function RewardsPage() {
   };
 
   if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-[#FCFAF1] gap-4">
+    <div className={`h-screen flex flex-col items-center justify-center bg-[#FCFAF1] gap-4 ${poppins.className}`}>
       <Loader2 className="animate-spin text-[#6D4AFF]" size={48} strokeWidth={3} />
       <p className="font-black italic uppercase text-lg text-slate-700">MENGAMBIL HADIAH LO...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#FCFAF1] p-8 md:p-12 font-black italic uppercase text-slate-900 selection:bg-amber-400 selection:text-black">
-      <div className="max-w-4xl mx-auto space-y-10">
-        
-        {/* BACK LINK */}
-        <div className="flex justify-start">
-          <Link 
-            href="/explore" 
-            className="flex items-center gap-2 bg-white border-4 border-black px-4 py-2 text-xs shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
-          >
-            <ArrowLeft size={16} strokeWidth={3} />
-            <span>KEMBALI KE EXPLORE</span>
+    <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 selection:bg-amber-400 selection:text-black ${poppins.className}`}>
+      {/* NAVBAR */}
+      <nav className="w-full bg-white border-b-8 border-slate-900 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] h-20 px-6">
+        <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
+          <Link href="/explore" className="flex items-center gap-2 group">
+            <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
+              <ArrowLeft className="text-white" size={18} strokeWidth={3} />
+            </div>
+            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline">KEMBALI</span>
           </Link>
-        </div>
+          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900">TIKETIN REWARDS</span>
 
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
+                  <div className="text-right hidden md:block">
+                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 mb-1 px-2 py-0.5 inline-block bg-slate-100">
+                      {userProfile?.verification_status === "approved" ? (
+                        <span className="text-emerald-500">✓ VERIFIED</span>
+                      ) : userProfile?.verification_status === "pending" ? (
+                        <span className="text-amber-500">⏳ PENDING KYC</span>
+                      ) : (
+                        <span className="text-red-500">✗ UNVERIFIED</span>
+                      )}
+                    </p>
+                    <p className="text-xs font-black italic -skew-x-6 uppercase">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
+                  </div>
+                  <Avatar className="h-10 w-10 border-4 border-slate-900 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
+                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarFallback className="bg-[#6D4AFF] text-white font-black">{userProfile?.full_name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
+                <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Ticket className="mr-2 h-4 w-4" /> Tiket Saya
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuItem
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-4xl mx-auto p-8 md:p-12 space-y-10">
+        
         {/* HEADER */}
-        <h1 className="text-5xl sm:text-7xl -skew-x-6 tracking-tighter leading-none text-slate-900">
+        <h1 className="text-5xl sm:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter leading-none text-slate-900">
           TIKETIN <span className="text-[#6D4AFF]">REWARDS.</span>
         </h1>
 
@@ -168,8 +246,8 @@ export default function RewardsPage() {
         <div className="bg-[#6D4AFF] border-8 border-black p-10 shadow-[15px_15px_0px_0px_#000] flex flex-col sm:flex-row justify-between items-center overflow-hidden relative gap-6">
           <Zap className="absolute -left-10 -bottom-10 text-white/10" size={250} />
           <div className="relative z-10 text-center sm:text-left">
-            <p className="text-white text-xl mb-2">POIN AKTIF LO:</p>
-            <p className="text-7xl sm:text-9xl text-white drop-shadow-[6px_6px_0px_#000] leading-none">{points.toLocaleString()}</p>
+            <p className="text-white text-xl mb-2 font-black italic uppercase">POIN AKTIF LO:</p>
+            <p className="text-7xl sm:text-9xl text-white drop-shadow-[6px_6px_0px_#000] leading-none font-black">{points.toLocaleString()}</p>
           </div>
           <div className="relative z-10 bg-amber-400 border-4 border-black p-4 rotate-12 shadow-[8px_8px_0px_0px_#000] shrink-0">
             <Trophy size={60} strokeWidth={3} />
@@ -186,13 +264,13 @@ export default function RewardsPage() {
             return (
               <div key={i} className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] flex justify-between items-center group">
                 <div className="text-left">
-                  <p className="text-2xl leading-none mb-1">{item.name}</p>
-                  <p className="text-sm text-slate-400">{item.cost} POIN</p>
+                  <p className="text-2xl leading-none mb-1 font-black italic uppercase">{item.name}</p>
+                  <p className="text-sm text-slate-400 font-bold uppercase">{item.cost} POIN</p>
                 </div>
                 <button 
                   disabled={points < item.cost || isRedeeming !== null}
                   onClick={() => handleRedeem(item.name, item.cost)}
-                  className={`${item.color} border-2 border-black px-4 py-2 text-xs shadow-[4px_4px_0_0_#000] disabled:opacity-50 disabled:grayscale transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none flex items-center gap-2`}
+                  className={`${item.color} border-2 border-black px-4 py-2 text-xs font-black italic uppercase shadow-[4px_4px_0_0_#000] disabled:opacity-50 disabled:grayscale transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none flex items-center gap-2`}
                 >
                   {isRedeemingThis ? (
                     <>
@@ -223,7 +301,7 @@ export default function RewardsPage() {
                     READY
                   </div>
                   <div className="space-y-2 text-left">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest italic">
                       CLAIMED: {new Date(v.claimedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                     <p className="text-xl font-black leading-none uppercase italic -skew-x-3">{v.name}</p>

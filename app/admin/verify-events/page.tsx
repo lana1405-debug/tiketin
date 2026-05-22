@@ -26,6 +26,14 @@ export default function VerifyEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  const getLocalDateString = (d: Date = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getLocalDateString();
+
   const openDetail = (event: any) => {
     setSelectedEvent(event);
     setIsDetailOpen(true);
@@ -123,14 +131,22 @@ export default function VerifyEventsPage() {
         </div>
 
         {/* STATS RINGKAS */}
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
             <div className="bg-amber-400 border-4 border-black p-4 shadow-[4px_4px_0_0_#000]">
-                <p className="text-[10px] font-black uppercase">Pending</p>
-                <p className="text-2xl font-black italic">{events.filter(e => e.status === 'pending').length}</p>
+                <p className="text-[10px] font-black uppercase text-black">Pending</p>
+                <p className="text-2xl font-black italic text-black">{events.filter(e => e.status === 'pending').length}</p>
             </div>
             <div className="bg-emerald-400 border-4 border-black p-4 shadow-[4px_4px_0_0_#000]">
-                <p className="text-[10px] font-black uppercase">Live</p>
-                <p className="text-2xl font-black italic">{events.filter(e => e.status === 'approved').length}</p>
+                <p className="text-[10px] font-black uppercase text-black">Live</p>
+                <p className="text-2xl font-black italic text-black">
+                  {events.filter(e => e.status === 'approved' && !(e.end_date ? e.end_date < todayStr : e.date < todayStr)).length}
+                </p>
+            </div>
+            <div className="bg-zinc-400 border-4 border-black p-4 shadow-[4px_4px_0_0_#000] dark:bg-zinc-600">
+                <p className="text-[10px] font-black uppercase text-black dark:text-white">Selesai</p>
+                <p className="text-2xl font-black italic text-black dark:text-white">
+                  {events.filter(e => e.status === 'approved' && (e.end_date ? e.end_date < todayStr : e.date < todayStr)).length}
+                </p>
             </div>
         </div>
       </header>
@@ -180,51 +196,64 @@ export default function VerifyEventsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((event) => (
-                  <tr key={event.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-6 border-r-4 border-black">
-                      <div className="flex items-center gap-6">
-                        <div className="w-20 h-20 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] overflow-hidden shrink-0">
-                          <img src={event.image_url} alt="Poster" className="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                             <span className="bg-amber-400 border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase italic shadow-[2px_2px_0_0_#000]">
-                               EO: {event.profiles?.full_name || "UNKNOWN"}
-                             </span>
+                filteredEvents.map((event) => {
+                  const isCompleted = event.status === 'approved' && (event.end_date ? event.end_date < todayStr : event.date < todayStr);
+                  return (
+                    <tr key={event.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-6 border-r-4 border-black">
+                        <div className="flex items-center gap-6">
+                          <div className="w-20 h-20 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] overflow-hidden shrink-0">
+                            <img src={event.image_url} alt="Poster" className="w-full h-full object-cover" />
                           </div>
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-tight mb-2 underline decoration-4 decoration-[#6D4AFF] underline-offset-4">
-                            {event.title}
-                          </h3>
-                          <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase italic text-slate-400">
-                            <span className="flex items-center gap-1.5"><Calendar size={12} strokeWidth={3} /> {event.date}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={12} strokeWidth={3} /> {event.location}</span>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                               <span className="bg-amber-400 border-2 border-black px-2 py-0.5 text-[8px] font-black uppercase italic shadow-[2px_2px_0_0_#000]">
+                                 EO: {event.profiles?.full_name || "UNKNOWN"}
+                               </span>
+                            </div>
+                            <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-tight mb-2 underline decoration-4 decoration-[#6D4AFF] underline-offset-4">
+                              {event.title}
+                            </h3>
+                            <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase italic text-slate-400">
+                              <span className="flex items-center gap-1.5"><Calendar size={12} strokeWidth={3} /> {event.date}</span>
+                              <span className="flex items-center gap-1.5"><MapPin size={12} strokeWidth={3} /> {event.location}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    
-                    <td className="p-6 border-r-4 border-black text-center">
-                      <div className={`inline-block px-4 py-2 border-4 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
-                        event.status === 'approved' ? 'bg-emerald-400 text-black' : 
-                        event.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-amber-400'
-                      }`}>
-                        {event.status || 'PENDING'}
-                      </div>
-                    </td>
-
-                    <td className="p-6">
-                      <div className="flex items-center justify-center gap-4">
-                        <button onClick={() => handleStatus(event.id, 'approved')} className="bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#10B981] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-emerald-600"><Check size={24} strokeWidth={4} /></button>
-                        <button onClick={() => handleStatus(event.id, 'rejected')} className="bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#EF4444] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-red-600"><X size={24} strokeWidth={4} /></button>
-                        <button onClick={() => openDetail(event)} className="bg-[#6D4AFF] border-4 border-black p-3 shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-white"><Eye size={24} strokeWidth={3} /></button>
-                        {event.status === 'rejected' && (
-                          <button onClick={() => handleDelete(event.id)} className="bg-black border-4 border-black p-3 shadow-[4px_4px_0_0_#EF4444] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-red-500"><Trash2 size={24} strokeWidth={3} /></button>
+                      </td>
+                      
+                      <td className="p-6 border-r-4 border-black text-center">
+                        {isCompleted ? (
+                          <div className="inline-block px-4 py-2 border-4 border-black bg-zinc-500 text-white font-black uppercase italic text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:bg-zinc-700">
+                            STAGE SELESAI
+                          </div>
+                        ) : (
+                          <div className={`inline-block px-4 py-2 border-4 border-black font-black uppercase italic text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
+                            event.status === 'approved' ? 'bg-emerald-400 text-black' : 
+                            event.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
+                          }`}>
+                            {event.status || 'PENDING'}
+                          </div>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      <td className="p-6">
+                        <div className="flex items-center justify-center gap-4">
+                          {!isCompleted && (
+                            <>
+                              <button onClick={() => handleStatus(event.id, 'approved')} className="bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#10B981] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-emerald-600"><Check size={24} strokeWidth={4} /></button>
+                              <button onClick={() => handleStatus(event.id, 'rejected')} className="bg-white border-4 border-black p-3 shadow-[4px_4px_0_0_#EF4444] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-red-600"><X size={24} strokeWidth={4} /></button>
+                            </>
+                          )}
+                          <button onClick={() => openDetail(event)} className="bg-[#6D4AFF] border-4 border-black p-3 shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-white"><Eye size={24} strokeWidth={3} /></button>
+                          {event.status === 'rejected' && (
+                            <button onClick={() => handleDelete(event.id)} className="bg-black border-4 border-black p-3 shadow-[4px_4px_0_0_#EF4444] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-red-500"><Trash2 size={24} strokeWidth={3} /></button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -262,7 +291,14 @@ export default function VerifyEventsPage() {
                 <header className="border-b-8 border-black pb-4">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="bg-black text-white px-3 py-1 font-black text-xs italic uppercase">By: {selectedEvent.profiles?.full_name}</div>
-                    <div className={`px-3 py-1 font-black text-xs italic uppercase border-2 border-black ${selectedEvent.status === 'approved' ? 'bg-emerald-400' : 'bg-amber-400'}`}>{selectedEvent.status}</div>
+                    {selectedEvent.status === 'approved' && (selectedEvent.end_date ? selectedEvent.end_date < todayStr : selectedEvent.date < todayStr) ? (
+                      <div className="px-3 py-1 font-black text-xs italic uppercase border-2 border-black bg-zinc-500 text-white dark:bg-zinc-700">STAGE SELESAI</div>
+                    ) : (
+                      <div className={`px-3 py-1 font-black text-xs italic uppercase border-2 border-black ${
+                        selectedEvent.status === 'approved' ? 'bg-emerald-400 text-black' : 
+                        selectedEvent.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
+                      }`}>{selectedEvent.status}</div>
+                    )}
                   </div>
                   <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">{selectedEvent.title}</h2>
                 </header>
@@ -300,10 +336,16 @@ export default function VerifyEventsPage() {
                 </div>
 
                 {/* ACTION BUTTONS IN MODAL */}
-                <div className="flex gap-4 pt-6">
-                    <button onClick={() => handleStatus(selectedEvent.id, 'approved')} className="flex-1 py-5 bg-emerald-400 border-4 border-black font-black uppercase italic shadow-[6px_6px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">APPROVE STAGE</button>
-                    <button onClick={() => handleStatus(selectedEvent.id, 'rejected')} className="flex-1 py-5 bg-red-500 text-white border-4 border-black font-black uppercase italic shadow-[6px_6px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">REJECT STAGE</button>
-                </div>
+                {selectedEvent.status === 'approved' && (selectedEvent.end_date ? selectedEvent.end_date < todayStr : selectedEvent.date < todayStr) ? (
+                  <div className="bg-zinc-100 dark:bg-zinc-900 border-4 border-black font-black uppercase italic p-5 text-center shadow-[6px_6px_0_0_#000] text-zinc-500 dark:text-zinc-400 mt-6">
+                    🔒 STAGE SELESAI - TINDAKAN DIKUNCI
+                  </div>
+                ) : (
+                  <div className="flex gap-4 pt-6">
+                      <button onClick={() => handleStatus(selectedEvent.id, 'approved')} className="flex-1 py-5 bg-emerald-400 border-4 border-black font-black uppercase italic shadow-[6px_6px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">APPROVE STAGE</button>
+                      <button onClick={() => handleStatus(selectedEvent.id, 'rejected')} className="flex-1 py-5 bg-red-500 text-white border-4 border-black font-black uppercase italic shadow-[6px_6px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">REJECT STAGE</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

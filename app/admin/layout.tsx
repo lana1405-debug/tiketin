@@ -9,6 +9,8 @@ import {
   LayoutDashboard, CalendarCheck, Users, Wallet, 
   ShieldCheck, LifeBuoy, LogOut, Loader2, Landmark, Zap, Terminal, AlertTriangle, IdCard, BarChart3, Ticket as TicketIcon
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import "./admin.css";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -82,18 +84,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAuthorized) return null;
 
   return (
-    <div className={`flex min-h-screen bg-white ${poppins.className} text-black`}>
+    <div className={`flex min-h-screen bg-white ${poppins.className} text-black admin-layout`}>
       {/* SIDEBAR BRUTAL TOTAL */}
       <aside className="w-80 bg-white border-r-8 border-black flex flex-col sticky top-0 h-screen z-50">
         
         {/* LOGO BOX */}
         <div className="p-8 border-b-8 border-black bg-[#6D4AFF] text-white">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-white p-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              {/* Logo Petir ganti jadi Tiket biar seragam */}
-              <TicketIcon className="text-[#6D4AFF]" size={24} strokeWidth={4} />
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                {/* Logo Petir ganti jadi Tiket biar seragam */}
+                <TicketIcon className="text-[#6D4AFF]" size={24} strokeWidth={4} />
+              </div>
+              <span className="text-3xl font-black italic uppercase tracking-tighter -skew-x-12">TIKETIN.</span>
             </div>
-            <span className="text-3xl font-black italic uppercase tracking-tighter -skew-x-12">TIKETIN.</span>
+            <ThemeToggle />
           </div>
           <div className="bg-black text-white px-3 py-1 inline-flex items-center gap-2 text-[9px] font-black uppercase italic tracking-widest border-2 border-white">
             <Terminal size={12} /> Central Control
@@ -137,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 p-8 md:p-16 bg-white overflow-y-auto relative">
         {/* Background Grid Pattern (Brutal Style) */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(circle, black 2px, transparent 0)', backgroundSize: '40px 40px' }} />
+             style={{ backgroundImage: 'radial-gradient(circle, var(--grid-color) 2px, transparent 0)', backgroundSize: '40px 40px' }} />
         
         <div className="max-w-7xl mx-auto relative z-10">
           {children}

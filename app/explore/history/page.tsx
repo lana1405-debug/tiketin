@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { 
   ChevronLeft, Receipt, AlertCircle, Clock, 
-  CheckCircle2, ChevronRight, Zap, XCircle 
+  CheckCircle2, ChevronRight, Zap, XCircle,
+  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -35,6 +46,7 @@ const GLOBAL_STYLES = `
 export default function HistoryPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -61,6 +73,13 @@ export default function HistoryPage() {
   const fetchHistory = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push("/login"); return; }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single();
+    if (profile) setUserProfile(profile);
 
     setIsLoading(true);
 
@@ -117,6 +136,11 @@ export default function HistoryPage() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
@@ -169,13 +193,67 @@ export default function HistoryPage() {
 
   return (
     <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise ${poppins.className}`}>
-      <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center justify-between px-6 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
-        <button onClick={() => router.push("/explore")} className="flex items-center gap-2 group border-2 border-transparent p-2 hover:border-slate-900 hover:bg-amber-400 transition-all">
-          <ChevronLeft size={24} strokeWidth={4} />
-          <span className="text-xl font-black italic uppercase tracking-tighter -skew-x-12">KEMBALI</span>
-        </button>
-        <div className="hidden md:flex items-center gap-2 border-2 border-slate-900 bg-amber-400 px-3 py-1 font-black italic text-xs shadow-[4px_4px_0_0_#000] -skew-x-6">
-          <Zap size={14} className="text-slate-900"/> LOG KEUANGAN
+      {/* NAVBAR */}
+      <nav className="w-full bg-white border-b-8 border-slate-900 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] h-20 px-6">
+        <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
+          <Link href="/explore" className="flex items-center gap-2 group">
+            <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
+              <ChevronLeft className="text-white" size={24} strokeWidth={3} />
+            </div>
+            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline">KEMBALI</span>
+          </Link>
+          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900">RIWAYAT TAGIHAN</span>
+
+          <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
+                  <div className="text-right hidden md:block">
+                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 mb-1 px-2 py-0.5 inline-block bg-slate-100">
+                      {userProfile?.verification_status === "approved" ? (
+                        <span className="text-emerald-500">✓ VERIFIED</span>
+                      ) : userProfile?.verification_status === "pending" ? (
+                        <span className="text-amber-500">⏳ PENDING KYC</span>
+                      ) : (
+                        <span className="text-red-500">✗ UNVERIFIED</span>
+                      )}
+                    </p>
+                    <p className="text-xs font-black italic -skew-x-6 uppercase">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
+                  </div>
+                  <Avatar className="h-10 w-10 border-4 border-slate-900 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
+                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarFallback className="bg-[#6D4AFF] text-white font-black">{userProfile?.full_name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
+                <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Ticket className="mr-2 h-4 w-4" /> Tiket Saya
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuItem
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </nav>
 

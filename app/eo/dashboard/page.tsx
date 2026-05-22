@@ -794,9 +794,12 @@ export default function EODashboard() {
                                   <button onClick={() => openWithdrawModal(event)} className="w-full bg-emerald-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><HandCoins size={14} /> Cairkan Cuan</button>
                                 )}
                                 {event.status === 'approved' && (
-                                  <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
+                                  <div className="flex flex-col gap-2 w-full">
+                                    <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
+                                    <button onClick={() => window.open(`/eo/dashboard/gate-analytics/${event.id}`, '_blank')} className="w-full bg-cyan-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><Activity size={14} /> Gate Live</button>
+                                  </div>
                                 )}
-                                <div className="flex gap-2 text-black">
+                                <div className="flex gap-2 text-black w-full">
                                   <button onClick={() => openEditModal(event)} className="flex-1 bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Edit2 size={14} strokeWidth={3} /></button>
                                   <button onClick={() => { if(confirm("Hapus?")) supabase.from("events").delete().eq("id", event.id).then(() => fetchMyEvents(eoId!)) }} className="flex-1 bg-white border-2 border-black p-2 text-red-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Trash2 size={14} strokeWidth={3} /></button>
                                 </div>

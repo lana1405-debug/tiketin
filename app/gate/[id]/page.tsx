@@ -157,7 +157,10 @@ export default function GateScanner() {
           const lastDayOfEvent = (ticket.events as any)?.end_date || (ticket.events as any)?.date;
           const isLastDayOrLater = lastDayOfEvent ? hariIni >= lastDayOfEvent : true;
 
-          const updatePayload: any = { last_scanned_date: hariIni };
+          const updatePayload: any = { 
+            last_scanned_date: hariIni,
+            checked_in_at: new Date().toISOString()
+          };
           if (isLastDayOrLater) {
             updatePayload.status_checkin = true;
           }
@@ -180,7 +183,10 @@ export default function GateScanner() {
         } else {
           const { error: updateError } = await supabase
             .from("tiket")
-            .update({ status_checkin: true })
+            .update({ 
+              status_checkin: true,
+              checked_in_at: new Date().toISOString()
+            })
             .eq("id", ticket.id);
 
           if (updateError) throw updateError;

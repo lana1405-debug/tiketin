@@ -1,0 +1,307 @@
+/* Scoped overrides for low-light Neobrutalist dark mode */
+
+/* Set variables for dark mode grid pattern */
+:root {
+  --grid-color: rgba(0, 0, 0, 0.05);
+}
+.dark {
+  --grid-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark .admin-layout {
+  background-color: #0c0c0e !important;
+  color: #f4f4f5 !important;
+}
+
+/* Background overrides */
+.dark .admin-layout main {
+  background-color: #0c0c0e !important;
+}
+
+.dark .admin-layout .bg-white {
+  background-color: #161619 !important;
+}
+
+.dark .admin-layout .bg-slate-50 {
+  background-color: #1a1a1d !important;
+}
+
+.dark .admin-layout .bg-slate-100 {
+  background-color: #242427 !important;
+}
+
+.dark .admin-layout .bg-slate-200 {
+  background-color: #2d2d31 !important;
+}
+
+.dark .admin-layout .bg-slate-900 {
+  background-color: #0c0c0e !important;
+}
+
+/* Sidebar structure */
+.dark .admin-layout aside {
+  background-color: #121214 !important;
+  border-right-color: #ffffff !important;
+}
+
+.dark .admin-layout aside nav {
+  background-color: #161619 !important;
+}
+
+.dark .admin-layout aside > div:last-child {
+  background-color: #121214 !important;
+  border-top-color: #ffffff !important;
+}
+
+/* Sidebar navigation links */
+.dark .admin-layout aside nav a.bg-black {
+  background-color: #6D4AFF !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: 6px 6px 0px 0px rgba(255, 255, 255, 1) !important;
+}
+
+.dark .admin-layout aside nav a:not(.bg-black) {
+  background-color: #1c1c20 !important;
+  color: #e4e4e7 !important;
+  border-color: #ffffff !important;
+  box-shadow: 4px 4px 0px 0px rgba(255, 255, 255, 1) !important;
+}
+
+.dark .admin-layout aside nav a:not(.bg-black):hover {
+  background-color: #27272a !important;
+  box-shadow: none !important;
+  transform: translate(4px, 4px) !important;
+}
+
+.dark .admin-layout aside nav a:not(.bg-black) svg {
+  color: #e4e4e7 !important;
+}
+
+.dark .admin-layout aside nav a.bg-black svg {
+  color: #fbbf24 !important; /* Amber icon for active link */
+}
+
+/* Text overrides */
+.dark .admin-layout .text-black {
+  color: #f4f4f5 !important;
+}
+
+.dark .admin-layout .text-slate-900 {
+  color: #f4f4f5 !important;
+}
+
+.dark .admin-layout .text-slate-800 {
+  color: #e4e4e7 !important;
+}
+
+.dark .admin-layout .text-slate-700 {
+  color: #d4d4d8 !important;
+}
+
+.dark .admin-layout .text-slate-600 {
+  color: #a1a1aa !important;
+}
+
+.dark .admin-layout .text-slate-500 {
+  color: #a1a1aa !important;
+}
+
+.dark .admin-layout .text-slate-400 {
+  color: #71717a !important;
+}
+
+.dark .admin-layout .text-slate-300 {
+  color: #52525b !important;
+}
+
+
+.dark .admin-layout .bg-amber-400.text-black {
+  color: #000000 !important; /* Keep black text readable on bright yellow cards */
+}
+
+.dark .admin-layout .bg-emerald-400.text-black {
+  color: #000000 !important; /* Keep black text readable on bright green cards */
+}
+
+/* Keep black bg for special blocks, but color borders white */
+.dark .admin-layout .bg-black:not(a):not(tr):not(button):not(nav) {
+  background-color: #0a0a0c !important;
+  border-color: #ffffff !important;
+}
+
+/* Border overrides globally inside admin layout */
+.dark .admin-layout .border-black {
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout .border-r-8 {
+  border-right-color: #ffffff !important;
+}
+
+.dark .admin-layout .border-b-8 {
+  border-bottom-color: #ffffff !important;
+}
+
+.dark .admin-layout .border-t-8 {
+  border-top-color: #ffffff !important;
+}
+
+.dark .admin-layout .border-4 {
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout .border-2 {
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout .divide-black > :not([hidden]) ~ :not([hidden]) {
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout hr {
+  border-color: #ffffff !important;
+}
+
+/* Table element styling in dark mode */
+.dark .admin-layout table th {
+  border-color: #27272a !important;
+}
+
+.dark .admin-layout table td {
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout table tbody tr {
+  border-bottom-width: 4px;
+  border-bottom-color: #ffffff !important;
+}
+
+.dark .admin-layout tr.hover\:bg-slate-50:hover {
+  background-color: #1a1a1d !important;
+}
+
+.dark .admin-layout tr.hover\:bg-slate-100:hover {
+  background-color: #1a1a1d !important;
+}
+
+/* Drop shadow overrides */
+.dark .admin-layout .shadow-\[3px_3px_0_0_\#000\],
+.dark .admin-layout .shadow-\[3px_3px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 3px 3px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[4px_4px_0_0_\#000\],
+.dark .admin-layout .shadow-\[4px_4px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 4px 4px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[6px_6px_0_0_\#000\],
+.dark .admin-layout .shadow-\[6px_6px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 6px 6px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[8px_8px_0_0_\#000\],
+.dark .admin-layout .shadow-\[8px_8px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 8px 8px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[10px_10px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 10px 10px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[12px_12px_0_0_\#000\],
+.dark .admin-layout .shadow-\[12px_12px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 12px 12px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[15px_15px_0_0_\#000\],
+.dark .admin-layout .shadow-\[15px_15px_0px_0px_\#000\],
+.dark .admin-layout .shadow-\[15px_15px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 15px 15px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[20px_20px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 20px 20px 0 0 #ffffff !important;
+}
+
+.dark .admin-layout .shadow-\[25px_25px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 25px 25px 0 0 #ffffff !important;
+}
+
+/* Keep colorful shadows that add vibrancy */
+.dark .admin-layout .shadow-\[4px_4px_0_0_\#10B981\] {
+  box-shadow: 4px 4px 0 0 #10B981 !important;
+}
+
+.dark .admin-layout .shadow-\[4px_4px_0_0_\#EF4444\] {
+  box-shadow: 4px 4px 0 0 #EF4444 !important;
+}
+
+/* Modals */
+.dark .admin-layout .bg-white.border-8.border-black {
+  background-color: #161619 !important;
+  border-color: #ffffff !important;
+}
+
+/* Inputs and Forms */
+.dark .admin-layout input,
+.dark .admin-layout select,
+.dark .admin-layout textarea {
+  background-color: #121214 !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.dark .admin-layout input:focus,
+.dark .admin-layout select:focus,
+.dark .admin-layout textarea:focus {
+  background-color: #1a1a1d !important;
+}
+
+/* Recharts SVG and chart overrides in dark mode */
+.dark .admin-layout .recharts-cartesian-axis-tick text {
+  fill: #f4f4f5 !important;
+}
+
+.dark .admin-layout .recharts-cartesian-axis-line,
+.dark .admin-layout .recharts-cartesian-axis-tick-line {
+  stroke: #ffffff !important;
+}
+
+.dark .admin-layout .recharts-default-tooltip {
+  background-color: #161619 !important;
+  border: 4px solid #ffffff !important;
+}
+
+.dark .admin-layout .recharts-tooltip-label {
+  color: #ffffff !important;
+}
+
+.dark .admin-layout .recharts-tooltip-item {
+  color: #ffffff !important;
+}
+
+.dark .admin-layout .recharts-cartesian-grid line {
+  stroke: #27272a !important;
+}
+
+.dark .admin-layout .recharts-legend-item-text {
+  color: #f4f4f5 !important;
+}
+
+/* Custom Scrollbars in dark mode */
+.dark .admin-layout ::-webkit-scrollbar-track {
+  background: #121214 !important;
+  border-left: 2px solid #ffffff !important;
+}
+
+.dark .admin-layout ::-webkit-scrollbar-thumb {
+  background: #6D4AFF !important;
+  border: 2px solid #ffffff !important;
+}
+
+.dark .admin-layout ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
