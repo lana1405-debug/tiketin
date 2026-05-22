@@ -91,15 +91,15 @@ export default function LoginPage() {
 
   return (
     <main className={`min-h-screen bg-[#FCFAF1] ${poppins.className} noise`}>
-      <div className="flex flex-col lg:flex flex-col md:flex-row min-h-screen w-full">
+      <div className="flex flex-col lg:flex-row min-h-screen w-full">
         
         {/* PANEL ILUSTRASI (Muncul di ATAS saat di HP) */}
-        <aside className="w-full lg:w-1/2 h-[250px] lg:h-auto">
+        <aside className="w-full lg:w-1/2 h-[280px] sm:h-[320px] lg:h-auto shrink-0">
           <LoginIllustration />
         </aside>
 
         {/* PANEL FORM */}
-        <section className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-14 bg-[#FCFAF1]">
+        <section className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-14 bg-[#FCFAF1] overflow-y-auto">
           <div className="w-full max-w-md lg:max-w-lg">
             
             {/* LOGO AREA */}

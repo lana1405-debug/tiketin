@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -86,7 +86,7 @@ export default function GlobalTransactionsPage() {
       <div className="max-w-7xl mx-auto space-y-12">
         
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-b-8 border-black pb-10">
           <div className="flex items-start gap-6">
             <button 
               onClick={() => router.back()} 

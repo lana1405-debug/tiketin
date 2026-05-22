@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
     <div className={`space-y-10 pb-20 ${poppins.className} bg-white text-black text-left`}>
       
       {/* HEADER COMMAND CENTER */}
-      <header className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
         <div className="space-y-3">
           <div className="bg-black text-white border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(109,74,255,1)]">
             <Terminal size={14} /> System OS v2.0
@@ -308,7 +308,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* LOGS / SYSTEM HEALTH */}
-        <div className="md:col-span-12 bg-slate-900 border-8 border-black p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex flex-col md:flex-row justify-between items-center text-white gap-6">
+        <div className="md:col-span-12 bg-slate-900 border-8 border-black p-8 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row justify-between items-center text-white gap-6">
            <div className="flex items-center gap-4 w-full md:w-auto text-left">
               <div className="bg-white text-black w-14 h-14 border-4 border-black flex items-center justify-center shrink-0">
                 <Activity size={24} strokeWidth={3} />

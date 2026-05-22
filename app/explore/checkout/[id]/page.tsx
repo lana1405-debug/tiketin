@@ -328,7 +328,7 @@ export default function CheckoutPage() {
           </p>
         </motion.div>
 
-        <div className="flex flex-col lg:flex flex-col md:flex-row gap-16">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
           <div className="flex-1 space-y-8">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 brutal-shadow-card flex flex-col overflow-hidden text-left">
               <div className="h-64 bg-slate-900 relative border-b-4 border-slate-900">

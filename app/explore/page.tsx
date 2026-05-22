@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
@@ -870,7 +870,7 @@ export default function ExplorePage() {
         </div>
 
         {/* ⚡ DROPDOWN SORTING */}
-        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-center mt-12 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mt-12 border-t-4 border-slate-900 pt-6 mb-12 gap-4 bg-white p-4 border-4 shadow-[4px_4px_0_0_#000]">
           <p className="font-black italic uppercase text-slate-400 text-sm">
             Menampilkan {visibleEvents.length} dari {processedEvents.length} Event
           </p>
@@ -1126,7 +1126,7 @@ export default function ExplorePage() {
               </ul>
             </div>
           </div>
-          <div className="pt-12 border-t-4 border-black flex flex-col md:flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="pt-12 border-t-4 border-black flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-black bg-amber-400 px-4 py-2 border-2 border-black">© 2026 TIKETIN. ALL STAGES PROTECTED.</p>
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300 italic -skew-x-12 drop-shadow-[2px_2px_0_#000]">BUILT BY IKMAN @ UPI</p>
           </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -136,7 +136,7 @@ export default function EventAnalyticsPage() {
       <div className="max-w-7xl mx-auto space-y-10">
         
         {/* HEADER */}
-        <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
           <div className="flex items-start gap-4">
             <button onClick={() => router.back()} className="p-3 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
               <ArrowLeft size={20} strokeWidth={3} />
@@ -151,7 +151,7 @@ export default function EventAnalyticsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex flex-col md:flex-row gap-4 w-full md:w-auto">
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
             <button onClick={exportToCSV} className="bg-emerald-400 text-black px-6 py-4 border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-3 font-black italic uppercase text-xs">
               <Download size={18} strokeWidth={3} /> Download Report
             </button>

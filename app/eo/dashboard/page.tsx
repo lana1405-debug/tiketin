@@ -10,7 +10,7 @@ import {
   ImageIcon, Box, Zap, X, UploadCloud, Tag,
   Banknote, QrCode, Users, Activity, Target, ShieldCheck,
   Landmark, HandCoins, Clock, CheckCircle2, LifeBuoy, MessageSquare, Send,
-  Percent, Star, ChevronLeft
+  Percent, Star, ChevronLeft, Menu
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -55,6 +55,7 @@ export default function EODashboard() {
   const [eoName, setEoName] = useState("Organizer");
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ⚡ TAB ACTIVE STATE
   const [activeTab, setActiveTab] = useState<"events" | "analytics" | "vouchers" | "feedback">("events");
@@ -590,9 +591,9 @@ export default function EODashboard() {
   if (!mounted) return null;
 
   return (
-    <main className={`min-h-screen bg-white flex flex-col xl:flex flex-col md:flex-row ${poppins.className} text-black`}>
-      {/* SIDEBAR */}
-      <aside className="w-full xl:w-80 bg-white border-r-8 border-black xl:min-h-screen flex flex-col p-8 z-20 shrink-0 text-left">
+    <main className={`min-h-screen bg-white flex flex-col ${poppins.className} text-black`}>
+      {/* ── DESKTOP SIDEBAR (xl+) ── */}
+      <aside className="hidden xl:flex w-80 bg-white border-r-8 border-black xl:min-h-screen flex-col p-8 z-20 shrink-0 text-left sticky top-0 h-screen">
         <div className="mb-12 flex items-center gap-3">
           <div className="bg-[#6D4AFF] p-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-6deg]">
             <Zap className="text-amber-400" size={24} strokeWidth={3} />
@@ -613,7 +614,7 @@ export default function EODashboard() {
             <Ticket size={20} /> Lihat Stage
           </Link>
         </nav>
-        <div className="border-t-8 border-black pt-8 mt-auto hidden xl:block">
+        <div className="border-t-8 border-black pt-8 mt-auto">
            <div className="bg-black text-white p-4 border-2 border-black font-black uppercase italic text-[9px] flex items-center gap-2 mb-4">
               <ShieldCheck size={14} className="text-emerald-400"/> EO Account Verified
            </div>
@@ -623,17 +624,80 @@ export default function EODashboard() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 p-6 md:p-12 xl:p-16 bg-[#FCFAF1] overflow-y-auto max-h-screen relative text-left">
+      {/* ── MOBILE DRAWER OVERLAY (below xl) ── */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-[60] xl:hidden">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 h-full w-72 sm:w-80 bg-white border-r-8 border-black flex flex-col p-6 z-10 overflow-y-auto text-left">
+            <div className="mb-8 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#6D4AFF] p-2 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-[-6deg]">
+                  <Zap className="text-amber-400" size={20} strokeWidth={3} />
+                </div>
+                <span className="text-2xl font-black italic uppercase tracking-tighter -skew-x-12 leading-none">Tiketin.</span>
+              </div>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 bg-black text-white border-2 border-black hover:bg-gray-800 transition-colors"
+              >
+                <X size={18} strokeWidth={3} />
+              </button>
+            </div>
+            <nav className="flex-grow space-y-3">
+              <button className="w-full flex items-center gap-4 bg-black text-white px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(109,74,255,1)] font-black uppercase italic text-xs tracking-widest">
+                <LayoutDashboard size={18} /> Control Room
+              </button>
+              <button onClick={() => { alert("Pilih event di tabel, lalu klik 'Scanner'"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 bg-amber-400 text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                <QrCode size={18} /> Scan Check-In
+              </button>
+              <button onClick={() => { setIsComplaintModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 bg-white text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 transition-all">
+                <LifeBuoy size={18} /> Live Support
+              </button>
+              <Link href="/explore" onClick={() => setIsSidebarOpen(false)} className="w-full flex items-center gap-4 bg-white text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+                <Ticket size={18} /> Lihat Stage
+              </Link>
+            </nav>
+            <div className="border-t-4 border-black pt-6 mt-auto">
+              <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} className="w-full flex items-center justify-center gap-3 bg-red-500 text-white p-4 border-4 border-black font-black uppercase italic text-xs tracking-widest shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
+                <LogOut size={18} /> Exit Matrix
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ── MAIN CONTENT AREA ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* ── MOBILE TOPBAR (below xl) ── */}
+        <header className="xl:hidden sticky top-0 z-50 bg-black border-b-4 border-black h-16 flex items-center justify-between px-4 shrink-0">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-[#6D4AFF] text-white border-2 border-white shadow-[3px_3px_0_0_#FCD34D] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+          >
+            <Menu size={22} strokeWidth={3} />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="bg-[#6D4AFF] p-1.5 border-2 border-white rotate-[-6deg]">
+              <Zap className="text-amber-400" size={16} strokeWidth={3} />
+            </div>
+            <span className="text-xl font-black italic uppercase tracking-tighter -skew-x-12 text-white">Tiketin.</span>
+          </div>
+          <div className="text-[9px] font-black uppercase text-amber-400 italic tracking-widest">EO OS</div>
+        </header>
+
+        <div className="flex-1 p-4 sm:p-8 xl:p-16 bg-[#FCFAF1] overflow-y-auto relative text-left">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, black 2px, transparent 0)', backgroundSize: '40px 40px' }} />
         <div className="max-w-7xl mx-auto space-y-12 relative z-10">
           
-          <div className="flex flex-col md:flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-black pb-8">
             <div>
               <div className="bg-[#6D4AFF] text-white border-2 border-black px-3 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_#000] mb-4">
                 <Target size={14} strokeWidth={3} /> Event Organizer OS
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
                 AGENT <span className="text-amber-400 drop-shadow-[2px_2px_0_#000]">{eoName.split(' ')[0]}.</span>
               </h1>
               <p className="text-slate-500 font-bold italic text-lg mt-4 max-w-xl">Pantau pergerakan penjualan dan atur amunisi event lo di sini.</p>
@@ -1073,6 +1137,7 @@ export default function EODashboard() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* ⚡ MODAL LIVE CHAT SUPPORT */}
@@ -1214,7 +1279,7 @@ export default function EODashboard() {
                 </div>
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                   {categories.map((cat, index) => (
-                    <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                    <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                       <div className="absolute -top-3 -left-3 bg-black text-white px-2 py-1 font-black italic text-[9px] uppercase border-2 border-black">Tier {index + 1}</div>
                       <div className="flex-1 w-full mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Nama Kategori</label><input type="text" value={cat.name} onChange={e => updateCategory(cat.id, 'name', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="FESTIVAL" /></div>
                       <div className="flex-1 w-full"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Harga (Rp)</label><input type="number" value={cat.price} onChange={e => updateCategory(cat.id, 'price', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm text-[#6D4AFF]" placeholder="50000" /></div>
@@ -1224,7 +1289,7 @@ export default function EODashboard() {
                   ))}
                 </div>
               </div>
-              <div className="flex flex-col sm:flex flex-col md:flex-row gap-6 pt-4"><button type="button" onClick={closeModal} className="flex-1 py-5 bg-white border-4 border-black font-black uppercase italic text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-all">Batal</button><button type="submit" disabled={isSubmitting} className="flex-[2] py-5 bg-[#6D4AFF] text-white border-4 border-black font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-2 transition-all flex items-center justify-center">{isSubmitting ? <><Loader2 className="animate-spin mr-2"/> SENDING...</> : (editingEventId ? "SIMPAN PERUBAHAN" : "KIRIM PENGAJUAN EVENT")}</button></div>
+              <div className="flex flex-col sm:flex-row gap-6 pt-4"><button type="button" onClick={closeModal} className="flex-1 py-5 bg-white border-4 border-black font-black uppercase italic text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-all">Batal</button><button type="submit" disabled={isSubmitting} className="flex-[2] py-5 bg-[#6D4AFF] text-white border-4 border-black font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-2 transition-all flex items-center justify-center">{isSubmitting ? <><Loader2 className="animate-spin mr-2"/> SENDING...</> : (editingEventId ? "SIMPAN PERUBAHAN" : "KIRIM PENGAJUAN EVENT")}</button></div>
             </form>
           </div>
         </div>

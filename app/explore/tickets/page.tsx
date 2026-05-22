@@ -386,7 +386,7 @@ export default function MyTicketsPage() {
       <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-16 pb-40">
 
         {/* ── PAGE TITLE ── */}
-        <header className="mb-16 flex flex-col md:flex flex-col md:flex-row md:items-end justify-between gap-8">
+        <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div>
             <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_#000] -rotate-2 inline-flex items-center gap-2 mb-6 italic">
               <TicketIcon size={14} /> TICKET INVENTORY
@@ -398,7 +398,8 @@ export default function MyTicketsPage() {
         </header>
 
         {/* ⚡ TABS */}
-        <div className="flex bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] p-1 w-max mb-12">
+        <div className="overflow-x-auto w-full mb-12">
+          <div className="flex bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] p-1 w-max min-w-full sm:min-w-0">
           {["PENDING", "AKTIF", "TERPAKAI"].map((tab) => (
             <button
               key={tab}
@@ -413,6 +414,7 @@ export default function MyTicketsPage() {
               {tab === "TERPAKAI" && "🏁 Terpakai"}
             </button>
           ))}
+          </div>
         </div>
 
         {/* ── TICKET LIST ── */}
@@ -447,7 +449,7 @@ export default function MyTicketsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="w-full flex flex-col md:flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
+                    className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
                   >
 
                     {/* ⚡ OVERLAY TERPAKAI */}
@@ -460,7 +462,7 @@ export default function MyTicketsPage() {
                     )}
 
                     {/* KIRI: Info Event */}
-                    <div className={`flex-1 flex flex-col sm:flex flex-col md:flex-row ${(ticket.status === "TERPAKAI" || isEventEnded) ? 'opacity-50 grayscale-[100%]' : ''}`}>
+                    <div className={`flex-1 flex flex-col sm:flex-row ${(ticket.status === "TERPAKAI" || isEventEnded) ? 'opacity-50 grayscale-[100%]' : ''}`}>
                       <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
                         <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
 

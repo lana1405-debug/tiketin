@@ -90,7 +90,7 @@ export default function EODashboard() {
     <div className={`space-y-12 pb-20 ${poppins.className} text-black text-left`}>
       
       {/* HEADER SECTION */}
-      <header className="flex flex-col xl:flex flex-col md:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
+      <header className="flex flex-col md:flex-row justify-between items-start xl:items-end gap-8 border-b-8 border-black pb-10">
         <div className="space-y-4">
           <div className="bg-emerald-400 text-black border-2 border-black px-4 py-1 text-[10px] font-black uppercase italic inline-flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
             <Zap size={14} strokeWidth={3} /> EO Performance Radar

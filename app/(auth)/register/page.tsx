@@ -132,9 +132,9 @@ export default function RegisterPage() {
 
   return (
     <main className={`min-h-screen bg-[#FCFAF1] flex ${poppins.className} noise overflow-hidden`}>
-      <div className="flex flex-col lg:flex flex-col md:flex-row-reverse w-full min-h-screen">
+      <div className="flex flex-col lg:flex-row-reverse w-full min-h-screen">
         
-        <aside className="w-full lg:w-1/2 h-[280px] sm:h-[350px] lg:h-auto shrink-0">
+        <aside className="w-full lg:w-1/2 h-[240px] sm:h-[320px] lg:h-auto shrink-0">
           <RegisterIllustration />
         </aside>
 
