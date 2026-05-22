@@ -71,64 +71,64 @@
 
 :root {
   /* Warna Cream dari Background Logo agar menyatu total */
-  --background: oklch(0.98 0.01 80); /* #FCFAF1 */
-  --foreground: oklch(0.2 0 0);
+  --background: #FCFAF1;
+  --foreground: #333333;
   
   /* Warna Ungu (Purple) dari Logo untuk tombol & aksen */
-  --primary: oklch(0.45 0.23 285); /* #553C9A */
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: #553C9A;
+  --primary-foreground: #fafafa;
 
   /* Warna Coral Pink dari Logo untuk teks 'Daftar' */
-  --secondary: oklch(0.7 0.18 25); /* #FF6B6B */
-  --secondary-foreground: oklch(0.98 0 0);
+  --secondary: #FF6B6B;
+  --secondary-foreground: #fafafa;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0 0);
-  --muted: oklch(0.95 0.01 80);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.95 0.01 80);
-  --accent-foreground: oklch(0.45 0.23 285);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.45 0.23 285);
+  --card: #ffffff;
+  --card-foreground: #333333;
+  --popover: #ffffff;
+  --popover-foreground: #333333;
+  --muted: #f5f3e9;
+  --muted-foreground: #7f7f7f;
+  --accent: #f5f3e9;
+  --accent-foreground: #553C9A;
+  --destructive: #ef4444;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #553C9A;
   --radius: 1.25rem; /* Bikin rounded lebih lebar biar 'groovy' */
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #181818;
+  --foreground: #fafafa;
+  --card: #202020;
+  --card-foreground: #fafafa;
+  --popover: #202020;
+  --popover-foreground: #fafafa;
+  --primary: #eaeaea;
+  --primary-foreground: #202020;
+  --secondary: #404040;
+  --secondary-foreground: #fafafa;
+  --muted: #404040;
+  --muted-foreground: #b5b5b5;
+  --accent: #404040;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: #8c8c8c;
+  --chart-1: #dedede;
+  --chart-2: #8c8c8c;
+  --chart-3: #707070;
+  --chart-4: #5e5e5e;
+  --chart-5: #404040;
+  --sidebar: #202020;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #583ba3;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #404040;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #8c8c8c;
 }
 
 @layer base {
