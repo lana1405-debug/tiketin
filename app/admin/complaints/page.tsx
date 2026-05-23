@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -100,6 +100,18 @@ export default function AdminComplaintsPage() {
     
     if (!error) {
       setReplyInputs(prev => ({ ...prev, [id]: "" }));
+      
+      // Kirim Notifikasi ke User
+      const complaint = complaints.find(c => c.id === id);
+      if (complaint?.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: complaint.user_id,
+          title: "Balasan Pengaduan Baru! 💬",
+          message: `Admin membalas aduan "${complaint.title}": "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
+          type: "info",
+          is_read: false
+        });
+      }
     } else {
       alert("Gagal kirim pesan: " + error.message);
     }
@@ -107,7 +119,19 @@ export default function AdminComplaintsPage() {
 
   const markAsResolved = async (id: string) => {
     if (confirm("Tandai laporan ini sebagai SELESAI?")) {
-      await supabase.from("complaints").update({ status: "resolved" }).eq("id", id);
+      const { error } = await supabase.from("complaints").update({ status: "resolved" }).eq("id", id);
+      if (!error) {
+        const complaint = complaints.find(c => c.id === id);
+        if (complaint?.user_id) {
+          await supabase.from("notifications").insert({
+            user_id: complaint.user_id,
+            title: "Pengaduan Diselesaikan! ✅",
+            message: `Laporan aduan "${complaint.title}" Anda telah ditandai selesai oleh admin.`,
+            type: "success",
+            is_read: false
+          });
+        }
+      }
     }
   };
 
