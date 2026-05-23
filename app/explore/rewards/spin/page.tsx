@@ -8,7 +8,7 @@ import { Poppins } from "next/font/google";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   ShieldCheck, Ticket, MessageSquare, Receipt, LogOut,
-  Volume2, VolumeX, HelpCircle, Lock, Gift, Sparkles
+  Volume2, VolumeX, HelpCircle, Lock, Gift, Sparkles, User
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/toast-brutal";
+import NotificationBell from "@/components/NotificationBell";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -498,6 +499,7 @@ export default function LuckySpinPage() {
               )}
             </button>
 
+            <NotificationBell userId={userProfile?.id} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
@@ -522,6 +524,9 @@ export default function LuckySpinPage() {
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
+                  <User className="mr-2 h-4 w-4" /> Profil Saya
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>

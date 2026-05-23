@@ -318,6 +318,15 @@ export default function CheckoutPage() {
         const newPoints = (profile?.points || 0) + earnedPoints;
         await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
 
+        // Kirim Notifikasi
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          title: "Tiket Berhasil Dibeli! 🎫",
+          message: `Pembelian ${qty} tiket untuk event ${event.title} sukses. Selamat menikmati!`,
+          type: "success",
+          is_read: false
+        });
+
         toast(`Tiket GRATIS berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
         router.push("/explore/tickets");
         return;
@@ -400,6 +409,15 @@ export default function CheckoutPage() {
             const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single();
             const newPoints = (profile?.points || 0) + earnedPoints;
             await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
+
+            // Kirim Notifikasi
+            await supabase.from("notifications").insert({
+              user_id: user.id,
+              title: "Tiket Berhasil Dibeli! 🎫",
+              message: `Pembelian ${qty} tiket untuk event ${event.title} sukses. Selamat menikmati!`,
+              type: "success",
+              is_read: false
+            });
 
             toast(`Pembayaran berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
             router.push("/explore/tickets"); 

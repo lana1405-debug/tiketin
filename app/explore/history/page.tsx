@@ -6,13 +6,14 @@ import { Poppins } from "next/font/google";
 import { 
   ChevronLeft, Receipt, AlertCircle, Clock, 
   CheckCircle2, ChevronRight, Zap, XCircle,
-  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut, Loader2
+  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut, Loader2, User
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/toast-brutal";
+import NotificationBell from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -234,6 +235,7 @@ export default function HistoryPage() {
           <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900">RIWAYAT TAGIHAN</span>
 
           <div className="flex items-center gap-4">
+            <NotificationBell userId={userProfile?.id} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
@@ -258,6 +260,9 @@ export default function HistoryPage() {
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                  <User className="mr-2 h-4 w-4" /> Profil Saya
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>
