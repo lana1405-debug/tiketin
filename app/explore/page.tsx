@@ -867,7 +867,7 @@ export default function ExplorePage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
                 <DropdownMenuItem
-                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -941,7 +941,7 @@ export default function ExplorePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter drop-shadow-[4px_4px_0_#fff]">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.75] tracking-tighter drop-shadow-[4px_4px_0_var(--primary-color)]">
               HALO,{" "}
               <span className="relative inline-block">
                 <span className="relative z-10">{userProfile?.full_name?.split(" ")[0].toUpperCase()}!</span>

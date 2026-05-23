@@ -724,7 +724,7 @@ export default function MyTicketsPage() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
                 <DropdownMenuItem
-                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Logout
