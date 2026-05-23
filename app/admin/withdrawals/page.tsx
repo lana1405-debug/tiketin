@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -9,11 +9,13 @@ import {
   Send, AlertCircle, Search
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "700", "900"] });
 
 export default function AdminWithdrawalsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -40,7 +42,7 @@ export default function AdminWithdrawalsPage() {
 
   const handleFileChange = (id: string, file: File) => {
     if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran file terlalu besar! Maksimal 2MB.");
+      toast("Ukuran file terlalu besar! Maksimal 2MB.", "warning");
       return;
     }
     setReceiptFiles(prev => ({ ...prev, [id]: file }));
@@ -49,7 +51,7 @@ export default function AdminWithdrawalsPage() {
   const handleSendAndFinish = async (id: string) => {
     const file = receiptFiles[id];
     if (!file) {
-      alert("Silakan pilih file bukti transfer terlebih dahulu!");
+      toast("Silakan pilih file bukti transfer terlebih dahulu!", "warning");
       return;
     }
 
@@ -87,7 +89,7 @@ export default function AdminWithdrawalsPage() {
         throw updateError;
       }
 
-      alert("Pencairan dana berhasil diselesaikan dengan bukti transfer! ✅");
+      toast("Pencairan dana berhasil diselesaikan dengan bukti transfer! ✅", "success");
       setReceiptFiles(prev => {
         const copy = { ...prev };
         delete copy[id];
@@ -96,7 +98,7 @@ export default function AdminWithdrawalsPage() {
       fetchWithdrawals();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Terjadi kesalahan saat memproses data.");
+      toast(err.message || "Terjadi kesalahan saat memproses data.", "error");
     } finally {
       setUploadingId(null);
     }
@@ -109,7 +111,7 @@ export default function AdminWithdrawalsPage() {
       .eq("id", id);
 
     if (!error) {
-      alert(`Status berhasil diupdate ke: ${newStatus}`);
+      toast(`Status berhasil diupdate ke: ${newStatus}`, "success");
       fetchWithdrawals();
     }
   };

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Poppins } from "next/font/google";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -18,6 +19,7 @@ const poppins = Poppins({
 
 export default function VerifyEventsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
@@ -59,7 +61,7 @@ export default function VerifyEventsPage() {
       .single();
 
     if (profile?.role !== "admin") {
-      alert("🛑 AREA TERLARANG! Lo bukan admin, Man.");
+      toast("🛑 AREA TERLARANG! Anda bukan admin.", "error");
       router.push("/explore");
       return;
     }
@@ -90,7 +92,7 @@ export default function VerifyEventsPage() {
       .eq("id", id);
 
     if (!error) {
-      alert(`Event berhasil di-${newStatus.toUpperCase()}!`);
+      toast(`Event berhasil di-${newStatus.toUpperCase()}!`, "success");
       fetchEvents();
       if (isDetailOpen) setIsDetailOpen(false);
     }
@@ -100,7 +102,7 @@ export default function VerifyEventsPage() {
     if (confirm("Yakin mau hapus event rejected ini permanen?")) {
       const { error } = await supabase.from("events").delete().eq("id", id);
       if (!error) {
-        alert("Event dibersihkan!");
+        toast("Event dibersihkan!", "success");
         fetchEvents();
       }
     }

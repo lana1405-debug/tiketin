@@ -7,6 +7,7 @@ import {
   CheckCircle, XCircle, Eye, Loader2, 
   ShieldAlert, X, IdCard, User, Mail, ShieldCheck 
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -14,6 +15,7 @@ const poppins = Poppins({
 });
 
 export default function AdminVerifyKTPPage() {
+  const { toast } = useToast();
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -59,7 +61,7 @@ export default function AdminVerifyKTPPage() {
         setIsDetailOpen(false); // Tutup modal kalo lagi kebuka
         fetchPendingKTP(); // Refresh data
       } else {
-        alert("Gagal update status: " + error.message);
+        toast("Gagal update status: " + error.message, "error");
       }
     }
   };

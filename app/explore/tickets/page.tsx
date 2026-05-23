@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, ChevronLeft, Calendar, MapPin,
   Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard, Star, Clock, X,
-  MessageSquare, Trophy, Receipt
+  MessageSquare, Trophy, Receipt, Share2, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
+import { useToast } from "@/components/ui/toast-brutal";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -48,16 +49,80 @@ const GLOBAL_STYLES = `
     box-shadow: 8px 8px 0px 0px #FBBF24, 16px 16px 0px 0px #000, 24px 24px 0px 0px #6D4AFF !important;
     transform: translate(-4px, -4px);
   }
+  .dark .brutal-shadow-card {
+    box-shadow: 6px 6px 0px 0px var(--primary-color, #6D4AFF), 12px 12px 0px 0px #fff, 18px 18px 0px 0px #FBBF24 !important;
+  }
+  .dark .brutal-shadow-card:hover {
+    box-shadow: 8px 8px 0px 0px #FBBF24, 16px 16px 0px 0px #fff, 24px 24px 0px 0px var(--primary-color, #6D4AFF) !important;
+  }
   .ticket-stub-divider {
     background-image: linear-gradient(to bottom, #0f172a 50%, transparent 50%);
     background-size: 4px 16px;
     background-repeat: repeat-y;
   }
+  .dark .ticket-stub-divider {
+    background-image: linear-gradient(to bottom, #fff 50%, transparent 50%);
+  }
 `;
+
+// ─── Countdown Hook ──────────────────────────────────────────────────────────
+function useCountdown(targetDateStr: string) {
+  const calculate = useCallback(() => {
+    const now = new Date().getTime();
+    const target = new Date(targetDateStr + "T00:00:00").getTime();
+    const diff = target - now;
+    if (diff <= 0) return null;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return { days, hours, minutes, seconds };
+  }, [targetDateStr]);
+
+  const [countdown, setCountdown] = useState(calculate);
+
+  useEffect(() => {
+    setCountdown(calculate());
+    const interval = setInterval(() => setCountdown(calculate()), 1000);
+    return () => clearInterval(interval);
+  }, [calculate]);
+
+  return countdown;
+}
+
+// ─── Countdown Display ────────────────────────────────────────────────────────
+function CountdownBadge({ dateStr }: { dateStr: string }) {
+  const countdown = useCountdown(dateStr);
+  if (!countdown) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 bg-[#6D4AFF] border-2 border-slate-900 dark:border-zinc-700 px-3 py-1.5 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] w-full">
+      <Clock size={12} strokeWidth={3} className="text-amber-400 shrink-0" />
+      <div className="flex gap-2 text-white">
+        {countdown.days > 0 && (
+          <span className="font-black italic text-[10px] uppercase">
+            <span className="text-amber-400">{countdown.days}</span>H
+          </span>
+        )}
+        <span className="font-black italic text-[10px] uppercase">
+          <span className="text-amber-400">{String(countdown.hours).padStart(2,'0')}</span>j
+        </span>
+        <span className="font-black italic text-[10px] uppercase">
+          <span className="text-amber-400">{String(countdown.minutes).padStart(2,'0')}</span>m
+        </span>
+        <span className="font-black italic text-[10px] uppercase">
+          <span className="text-amber-400">{String(countdown.seconds).padStart(2,'0')}</span>d
+        </span>
+        <span className="font-black italic text-[10px] uppercase text-purple-200 ml-1">MENUJU HARI H</span>
+      </div>
+    </div>
+  );
+}
 
 export default function MyTicketsPage() {
   const router = useRouter();
   const today = getLocalDateString();
+  const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +130,11 @@ export default function MyTicketsPage() {
   // ⚡ Tiga Tab Baru
   const [activeTab, setActiveTab] = useState("AKTIF"); // "PENDING", "AKTIF", "TERPAKAI"
   const [mounted, setMounted] = useState(false);
+  const [isProcessingPay, setIsProcessingPay] = useState<string | null>(null);
+
+  // ⚡ Cancel transaction states
+  const [txToCancel, setTxToCancel] = useState<any | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // ⚡ State buat notifikasi check-in real-time
   const [scannedTicketNotification, setScannedTicketNotification] = useState<{
@@ -96,9 +166,22 @@ export default function MyTicketsPage() {
     const style = document.createElement("style");
     style.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(style);
+
+    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
+    const script = document.createElement("script");
+    script.src = snapScript;
+    script.setAttribute("data-client-key", clientKey);
+    script.async = true;
+    document.head.appendChild(script);
+
     setMounted(true);
     fetchUserAndTickets();
-    return () => { document.head.removeChild(style); };
+
+    return () => { 
+      document.head.removeChild(style); 
+      document.head.removeChild(script);
+    };
   }, []);
 
   useEffect(() => {
@@ -216,17 +299,16 @@ export default function MyTicketsPage() {
       .eq("transaksi.user_id", session.user.id)
       .order("created_at", { ascending: false });
 
+    const formattedTickets: any[] = [];
+
     if (!error && ticketData) {
-      const formatted = ticketData.map((t: any) => {
-        // ⚡ LOGIC FILTER STATUS TIKET
+      ticketData.forEach((t: any) => {
+        // Tiket yang sudah paid atau sudah check-in
         let currentStatus = "AKTIF";
-        if (t.transaksi.status_pembayaran === "pending") {
-          currentStatus = "PENDING";
-        } else if (t.status_checkin === true) {
+        if (t.status_checkin === true) {
           currentStatus = "TERPAKAI";
         }
-
-        return {
+        formattedTickets.push({
           id: t.ticket_code,
           event_id: t.events.id,
           transaksi_id: t.transaksi.id,
@@ -242,16 +324,286 @@ export default function MyTicketsPage() {
           status_checkin: t.status_checkin,
           last_scanned_date: t.last_scanned_date,
           checked_in_at: t.checked_in_at
-        };
+        });
       });
-      setTickets(formatted);
     }
+
+    // ⚡ FETCH PENDING TRANSAKSI yang belum punya tiket (tiket diinsert SETELAH bayar)
+    const { data: pendingTx } = await supabase
+      .from("transaksi")
+      .select(`
+        id,
+        order_id,
+        total_bayar,
+        total_qty,
+        created_at,
+        event_id,
+        snap_token,
+        category_id,
+        events (
+          id,
+          title,
+          date,
+          end_date,
+          location,
+          category,
+          image_url,
+          price
+        )
+      `)
+      .eq("user_id", session.user.id)
+      .eq("status_pembayaran", "pending")
+      .order("created_at", { ascending: false });
+
+    if (pendingTx) {
+      const existingTxIds = new Set(formattedTickets.map(t => t.transaksi_id));
+      pendingTx.forEach((tx: any) => {
+        // Hindari duplikat jika sudah ada tiketnya
+        if (existingTxIds.has(tx.id)) return;
+        if (!tx.events) return;
+
+        // Buat 1 virtual ticket per transaksi pending
+        formattedTickets.push({
+          id: `PENDING-${tx.order_id}`,
+          event_id: tx.events.id,
+          transaksi_id: tx.id,
+          title: tx.events.title,
+          date: tx.events.date,
+          end_date: tx.events.end_date,
+          location: tx.events.location,
+          category: tx.events.category,
+          price: tx.total_bayar,
+          status: "PENDING",
+          seat: `${tx.total_qty}x Tiket`,
+          image: tx.events.image_url,
+          status_checkin: false,
+          last_scanned_date: null,
+          checked_in_at: null,
+          snap_token: tx.snap_token,
+          category_id: tx.category_id,
+          total_qty: tx.total_qty,
+          order_id: tx.order_id
+        });
+      });
+    }
+
+    setTickets(formattedTickets);
     setIsLoading(false);
+  };
+
+  const handlePayPending = async (ticket: any) => {
+    if (!ticket.snap_token) {
+      router.push(`/explore/checkout/${ticket.event_id}`);
+      return;
+    }
+    
+    setIsProcessingPay(ticket.transaksi_id);
+    
+    // @ts-ignore
+    window.snap.pay(ticket.snap_token, {
+      onSuccess: async function (result: any) {
+        try {
+          toast("Sinkronisasi pembayaran...", "info", 2000);
+          
+          const response = await fetch("/api/payment/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order_id: ticket.order_id })
+          });
+          
+          const resData = await response.json();
+          if (resData.success) {
+            toast("Pembayaran berhasil! Tiket Anda telah aktif! 🎉", "success", 4000);
+            fetchUserAndTickets();
+          } else {
+            throw new Error(resData.error || "Gagal verifikasi");
+          }
+        } catch (err: any) {
+          console.error(err);
+          toast("Gagal memverifikasi status pembayaran. Coba refresh halaman!", "warning");
+          fetchUserAndTickets();
+        } finally {
+          setIsProcessingPay(null);
+        }
+      },
+      onPending: () => {
+        toast("Pembayaran tertunda — selesaikan pembayaran Anda!", "warning");
+        setIsProcessingPay(null);
+      },
+      onError: () => {
+        toast("Pembayaran gagal! Coba lagi.", "error");
+        setIsProcessingPay(null);
+      },
+      onClose: () => {
+        setIsProcessingPay(null);
+      }
+    });
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!txToCancel) return;
+    setIsCancelling(true);
+    try {
+      const { error } = await supabase
+        .from("transaksi")
+        .update({ status_pembayaran: "expired" })
+        .eq("id", txToCancel.transaksi_id);
+
+      if (error) throw error;
+
+      toast("Pesanan berhasil dibatalkan.", "success");
+      setTxToCancel(null);
+      await fetchUserAndTickets();
+    } catch (err: any) {
+      console.error(err);
+      toast("Gagal membatalkan pesanan. Coba lagi.", "error");
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
+  };
+
+  // ─── Download E-Ticket sebagai PNG ────────────────────────────────────────
+  const handleDownloadTicket = async (ticket: any) => {
+    const qrEl = document.getElementById(`qr-${ticket.id}`);
+    if (!qrEl) { toast("Gagal menemukan QR Code.", "error"); return; }
+
+    toast("Menyiapkan e-ticket...", "info", 2000);
+
+    try {
+      // Buat canvas untuk render tiket
+      const canvas = document.createElement("canvas");
+      const W = 700, H = 360;
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context not available");
+
+      // Background cream
+      ctx.fillStyle = "#FCFAF1";
+      ctx.fillRect(0, 0, W, H);
+
+      // Border hitam
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 6;
+      ctx.strokeRect(3, 3, W - 6, H - 6);
+
+      // Stripe kiri ungu
+      ctx.fillStyle = "#6D4AFF";
+      ctx.fillRect(0, 0, 12, H);
+
+      // Header band hitam
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(12, 0, W - 12, 60);
+
+      // Teks TIKETIN
+      ctx.fillStyle = "#FBBF24";
+      ctx.font = "bold italic 28px Arial";
+      ctx.fillText("TIKETIN", 30, 40);
+
+      // Badge kategori
+      ctx.fillStyle = "#6D4AFF";
+      ctx.fillRect(W - 160, 12, 140, 36);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 11px Arial";
+      ctx.fillText(ticket.category?.toUpperCase() || "EVENT", W - 150, 34);
+
+      // Judul event
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold italic 24px Arial";
+      const title = ticket.title?.toUpperCase() || "";
+      const maxW = W - 200;
+      let truncated = title;
+      while (ctx.measureText(truncated).width > maxW && truncated.length > 3) {
+        truncated = truncated.slice(0, -1);
+      }
+      if (truncated !== title) truncated += "...";
+      ctx.fillText(truncated, 28, 100);
+
+      // Tanggal & Lokasi
+      ctx.font = "bold 12px Arial";
+      ctx.fillStyle = "#64748b";
+      ctx.fillText(`📅 ${ticket.date}`, 28, 130);
+      ctx.fillText(`📍 ${ticket.location}`, 28, 152);
+
+      // Seat
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold italic 14px Arial";
+      ctx.fillText(`KURSI: ${ticket.seat}`, 28, 185);
+
+      // Ticket ID
+      ctx.fillStyle = "#6D4AFF";
+      ctx.font = "bold 11px Arial";
+      ctx.fillText(`ID: ${ticket.id}`, 28, 210);
+
+      // Pemesan Name & Email
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "bold 11px Arial";
+      ctx.fillText(`PEMESAN: ${userProfile?.full_name?.toUpperCase() || "GUEST"}`, 28, 235);
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 11px Arial";
+      ctx.fillText(`EMAIL: ${userProfile?.email?.toUpperCase() || "N/A"}`, 28, 256);
+
+      // Garis pembatas tiket (zigzag)
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(W - 170, 60);
+      ctx.lineTo(W - 170, H);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // QR Code via SVG to Image
+      const svgEl = (qrEl.tagName && qrEl.tagName.toLowerCase() === "svg") ? qrEl : (qrEl.querySelector("svg") || qrEl);
+      if (svgEl) {
+        const svgData = new XMLSerializer().serializeToString(svgEl);
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            // QR background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(W - 162, 70, 148, 148);
+            ctx.strokeStyle = "#0f172a";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(W - 162, 70, 148, 148);
+            ctx.drawImage(img, W - 156, 76, 136, 136);
+            URL.revokeObjectURL(svgUrl);
+            resolve();
+          };
+          img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve(); };
+          img.src = svgUrl;
+        });
+      }
+
+      // Footer
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, H - 50, W, 50);
+      ctx.fillStyle = "#6D4AFF";
+      ctx.font = "bold 10px Arial";
+      ctx.fillText("tiketin.id — Platform Tiket Bandung #1", 28, H - 22);
+      ctx.fillStyle = "#FBBF24";
+      ctx.font = "bold italic 10px Arial";
+      ctx.fillText("VALID TICKET — DO NOT SHARE", W - 220, H - 22);
+
+      // Download
+      const link = document.createElement("a");
+      link.download = `tiketin-${ticket.id}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      toast(`E-Ticket "${ticket.title}" berhasil didownload!`, "success");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast("Gagal download e-ticket. Coba lagi!", "error");
+    }
   };
 
   const openReviewModal = (eventId: string, eventTitle: string) => {
@@ -262,11 +614,11 @@ export default function MyTicketsPage() {
 
   const handleSubmitReview = async () => {
     if (!comment.trim()) {
-      alert("Tulis komentar ulasan terlebih dahulu!");
+      toast("Tulis komentar ulasan terlebih dahulu!", "warning");
       return;
     }
     if (rating < 1 || rating > 5) {
-      alert("Rating harus antara 1-5 bintang!");
+      toast("Rating harus antara 1-5 bintang!", "warning");
       return;
     }
 
@@ -274,7 +626,7 @@ export default function MyTicketsPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert("Silakan login kembali.");
+        toast("Silakan login kembali.", "error");
         return;
       }
 
@@ -289,12 +641,12 @@ export default function MyTicketsPage() {
 
       if (error) {
         if (error.code === "23505") {
-          alert("Anda sudah memberikan ulasan untuk event ini!");
+          toast("Kamu sudah pernah kasih ulasan untuk event ini!", "warning");
         } else {
           throw error;
         }
       } else {
-        alert("Terima kasih! Ulasan Anda berhasil dikirim.");
+        toast("Makasih! Ulasan kamu sudah terkirim 🎉", "success");
         setReviewModal({ isOpen: false, eventId: null, eventTitle: "" });
         setReviewedEvents(prev => {
           const next = new Set(prev);
@@ -304,7 +656,7 @@ export default function MyTicketsPage() {
       }
     } catch (err) {
       console.error("Gagal mengirim ulasan:", err);
-      alert("Terjadi kesalahan saat mengirim ulasan.");
+      toast("Terjadi kesalahan saat mengirim ulasan.", "error");
     } finally {
       setIsSubmittingReview(false);
     }
@@ -318,13 +670,13 @@ export default function MyTicketsPage() {
   if (!mounted) return null;
 
   return (
-    <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise overflow-x-hidden ${poppins.className}`}>
+    <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise overflow-x-hidden ${poppins.className}`}>
 
       {/* ── HEADER ── */}
-      <nav className="w-full bg-white border-b-8 border-slate-900 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] h-20">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
-          <Link href="/explore" className="flex items-center gap-2 group">
-            <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
+          <Link href="/explore" className="flex items-center gap-2 group text-slate-900 dark:text-zinc-50">
+            <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_var(--primary-color)]">
               <ChevronLeft className="text-white" size={24} strokeWidth={3} />
             </div>
             <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2">BACK TO </span>
@@ -333,9 +685,9 @@ export default function MyTicketsPage() {
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
+                <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all text-slate-900 dark:text-zinc-50">
                   <div className="text-right hidden md:block">
-                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 mb-1 px-2 py-0.5 inline-block bg-slate-100">
+                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 dark:border-zinc-700 mb-1 px-2 py-0.5 inline-block bg-slate-100 dark:bg-zinc-800 dark:text-zinc-300">
                       {userProfile?.verification_status === "approved" ? (
                         <span className="text-emerald-500">✓ VERIFIED</span>
                       ) : userProfile?.verification_status === "pending" ? (
@@ -346,31 +698,31 @@ export default function MyTicketsPage() {
                     </p>
                     <p className="text-xs font-black italic -skew-x-6 uppercase">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
                   </div>
-                  <Avatar className="h-10 w-10 border-4 border-slate-900 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
+                  <Avatar className="h-10 w-10 border-4 border-slate-900 dark:border-zinc-700 rounded-none -rotate-6 shadow-[4px_4px_0_0_var(--primary-color)] group-hover:rotate-0 transition-transform">
                     <AvatarImage src={userProfile?.avatar_url} />
                     <AvatarFallback className="bg-[#6D4AFF] text-white font-black">{userProfile?.full_name?.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
+              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
-                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <TicketIcon className="mr-2 h-4 w-4" /> Tiket Saya
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
                 <DropdownMenuItem
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
                   onClick={handleLogout}
@@ -391,22 +743,22 @@ export default function MyTicketsPage() {
             <div className="bg-amber-400 border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_#000] -rotate-2 inline-flex items-center gap-2 mb-6 italic">
               <TicketIcon size={14} /> TICKET INVENTORY
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-[0.8] tracking-tighter drop-shadow-[6px_6px_0_#6D4AFF]">
-              TIKET <span className="text-amber-400 drop-shadow-[4px_4px_0_#000] md:drop-shadow-[6px_6px_0_#000]">SAYA.</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black -skew-x-12 italic uppercase leading-none pb-2 pt-2 pr-2 tracking-tighter drop-shadow-[6px_6px_0_#6D4AFF]">
+              TIKET <span className="text-amber-400 drop-shadow-[4px_4px_0_#000] md:drop-shadow-[6px_6px_0_#000] dark:drop-shadow-[6px_6px_0_var(--primary-color)]">SAYA.</span>
             </h1>
           </div>
         </header>
 
         {/* ⚡ TABS */}
         <div className="overflow-x-auto w-full mb-12">
-          <div className="flex bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] p-1 w-max min-w-full sm:min-w-0">
+          <div className="flex bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-1 w-max min-w-full sm:min-w-0">
           {["PENDING", "AKTIF", "TERPAKAI"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-black italic uppercase text-xs md:text-sm transition-all ${activeTab === tab
+              className={`flex-1 sm:flex-initial shrink-0 whitespace-nowrap px-4 sm:px-6 py-3 font-black italic uppercase text-xs md:text-sm transition-all ${activeTab === tab
                 ? (tab === "PENDING" ? "bg-amber-400 text-slate-900 border-2 border-slate-900" : tab === "AKTIF" ? "bg-[#6D4AFF] text-white border-2 border-[#6D4AFF]" : "bg-slate-900 text-white border-2 border-slate-900")
-                : "bg-transparent text-slate-400 hover:text-slate-900"
+                : "bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100"
                 }`}
             >
               {tab === "PENDING" && "⏳ Belum Bayar"}
@@ -449,7 +801,7 @@ export default function MyTicketsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="w-full flex flex-col md:flex-row bg-white border-4 border-slate-900 brutal-shadow-card group relative"
+                    className="w-full flex flex-col md:flex-row bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 brutal-shadow-card group relative"
                   >
 
                     {/* ⚡ OVERLAY TERPAKAI */}
@@ -463,7 +815,7 @@ export default function MyTicketsPage() {
 
                     {/* KIRI: Info Event */}
                     <div className={`flex-1 flex flex-col sm:flex-row ${(ticket.status === "TERPAKAI" || isEventEnded) ? 'opacity-50 grayscale-[100%]' : ''}`}>
-                      <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 overflow-hidden relative bg-black shrink-0">
+                      <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 dark:border-zinc-700 overflow-hidden relative bg-black shrink-0">
                         <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
 
                         <div className="absolute top-3 left-3 flex flex-col gap-2">
@@ -489,22 +841,22 @@ export default function MyTicketsPage() {
                       </div>
 
                       <div className="p-6 md:p-8 flex flex-col justify-center flex-grow text-left">
-                        <h3 className="text-3xl md:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter mb-4 leading-none text-slate-900">
+                        <h3 className="text-3xl md:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter mb-4 leading-none text-slate-900 dark:text-zinc-50">
                           {ticket.title}
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                           <div className="flex items-center gap-3">
-                            <div className="bg-amber-400 p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><Calendar size={16} strokeWidth={3} /></div>
+                            <div className="bg-amber-400 p-2 border-2 border-slate-900 dark:border-zinc-700 shadow-[2px_2px_0_0_#000]"><Calendar size={16} strokeWidth={3} /></div>
                             <div>
-                              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">TANGGAL</p>
-                              <p className="text-sm font-black uppercase text-slate-900">{ticket.date}</p>
+                              <p className="text-[9px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest">TANGGAL</p>
+                              <p className="text-sm font-black uppercase text-slate-900 dark:text-zinc-100">{ticket.date}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="bg-[#6D4AFF] text-white p-2 border-2 border-slate-900 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3} /></div>
+                            <div className="bg-[#6D4AFF] text-white p-2 border-2 border-slate-900 dark:border-zinc-700 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3} /></div>
                             <div>
-                              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">LOKASI</p>
-                              <p className="text-sm font-black uppercase text-slate-900 line-clamp-1">{ticket.location}</p>
+                              <p className="text-[9px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest">LOKASI</p>
+                              <p className="text-sm font-black uppercase text-slate-900 dark:text-zinc-100 line-clamp-1">{ticket.location}</p>
                             </div>
                           </div>
                         </div>
@@ -512,32 +864,57 @@ export default function MyTicketsPage() {
                     </div>
 
                     {/* PEMBATAS TIKET */}
-                    <div className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[#FCFAF1]">
-                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -top-4 -translate-y-1/2 z-10" />
+                    <div className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[#FCFAF1] dark:bg-zinc-950">
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 absolute -top-4 -translate-y-1/2 z-10" />
                       <div className="w-0.5 h-full ticket-stub-divider my-2" />
-                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 bg-[#FCFAF1] absolute -bottom-4 translate-y-1/2 z-10" />
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 absolute -bottom-4 translate-y-1/2 z-10" />
                     </div>
 
                     {/* KANAN: QR Code & Aksi */}
-                    <div className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white shrink-0 border-t-4 md:border-t-0 border-slate-900">
+                    <div className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white dark:bg-zinc-900 shrink-0 border-t-4 md:border-t-0 border-slate-900 dark:border-zinc-700">
 
                       {ticket.status === "PENDING" ? (
                         <div className="flex flex-col items-center justify-center h-full w-full space-y-4">
                           <div className="text-amber-500"><CreditCard size={48} strokeWidth={2} /></div>
                           <div>
-                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Tagihan</p>
-                            <p className="text-2xl font-black italic uppercase tracking-tighter text-slate-900">{formatRupiah(ticket.price)}</p>
+                            <p className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest mb-1">Total Tagihan</p>
+                            <p className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-zinc-50">{formatRupiah(ticket.price)}</p>
                           </div>
-                          <button onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} className="w-full mt-4 bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-                            LANJUT BAYAR
-                          </button>
+                          <div className="w-full flex flex-col gap-2 mt-4">
+                            <button 
+                              onClick={() => handlePayPending(ticket)} 
+                              disabled={isProcessingPay !== null}
+                              className="w-full bg-[#6D4AFF] text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"
+                            >
+                              {isProcessingPay === ticket.transaksi_id ? (
+                                <Loader2 className="animate-spin" size={14} />
+                              ) : (
+                                <CreditCard size={14} />
+                              )}
+                              BAYAR SEKARANG
+                            </button>
+                            
+                            <button 
+                              onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} 
+                              className="w-full bg-amber-400 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                            >
+                              PAKAI VOUCHER / EDIT TIKET
+                            </button>
+
+                            <button 
+                              onClick={() => setTxToCancel(ticket)} 
+                              className="w-full bg-red-500 text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                            >
+                              BATALKAN PESANAN
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <>
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TICKET ID</p>
-                          <p className="text-base font-black uppercase bg-slate-100 px-4 py-1 border-2 border-slate-900 mb-6">{ticket.id}</p>
+                          <p className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest mb-1">TICKET ID</p>
+                          <p className="text-base font-black uppercase bg-slate-100 dark:bg-zinc-800 px-4 py-1 border-2 border-slate-900 dark:border-zinc-700 mb-6 text-slate-900 dark:text-zinc-100">{ticket.id}</p>
 
-                          <div className="bg-white p-2 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] mb-6 relative overflow-hidden flex items-center justify-center">
+                          <div className="bg-white dark:bg-zinc-900 p-2 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#FBBF24] dark:shadow-[4px_4px_0_0_var(--primary-color)] mb-6 relative overflow-hidden flex items-center justify-center">
                             <QRCodeSVG
                               id={`qr-${ticket.id}`}
                               value={ticket.id}
@@ -572,12 +949,20 @@ export default function MyTicketsPage() {
                           </div>
 
                           {ticket.status === "AKTIF" && (
-                            <button
-                              onClick={() => {/* ... logika print ... */ }}
-                              className="mt-6 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-2"
-                            >
-                              <Download size={14} strokeWidth={3} /> E-TICKET
-                            </button>
+                            <>
+                              {/* Countdown ke hari H */}
+                              {!isEventEnded && (
+                                <div className="mt-4">
+                                  <CountdownBadge dateStr={ticket.date} />
+                                </div>
+                              )}
+                              <button
+                                onClick={() => handleDownloadTicket(ticket)}
+                                className="mt-4 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-2"
+                              >
+                                <Download size={14} strokeWidth={3} /> E-TICKET
+                              </button>
+                            </>
                           )}
 
                           {canReview && (
@@ -601,8 +986,8 @@ export default function MyTicketsPage() {
                 );
               })
             ) : (
-              <motion.div className="py-32 text-center border-[8px] border-dashed border-slate-300 bg-white w-full">
-                <p className="text-5xl font-black italic uppercase text-slate-300 mb-2">TIKET KOSONG!</p>
+              <motion.div className="py-32 text-center border-[8px] border-dashed border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 w-full">
+                <p className="text-5xl font-black italic uppercase text-slate-300 dark:text-zinc-700 mb-2">TIKET KOSONG!</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -627,13 +1012,13 @@ export default function MyTicketsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-[#FCFAF1] border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
+              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
             >
               {/* Close Button */}
               <button
                 disabled={isSubmittingReview}
                 onClick={() => setReviewModal({ isOpen: false, eventId: null, eventTitle: "" })}
-                className="absolute top-4 right-4 z-30 h-10 w-10 bg-white hover:bg-red-500 hover:text-white border-4 border-slate-900 shadow-[3px_3px_0_0_#000] flex items-center justify-center font-black transition-all hover:rotate-90"
+                className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-50 hover:bg-red-500 dark:hover:bg-red-500 hover:text-white dark:hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90"
               >
                 <X size={20} strokeWidth={3} />
               </button>
@@ -658,7 +1043,7 @@ export default function MyTicketsPage() {
                         key={star}
                         type="button"
                         onClick={() => setRating(star)}
-                        className={`h-12 w-12 border-4 border-slate-900 shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#000] transition-all flex items-center justify-center ${star <= rating ? "bg-amber-400 text-slate-900" : "bg-white text-slate-200"
+                        className={`h-12 w-12 border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_0_#000] transition-all flex items-center justify-center ${star <= rating ? "bg-amber-400 text-slate-900" : "bg-white dark:bg-zinc-800 text-slate-200 dark:text-zinc-650"
                           }`}
                       >
                         <Star size={24} fill={star <= rating ? "currentColor" : "none"} strokeWidth={2.5} />
@@ -682,17 +1067,17 @@ export default function MyTicketsPage() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Ceritakan pengalaman gila kamu nonton event ini..."
-                    className="w-full p-4 border-4 border-slate-900 bg-white font-medium text-xs sm:text-sm outline-none focus:bg-amber-50 shadow-[4px_4px_0_0_#000] transition-all"
+                    className="w-full p-4 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-850 text-slate-900 dark:text-zinc-100 outline-none focus:bg-amber-50 dark:focus:bg-zinc-800 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all"
                   />
                 </div>
 
                 {/* Submit Action */}
-                <div className="pt-4 border-t-4 border-slate-900 flex justify-end gap-3">
+                <div className="pt-4 border-t-4 border-slate-900 dark:border-zinc-700 flex justify-end gap-3">
                   <button
                     type="button"
                     disabled={isSubmittingReview}
                     onClick={() => setReviewModal({ isOpen: false, eventId: null, eventTitle: "" })}
-                    className="px-6 py-3 border-4 border-slate-900 bg-white text-slate-900 hover:bg-slate-100 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
                   >
                     Batal
                   </button>
@@ -700,7 +1085,7 @@ export default function MyTicketsPage() {
                     type="button"
                     disabled={isSubmittingReview}
                     onClick={handleSubmitReview}
-                    className="px-6 py-3 border-4 border-slate-900 bg-[#6D4AFF] text-white hover:bg-slate-900 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
                   >
                     {isSubmittingReview ? (
                       <>
@@ -733,9 +1118,9 @@ export default function MyTicketsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-8 text-center space-y-6"
             >
-              <div className="inline-block bg-emerald-400 p-4 border-4 border-slate-900 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
+              <div className="inline-block bg-emerald-400 p-4 border-4 border-slate-900 dark:border-zinc-700 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
                 <ShieldCheck className="text-slate-900" size={48} strokeWidth={3} />
               </div>
 
@@ -743,26 +1128,93 @@ export default function MyTicketsPage() {
                 <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter text-emerald-500">
                   CHECK-IN SUCCESS!
                 </h2>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tiket Telah Digunakan</p>
+                <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Tiket Telah Digunakan</p>
               </div>
 
-              <div className="bg-slate-50 border-4 border-slate-900 p-4 text-left space-y-3 font-bold">
-                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 pb-2 text-slate-900">
+              <div className="bg-slate-50 dark:bg-zinc-850 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-3 font-bold">
+                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 dark:border-zinc-700 pb-2 text-slate-900 dark:text-zinc-100">
                   {scannedTicketNotification.eventTitle}
                 </p>
-                <div className="text-xs space-y-1 text-slate-600">
-                  <p className="uppercase"><span className="text-slate-400">Kode:</span> {scannedTicketNotification.ticketCode}</p>
-                  <p className="uppercase"><span className="text-slate-400">Seat:</span> {scannedTicketNotification.seatInfo}</p>
-                  <p className="uppercase"><span className="text-slate-400">Waktu:</span> {scannedTicketNotification.scanTime}</p>
+                <div className="text-xs space-y-1 text-slate-600 dark:text-zinc-400">
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Kode:</span> {scannedTicketNotification.ticketCode}</p>
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Seat:</span> {scannedTicketNotification.seatInfo}</p>
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Waktu:</span> {scannedTicketNotification.scanTime}</p>
                 </div>
               </div>
 
               <button
                 onClick={() => setScannedTicketNotification(null)}
-                className="w-full bg-slate-900 hover:bg-[#6D4AFF] text-white font-black italic uppercase text-sm py-4 border-4 border-slate-900 shadow-[4px_4px_0_0_#FBBF24] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                className="w-full bg-slate-900 dark:bg-zinc-800 hover:bg-[#6D4AFF] text-white font-black italic uppercase text-sm py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#FBBF24] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
               >
                 MANTAP, MASUK KONSER! 🎸
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── CANCEL CONFIRMATION MODAL ─── */}
+      <AnimatePresence>
+        {txToCancel && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isCancelling && setTxToCancel(null)}
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+            >
+              <div className="inline-block bg-red-500 text-white p-4 border-4 border-slate-900 dark:border-zinc-700 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
+                <AlertCircle className="text-white" size={48} strokeWidth={3} />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900 dark:text-zinc-50">
+                  BATALKAN PESANAN?
+                </h2>
+                <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Aksi ini tidak dapat dibatalkan</p>
+              </div>
+
+              <div className="bg-[#FCFAF1] dark:bg-zinc-950 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-2 font-bold">
+                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 dark:border-zinc-700 pb-2 text-slate-900 dark:text-zinc-100">
+                  {txToCancel.title}
+                </p>
+                <div className="text-xs space-y-1 text-slate-600 dark:text-zinc-400">
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Total:</span> {formatRupiah(txToCancel.price)}</p>
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Jumlah:</span> {txToCancel.seat}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isCancelling}
+                  onClick={() => setTxToCancel(null)}
+                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                >
+                  TIDAK, KEMBALI
+                </button>
+                <button
+                  type="button"
+                  disabled={isCancelling}
+                  onClick={handleCancelConfirm}
+                  className="w-1/2 bg-red-500 hover:bg-red-600 text-white font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2"
+                >
+                  {isCancelling ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : null}
+                  YA, BATALKAN
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

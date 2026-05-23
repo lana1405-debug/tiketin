@@ -117,13 +117,13 @@ export default function UpdatePasswordPage() {
 
   if (!isReady) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 bg-[#FCFAF1] noise ${poppins.className}`}>
+      <div className={`min-h-screen flex items-center justify-center p-4 bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise ${poppins.className}`}>
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white border-4 sm:border-[6px] border-black p-6 sm:p-8 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] flex flex-col items-center gap-4 text-center max-w-xs w-full"
+          className="bg-white dark:bg-zinc-900 border-4 sm:border-[6px] border-black dark:border-zinc-700 p-6 sm:p-8 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col items-center gap-4 text-center max-w-xs w-full"
         >
-          <Loader2 className="animate-spin text-black" size={40} />
+          <Loader2 className="animate-spin text-black dark:text-zinc-50" size={40} />
           <h2 className="text-lg sm:text-xl font-black uppercase italic -skew-x-6">VERIFIKASI LINK...</h2>
         </motion.div>
       </div>
@@ -131,16 +131,16 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FCFAF1] noise ${poppins.className}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise ${poppins.className}`}>
       <motion.div 
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
         className="relative w-full max-w-md"
       >
-        <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 sm:translate-x-3 sm:translate-y-3" />
+        <div className="absolute inset-0 bg-black dark:bg-zinc-950 translate-x-2 translate-y-2 sm:translate-x-3 sm:translate-y-3" />
         
-        <form onSubmit={handleUpdate} className="relative bg-white border-4 sm:border-[6px] border-black p-6 sm:p-8 lg:p-10 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] space-y-6">
+        <form onSubmit={handleUpdate} className="relative bg-white dark:bg-zinc-900 border-4 sm:border-[6px] border-black dark:border-zinc-700 p-6 sm:p-8 lg:p-10 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] dark:shadow-[8px_8px_0_0_var(--primary-color)] space-y-6">
           
           <div className="space-y-2">
             <motion.div 
@@ -148,19 +148,19 @@ export default function UpdatePasswordPage() {
               animate={{ rotate: -3, scale: 1 }}
               whileHover={{ rotate: 3, scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300, damping: 15 }}
-              className="bg-[#6D4AFF] p-3 w-max mb-4 border-4 border-black cursor-pointer"
+              className="bg-[#6D4AFF] p-3 w-max mb-4 border-4 border-black dark:border-zinc-700 cursor-pointer"
             >
               <Lock size={32} className="text-white" strokeWidth={3} />
             </motion.div>
-            <h2 className="text-3xl sm:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter">PASSWORD BARU</h2>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Masukkan kunci baru lo biar bisa explore tiket lagi.</p>
+            <h2 className="text-3xl sm:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900 dark:text-zinc-50">PASSWORD BARU</h2>
+            <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Masukkan kata sandi baru Anda agar dapat menjelajahi tiket kembali.</p>
           </div>
 
           {errorMsg && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500 p-4 border-4 border-black flex items-center gap-3 text-white"
+              className="bg-red-500 dark:bg-red-950/20 p-4 border-4 border-black dark:border-red-500/50 flex items-center gap-3 text-white dark:text-red-400"
             >
               <ShieldAlert size={24} className="shrink-0" />
               <p className="font-black text-xs sm:text-sm uppercase">{errorMsg}</p>
@@ -171,7 +171,7 @@ export default function UpdatePasswordPage() {
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-emerald-500 p-4 border-4 border-black flex items-center gap-3 text-white"
+              className="bg-emerald-500 dark:bg-emerald-950/20 p-4 border-4 border-black dark:border-emerald-500/50 flex items-center gap-3 text-white dark:text-emerald-400"
             >
               <CheckCircle size={24} className="shrink-0" />
               <p className="font-black text-xs sm:text-sm uppercase">{successMsg}</p>
@@ -184,7 +184,7 @@ export default function UpdatePasswordPage() {
               required 
               value={password}
               placeholder="PASSWORD BARU..."
-              className="w-full p-3 sm:p-4 border-4 border-black font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
               onChange={(e) => setPassword(e.target.value)}
             />
             <input 
@@ -192,7 +192,7 @@ export default function UpdatePasswordPage() {
               required 
               value={confirmPassword}
               placeholder="ULANGI PASSWORD..."
-              className="w-full p-3 sm:p-4 border-4 border-black font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
@@ -202,7 +202,7 @@ export default function UpdatePasswordPage() {
             whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={isLoading || !!successMsg}
-            className="w-full bg-black text-white p-4 sm:p-5 font-black uppercase text-lg sm:text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-black dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 text-white p-4 sm:p-5 font-black uppercase text-lg sm:text-xl italic hover:bg-[#6D4AFF] dark:hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="animate-spin"/> : <>UPDATE KUNCI <ArrowRight /></>}
           </motion.button>
@@ -211,3 +211,4 @@ export default function UpdatePasswordPage() {
     </div>
   );
 }
+

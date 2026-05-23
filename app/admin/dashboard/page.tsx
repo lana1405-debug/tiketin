@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +9,8 @@ import {
   Zap, ShieldCheck, Terminal, IdCard, Landmark
 } from "lucide-react";
 import Link from "next/link";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -16,18 +18,20 @@ const poppins = Poppins({
 });
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
   const [stats, setStats] = useState({
     users: 0,
     events: 0,
     ktpPending: 0,
     complaints: 0,
     revenue: 0,
-    profit: 0 // ⚡ State baru buat keuntungan owner
+    profit: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [marqueeInput, setMarqueeInput] = useState("");
   const [isUpdatingMarquee, setIsUpdatingMarquee] = useState(false);
+  const [revenueChartData, setRevenueChartData] = useState<{ month: string; revenue: number; profit: number }[]>([]);
 
   const fetchRealData = async () => {
     setIsLoading(true);
@@ -55,10 +59,10 @@ export default function AdminDashboard() {
       .select("*", { count: "exact", head: true })
       .neq("status", "resolved");
 
-    // Total Revenue & Profit Calculation
+    // Total Revenue & Profit Calculation — with created_at for chart
     const { data: revenueData } = await supabase
       .from("transaksi")
-      .select("total_bayar")
+      .select("total_bayar, created_at")
       .eq("status_pembayaran", "paid");
     
     const totalGross = revenueData?.reduce((acc, item) => acc + (Number(item.total_bayar) || 0), 0) || 0;
@@ -74,6 +78,20 @@ export default function AdminDashboard() {
       revenue: totalGross,
       profit: platformProfit
     });
+
+    // ⚡ CHART DATA — Group by month
+    const monthlyMap: Record<string, number> = {};
+    const monthNames = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    revenueData?.forEach((item: any) => {
+      const d = new Date(item.created_at);
+      const key = `${monthNames[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+      monthlyMap[key] = (monthlyMap[key] || 0) + Number(item.total_bayar || 0);
+    });
+    // Ambil 6 bulan terakhir yang ada datanya
+    const chartArr = Object.entries(monthlyMap)
+      .slice(-6)
+      .map(([month, revenue]) => ({ month, revenue, profit: Math.round(revenue * 0.15) }));
+    setRevenueChartData(chartArr);
     
     // Fetch Marquee Settings
     const { data: marqueeData } = await supabase
@@ -115,9 +133,9 @@ export default function AdminDashboard() {
       .from("site_settings")
       .upsert({ key: "marquee_ticker", value: items, updated_at: new Date().toISOString() });
     if (error) {
-      alert("Gagal mengupdate marquee: " + error.message);
+      toast("Gagal mengupdate marquee: " + error.message, "error");
     } else {
-      alert("Teks Marquee berhasil diperbarui!");
+      toast("Teks Marquee berhasil diperbarui!", "success");
     }
     setIsUpdatingMarquee(false);
   };
@@ -137,7 +155,7 @@ export default function AdminDashboard() {
             COMMAND <span className="text-[#6D4AFF]">CENTER.</span>
           </h1>
           <p className="text-lg font-bold text-slate-500 italic max-w-xl">
-            Real-time monitoring engine. Kendali penuh di tangan lo.
+            Real-time monitoring engine. Kendali penuh di tangan Anda.
           </p>
         </div>
 
@@ -165,6 +183,51 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         
+      {/* REVENUE CHART */}
+        <div className="md:col-span-12 bg-white border-8 border-black p-8 shadow-[10px_10px_0px_0px_rgba(109,74,255,1)]">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Financial Overview</p>
+              <h3 className="text-2xl font-black italic uppercase tracking-tighter">Revenue <span className="text-[#6D4AFF]">per Bulan</span></h3>
+            </div>
+            <div className="flex items-center gap-4 text-[10px] font-black uppercase italic">
+              <div className="flex items-center gap-2"><div className="w-3 h-3 bg-[#6D4AFF] border-2 border-black" /><span>Gross Revenue</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-400 border-2 border-black" /><span>Profit (15%)</span></div>
+            </div>
+          </div>
+          {revenueChartData.length === 0 ? (
+            <div className="h-[240px] flex items-center justify-center border-4 border-dashed border-slate-200">
+              <p className="font-black italic uppercase text-slate-300 text-lg">Belum Ada Data Transaksi</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6D4AFF" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6D4AFF" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#FBBF24" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" />
+                <XAxis dataKey="month" tick={{ fontFamily: "inherit", fontWeight: 900, fontSize: 10 }} axisLine={{ stroke: "#0f172a", strokeWidth: 3 }} tickLine={false} />
+                <YAxis tick={{ fontFamily: "inherit", fontWeight: 700, fontSize: 9 }} axisLine={{ stroke: "#0f172a", strokeWidth: 3 }} tickLine={false} tickFormatter={(v: number) => `${(v/1000000).toFixed(0)}jt`} />
+                <Tooltip
+                  contentStyle={{ background: "#0f172a", border: "3px solid #0f172a", borderRadius: 0, fontFamily: "inherit" }}
+                  labelStyle={{ color: "#FBBF24", fontWeight: 900, fontSize: 10, textTransform: "uppercase" }}
+                  itemStyle={{ color: "#fff", fontWeight: 700, fontSize: 10 }}
+                  formatter={(value) => [`Rp ${Number(value ?? 0).toLocaleString("id-ID")}`, ""]}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#6D4AFF" strokeWidth={3} fill="url(#colorRevenue)" dot={{ fill: "#6D4AFF", strokeWidth: 3, r: 5, stroke: "#0f172a" }} name="Gross" />
+                <Area type="monotone" dataKey="profit" stroke="#FBBF24" strokeWidth={3} fill="url(#colorProfit)" dot={{ fill: "#FBBF24", strokeWidth: 3, r: 5, stroke: "#0f172a" }} name="Profit" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
         {/* REVENUE GIANT CARD (GROSS) */}
         <div className="md:col-span-7 bg-black border-8 border-black p-10 relative overflow-hidden shadow-[15px_15px_0px_0px_rgba(109,74,255,1)] group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#6D4AFF] blur-[100px] opacity-30 group-hover:opacity-50 transition-opacity" />

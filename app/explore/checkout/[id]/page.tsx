@@ -6,9 +6,10 @@ import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Ticket, Calendar, MapPin, 
-  CreditCard, Loader2, Zap, ShieldCheck, AlertOctagon, Tag
+  CreditCard, Loader2, Zap, ShieldCheck, AlertOctagon, Tag, CheckCircle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
+  const { toast } = useToast();
 
   const [user, setUser] = useState<any>(null);
   const [event, setEvent] = useState<any>(null);
@@ -47,6 +49,67 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [alreadyBought, setAlreadyBought] = useState(0);
+
+  // ⚡ Live Viewer & Urgency Alerts
+  const [liveViewers, setLiveViewers] = useState(12);
+  const [alertIndex, setAlertIndex] = useState(0);
+
+  // ⏳ Expiry Timer & Alert Modals States
+  const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes
+  const [isExpired, setIsExpired] = useState<boolean>(false);
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+  const [showUnpaidModal, setShowUnpaidModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!eventId || !user) return;
+
+    const sessionKey = `checkout_start_${user.id}_${eventId}`;
+    const savedStart = sessionStorage.getItem(sessionKey);
+    let startTime = Date.now();
+
+    if (savedStart) {
+      startTime = parseInt(savedStart, 10);
+    } else {
+      sessionStorage.setItem(sessionKey, String(startTime));
+    }
+
+    const updateTimer = () => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, 600 - elapsed);
+      setTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        setIsExpired(true);
+      }
+    };
+
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [eventId, user]);
+
+  useEffect(() => {
+    // Randomize initial viewers
+    setLiveViewers(Math.floor(Math.random() * 11) + 8);
+
+    const intervalViewers = setInterval(() => {
+      setLiveViewers((prev) => {
+        const change = Math.random() > 0.5 ? 1 : -1;
+        const next = prev + change;
+        return Math.max(8, Math.min(18, next));
+      });
+    }, 4000);
+
+    const intervalAlerts = setInterval(() => {
+      setAlertIndex((prev) => (prev + 1) % 3);
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalViewers);
+      clearInterval(intervalAlerts);
+    };
+  }, []);
 
   // Voucher states
   const [voucherCodeInput, setVoucherCodeInput] = useState("");
@@ -89,7 +152,8 @@ export default function CheckoutPage() {
     const { data: catData } = await supabase.from("ticket_categories").select("*").eq("event_id", eventId).order("price", { ascending: true });
     if (catData && catData.length > 0) {
       setCategories(catData);
-      setSelectedCatId(catData[0].id);
+      const availableCat = catData.find((c: any) => c.stock > 0) || catData[0];
+      setSelectedCatId(availableCat.id);
     }
 
     const { data: userTickets } = await supabase
@@ -123,10 +187,15 @@ export default function CheckoutPage() {
   const totalBayar = Math.max(0, originalTotal - discountAmount);
 
   useEffect(() => {
-    if (qty > absoluteMaxQty) {
-      setQty(Math.max(1, absoluteMaxQty));
+    if (absoluteMaxQty === 0) {
+      setQty(0);
+    } else {
+      if (qty === 0) {
+        setQty(1);
+      } else if (qty > absoluteMaxQty) {
+        setQty(absoluteMaxQty);
+      }
     }
-    if (absoluteMaxQty === 0) setQty(0);
   }, [selectedCatId, absoluteMaxQty]);
 
   const handleApplyVoucher = async () => {
@@ -194,7 +263,12 @@ export default function CheckoutPage() {
   };
 
   const handleCheckout = async () => {
-    if (!user || !event || !selectedCategory || qty <= 0) return;
+    if (!user || !event || !selectedCategory || qty <= 0 || isExpired) return;
+    setShowConfirmModal(true);
+  };
+
+  const executeCheckout = async () => {
+    setShowConfirmModal(false);
     setIsProcessing(true);
 
     try {
@@ -202,6 +276,54 @@ export default function CheckoutPage() {
         ? `INV-${Date.now().toString().slice(-6)}-VCHR-${appliedVoucher.code.toUpperCase()}`
         : `INV-${Date.now().toString().slice(-6)}`;
 
+      // ⚡ HANDLE GRATIS (totalBayar = 0) — bypass Midtrans
+      if (totalBayar === 0) {
+        const { data: txData, error: txError } = await supabase
+          .from("transaksi")
+          .insert({
+            user_id: user.id,
+            order_id: orderId,
+            total_qty: qty,
+            total_bayar: 0,
+            status_pembayaran: "paid",
+            snap_token: null,
+            event_id: event.id,
+            category_id: selectedCategory.id
+          })
+          .select()
+          .single();
+
+        if (txError) throw txError;
+
+        const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
+          transaksi_id: txData.id,
+          event_id: event.id,
+          ticket_category_id: selectedCategory.id,
+          ticket_code: `TKT-${orderId}-${idx}`,
+          seat_info: selectedCategory.name,
+          status_checkin: false
+        }));
+        await supabase.from("tiket").insert(ticketsToInsert);
+
+        await supabase.rpc('decrement_ticket_stock', { cat_id: selectedCategory.id, qty });
+
+        if (appliedVoucher) {
+          await supabase.from("vouchers")
+            .update({ uses_count: (appliedVoucher.uses_count || 0) + 1 })
+            .eq("id", appliedVoucher.id);
+        }
+
+        const earnedPoints = qty * 50;
+        const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single();
+        const newPoints = (profile?.points || 0) + earnedPoints;
+        await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
+
+        toast(`Tiket GRATIS berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
+        router.push("/explore/tickets");
+        return;
+      }
+
+      // ⚡ NORMAL FLOW — Midtrans
       const response = await fetch("/api/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,7 +332,9 @@ export default function CheckoutPage() {
           gross_amount: totalBayar,
           first_name: user.user_metadata?.full_name || "User",
           email: user.email,
-          item_name: `${event.title} - ${selectedCategory.name}`
+          item_name: `${event.title} - ${selectedCategory.name}`,
+          item_id: selectedCategory.id,
+          quantity: qty
         })
       });
 
@@ -238,7 +362,6 @@ export default function CheckoutPage() {
       window.snap.pay(data.token, {
         onSuccess: async function (result: any) {
           try {
-            // Panggil API status pembayaran di server-side untuk memproses DB & voucher secara aman
             try {
               await fetch("/api/payment/status", {
                 method: "POST",
@@ -265,9 +388,12 @@ export default function CheckoutPage() {
               cat_id: selectedCategory.id, 
               qty: qty 
             });
-            
-            if (stockError) {
-              console.error("Gagal potong stok di DB:", stockError);
+            if (stockError) console.error("Gagal potong stok:", stockError);
+
+            if (appliedVoucher) {
+              await supabase.from("vouchers")
+                .update({ uses_count: (appliedVoucher.uses_count || 0) + 1 })
+                .eq("id", appliedVoucher.id);
             }
 
             const earnedPoints = qty * 50;
@@ -275,30 +401,31 @@ export default function CheckoutPage() {
             const newPoints = (profile?.points || 0) + earnedPoints;
             await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
 
-            alert(`PEMBAYARAN BERHASIL! dapet ${earnedPoints} Poin! 🎉`);
+            toast(`Pembayaran berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
             router.push("/explore/tickets"); 
 
           } catch (dbError) {
             console.error(dbError);
-            alert("Sistem gagal sinkron, cek Tiket Saya!");
+            toast("Sistem gagal sinkron, cek Tiket Saya!", "warning");
             router.push("/explore/tickets");
           }
         },
         onPending: () => { 
-          alert("Pembayaran tertunda, silakan selesaikan!");
+          toast("Pembayaran tertunda — selesaikan dalam 24 jam!", "warning");
           router.push("/explore/tickets");
         },
         onError: () => { 
-          alert("Pembayaran gagal!"); 
+          toast("Pembayaran gagal! Coba lagi.", "error"); 
           setIsProcessing(false); 
         },
         onClose: () => { 
-          router.push("/explore/tickets"); 
+          setIsProcessing(false);
+          setShowUnpaidModal(true);
         }
       });
 
     } catch (error: any) {
-      alert(`Gagal checkout! ${error.message}`);
+      toast(`Gagal checkout! ${error.message}`, "error");
       setIsProcessing(false);
     }
   };
@@ -327,6 +454,30 @@ export default function CheckoutPage() {
             <Zap size={16} className="fill-amber-400 text-amber-400" /> Selesaikan pembayaran & dapet 50 poin/tiket!
           </p>
         </motion.div>
+
+        {/* Neo-Brutalist Dynamic Urgency Alert Banner */}
+        <div className="bg-[#FF3B30] text-white border-4 border-slate-900 p-4 mb-8 shadow-[6px_6px_0_0_#000] -skew-x-2 font-black uppercase text-xs sm:text-sm tracking-wider flex items-center justify-center gap-3 overflow-hidden min-h-[50px] text-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={alertIndex}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+              className="flex items-center gap-2"
+            >
+              {alertIndex === 0 && (
+                <span>🔥 {liveViewers} orang sedang memilih tiket event ini sekarang!</span>
+              )}
+              {alertIndex === 1 && (
+                <span>⚠️ BEBERAPA KATEGORI TIKET TERSISA SEDIKIT, SEGERA AMANKAN TEMPAT ANDA!</span>
+              )}
+              {alertIndex === 2 && (
+                <span>⚡ DAPATKAN +50 POIN REWARD UNTUK SETIAP TIKET YANG ANDA BELI!</span>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
           <div className="flex-1 space-y-8">
@@ -369,26 +520,77 @@ export default function CheckoutPage() {
                 <Tag size={28} className="text-[#6D4AFF]" /> PILIH TIER TIKET
               </h3>
               <div className="space-y-4">
-                {categories.map((cat) => (
-                  <label key={cat.id} className={`block w-full border-4 p-5 cursor-pointer transition-all ${selectedCatId === cat.id ? "border-slate-900 bg-amber-400 shadow-[6px_6px_0_0_#000] translate-x-1 translate-y-1" : "border-slate-300 bg-white hover:border-slate-900"}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <input type="radio" name="ticketCategory" checked={selectedCatId === cat.id} onChange={() => setSelectedCatId(cat.id)} disabled={cat.stock <= 0} className="w-6 h-6 accent-slate-900 cursor-pointer" />
-                        <div>
-                          <p className="font-black italic uppercase text-xl leading-none">{cat.name}</p>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 italic">Sisa Stok: {cat.stock} Pcs</p>
+                {(() => {
+                  const getStockBadge = (stock: number) => {
+                    if (stock === 0) {
+                      return (
+                        <span className="bg-slate-200 text-slate-700 border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0_0_rgba(0,0,0,1)] inline-block">
+                          ⚫ HABIS / SOLD OUT
+                        </span>
+                      );
+                    }
+                    if (stock <= 20) {
+                      return (
+                        <span className="bg-red-500 text-white border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0_0_rgba(0,0,0,1)] inline-block animate-pulse">
+                          🔴 HAMPIR HABIS! SEGERA AMANKAN!
+                        </span>
+                      );
+                    }
+                    if (stock <= 100) {
+                      return (
+                        <span className="bg-amber-400 text-black border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0_0_rgba(0,0,0,1)] inline-block">
+                          🟡 STOK TERBATAS
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="bg-emerald-400 text-black border-2 border-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0_0_rgba(0,0,0,1)] inline-block">
+                        🟢 STOK AMAN
+                      </span>
+                    );
+                  };
+
+                  return categories.map((cat) => (
+                    <label key={cat.id} className={`block w-full border-4 p-5 cursor-pointer transition-all ${selectedCatId === cat.id ? "border-slate-900 bg-amber-400 shadow-[6px_6px_0_0_#000] translate-x-1 translate-y-1" : "border-slate-300 bg-white hover:border-slate-900"}`}>
+                      <div className="flex items-center justify-between font-black">
+                        <div className="flex items-center gap-4">
+                          <input type="radio" name="ticketCategory" checked={selectedCatId === cat.id} onChange={() => setSelectedCatId(cat.id)} disabled={cat.stock <= 0} className="w-6 h-6 accent-slate-900 cursor-pointer" />
+                          <div>
+                            <p className="font-black italic uppercase text-xl leading-none">{cat.name}</p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Sisa Stok: {cat.stock} Pcs</p>
+                              {getStockBadge(cat.stock)}
+                            </div>
+                          </div>
                         </div>
+                        <p className="font-black italic text-2xl tracking-tighter">{formatRupiah(cat.price)}</p>
                       </div>
-                      <p className="font-black italic text-2xl tracking-tighter">{formatRupiah(cat.price)}</p>
-                    </div>
-                  </label>
-                ))}
+                    </label>
+                  ));
+                })()}
               </div>
             </div>
           </div>
 
           <div className="w-full lg:w-[450px]">
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full sticky top-24 text-left">
+              {/* Neo-Brutalist Expiry Timer Box */}
+              <div className={`border-4 border-slate-900 p-4 mb-6 shadow-[4px_4px_0_0_#000] font-black uppercase text-xs sm:text-sm tracking-wider flex items-center justify-between gap-3 ${
+                timeLeft <= 120 ? "bg-[#FF3B30] text-white animate-pulse" : "bg-amber-400 text-slate-900"
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⏳</span>
+                  <span>SISA WAKTU:</span>
+                </div>
+                <span className="font-mono text-lg tracking-widest bg-white text-black border-2 border-black px-2.5 py-0.5 shadow-[2px_2px_0_0_#000] shrink-0">
+                  {(() => {
+                    const mins = Math.floor(timeLeft / 60);
+                    const secs = timeLeft % 60;
+                    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                  })()}
+                </span>
+              </div>
+
               <div className="flex items-center gap-3 mb-8 border-b-4 border-slate-900 pb-4">
                 <Ticket size={32} strokeWidth={3} className="text-[#6D4AFF]" />
                 <h3 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter">SUMMARY</h3>
@@ -493,10 +695,25 @@ export default function CheckoutPage() {
 
               <button 
                 onClick={handleCheckout} 
-                disabled={isProcessing || absoluteMaxQty === 0} 
-                className="w-full bg-amber-400 text-slate-900 border-4 border-slate-900 p-6 font-black text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isProcessing || absoluteMaxQty === 0 || isExpired} 
+                className={`w-full border-4 border-slate-900 p-6 font-black text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                  totalBayar === 0 && absoluteMaxQty > 0
+                    ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300" 
+                    : "bg-amber-400 text-slate-900 hover:bg-amber-300"
+                }`}
               >
-                {isProcessing ? <><Loader2 className="animate-spin" size={28} strokeWidth={4} /> PROSES...</> : absoluteMaxQty === 0 ? "LIMIT HABIS" : <><CreditCard size={28} strokeWidth={3} /> BAYAR SEKARANG</>}
+                {isProcessing 
+                  ? <><Loader2 className="animate-spin" size={28} strokeWidth={4} /> PROSES...</> 
+                  : stockAvailable === 0
+                    ? "SOLD OUT"
+                    : absoluteMaxQty === 0 
+                      ? "LIMIT HABIS"
+                      : isExpired
+                        ? "WAKTU HABIS"
+                        : totalBayar === 0 
+                          ? <><CheckCircle size={28} strokeWidth={3} /> KLAIM GRATIS!</>
+                          : <><CreditCard size={28} strokeWidth={3} /> BAYAR SEKARANG</>
+                }
               </button>
 
               <div className="mt-8 flex items-center justify-center gap-3 text-[10px] font-black uppercase text-emerald-600 tracking-widest">
@@ -506,6 +723,140 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      {/* TIMEOUT EXPIRED MODAL */}
+      <AnimatePresence>
+        {isExpired && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
+            >
+              <div className="w-20 h-20 bg-red-500 border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 rotate-12 shadow-[4px_4px_0_0_#000]">
+                <span className="text-4xl text-white">⏳</span>
+              </div>
+              <h3 className="text-3xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-red-500 drop-shadow-[1px_1px_0px_#000]">
+                WAKTU HABIS! ⏳
+              </h3>
+              <p className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-6 leading-relaxed">
+                Sesi pemesanan tiket Anda telah kedaluwarsa (melebihi 10 menit). Silakan ulangi pemesanan Anda dari halaman explore.
+              </p>
+              
+              <button
+                onClick={() => {
+                  router.push("/explore");
+                }}
+                className="w-full bg-[#FF3B30] text-white border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-red-600"
+              >
+                KEMBALI KE EXPLORE
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
+            >
+              <div className="w-20 h-20 bg-[#6D4AFF] border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 rotate-12 shadow-[4px_4px_0_0_#000]">
+                <span className="text-4xl text-white">🎟️</span>
+              </div>
+              <h3 className="text-3xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-[#6D4AFF] drop-shadow-[1px_1px_0px_#000]">
+                KONFIRMASI PEMESANAN
+              </h3>
+              <p className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-6 leading-relaxed">
+                Apakah Anda yakin untuk membeli tiket ini? Dengan melanjutkan, transaksi Anda akan otomatis tercatat sebagai tagihan aktif di sistem kami.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={executeCheckout}
+                  className="flex-1 bg-[#6D4AFF] text-white border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-violet-700"
+                >
+                  YA, LANJUTKAN
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 bg-white text-slate-900 border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-slate-100"
+                >
+                  BATAL
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* UNPAID ALERT MODAL */}
+      <AnimatePresence>
+        {showUnpaidModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowUnpaidModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] rotate-1 text-slate-900 text-center"
+            >
+              <div className="w-20 h-20 bg-amber-400 border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
+                <span className="text-4xl text-black">⏳</span>
+              </div>
+              <h3 className="text-3xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-amber-500 drop-shadow-[1px_1px_0px_#000]">
+                PEMBAYARAN DITUNDA
+              </h3>
+              <p className="font-bold text-xs uppercase tracking-wider text-slate-500 mb-6 leading-relaxed">
+                Anda belum menyelesaikan pembayaran. Tagihan untuk pemesanan ini telah terdaftar di sistem. Anda dapat membayar atau menyelesaikan transaksi kapan saja melalui menu "Tiket Saya" atau "Riwayat Pembayaran".
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowUnpaidModal(false);
+                    router.push("/explore/tickets");
+                  }}
+                  className="w-full bg-amber-400 text-slate-900 border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-amber-500"
+                >
+                  LIHAT TIKET SAYA
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUnpaidModal(false);
+                  }}
+                  className="w-full bg-white text-slate-900 border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-slate-100"
+                >
+                  TUTUP
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

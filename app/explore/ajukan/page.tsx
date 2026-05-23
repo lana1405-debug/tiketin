@@ -5,11 +5,13 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { Send, Briefcase, Ticket as TicketIcon, Globe, Phone, Info, FileText, UploadCloud } from "lucide-react";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "700", "900"] });
 
 export default function AjukanEventPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   
@@ -53,7 +55,10 @@ export default function AjukanEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!portfolioFile || !legalFile) return alert("Wajib upload Portofolio dan Berkas PT dulu, Man!");
+    if (!portfolioFile || !legalFile) {
+      toast("Wajib upload Portofolio dan Berkas PT dulu, Man!", "warning");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -61,7 +66,7 @@ export default function AjukanEventPage() {
       const portfolioUrl = await uploadFile(portfolioFile, 'portfolios');
       const legalUrl = await uploadFile(legalFile, 'pt_documents');
 
-      // 2. Insert menggunakan nama kolom asli di database lo (company_name, phone_number, portfolio_url)
+      // 2. Insert menggunakan nama kolom asli di database Anda (company_name, phone_number, portfolio_url)
       const { error: insertError } = await supabase
         .from("eo_applications")
         .insert([
@@ -79,10 +84,10 @@ export default function AjukanEventPage() {
 
       if (insertError) throw insertError;
 
-      alert("🚀 MANTAP! Data & PDF udah masuk pake kolom lama. Admin bakal kurasi dulu ya.");
+      toast("🚀 MANTAP! Data & PDF udah masuk. Admin bakal kurasi dulu ya.", "success");
       router.push("/explore");
     } catch (error: any) {
-      alert("Aduh gagal: " + error.message);
+      toast("Aduh gagal: " + error.message, "error");
     } finally {
       setLoading(false);
     }
@@ -92,7 +97,7 @@ export default function AjukanEventPage() {
     <main className={`min-h-screen bg-[#FCFAF1] p-6 md:p-12 ${poppins.className} text-left`}>
       <div className="max-w-4xl mx-auto">
         
-        <header className="mb-16">
+        <header className="mb-12">
           <div className="bg-[#6D4AFF] border-4 border-black p-4 inline-block -rotate-2 shadow-[6px_6px_0_0_#000] mb-8">
             <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
           </div>
@@ -101,6 +106,19 @@ export default function AjukanEventPage() {
           </h1>
           <p className="font-black text-slate-400 uppercase tracking-[0.3em] text-[10px] italic">Tiketin Revolution • Know Your Business (KYB)</p>
         </header>
+
+        {/* WARNING NOTE POTONGAN 15% */}
+        <div className="bg-amber-400 border-4 border-slate-900 p-6 shadow-[6px_6px_0px_0px_#000] -rotate-1 mb-12 text-slate-900">
+          <div className="flex gap-4 items-start">
+            <Info className="shrink-0 text-slate-900 mt-1" size={24} strokeWidth={3} />
+            <div>
+              <h4 className="font-black uppercase tracking-wider text-xs mb-1">PENGUMUMAN PENTING UNTUK PROMOTOR:</h4>
+              <p className="font-bold text-[11px] uppercase leading-relaxed">
+                Seluruh penghasilan dari penjualan tiket di platform Tiketin akan dikenakan potongan biaya layanan (transaction deduction) sebesar <span className="bg-black text-amber-400 px-1.5 py-0.5 font-black text-xs mx-0.5">15%</span> pada saat pencairan dana (withdrawal) untuk operasional & maintenance platform ke depannya. Harap sesuaikan strategi harga event Anda!
+              </p>
+            </div>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-12">
           
@@ -184,7 +202,7 @@ export default function AjukanEventPage() {
               <div className="bg-amber-400 border-2 border-black text-black px-4 py-1 inline-block -skew-x-12 mb-8 shadow-[3px_3px_0_0_#000]">
                 <h3 className="font-black italic uppercase text-lg">03. RENCANA EVENT</h3>
               </div>
-              <textarea placeholder="JELASKAN EVENT APA YANG MAU LO JUAL DI TIKETIN..." className="w-full p-6 h-40 border-4 border-black font-bold outline-none resize-none bg-white focus:bg-blue-50" onChange={(e) => setReason(e.target.value)} required />
+              <textarea placeholder="JELASKAN EVENT APA YANG INGIN ANDA JUAL DI TIKETIN..." className="w-full p-6 h-40 border-4 border-black font-bold outline-none resize-none bg-white focus:bg-blue-50" onChange={(e) => setReason(e.target.value)} required />
             </div>
           </section>
 

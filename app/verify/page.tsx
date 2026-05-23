@@ -8,6 +8,7 @@ import {
   ShieldAlert, UploadCloud, CheckCircle, 
   Loader2, AlertCircle, Image as ImageIcon, IdCard, ArrowLeft
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast-brutal";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -16,6 +17,7 @@ const poppins = Poppins({
 
 export default function CustomerVerificationPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("loading");
   
@@ -26,35 +28,35 @@ export default function CustomerVerificationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const checkUserStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+      setUserId(session.user.id);
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("verification_status")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profile) {
+        setStatus(profile.verification_status || "unverified");
+      } else {
+        setStatus("unverified");
+      }
+    };
+
     checkUserStatus();
-  }, []);
-
-  const checkUserStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/login");
-      return;
-    }
-    setUserId(session.user.id);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("verification_status")
-      .eq("id", session.user.id)
-      .single();
-
-    if (profile) {
-      setStatus(profile.verification_status || "unverified");
-    } else {
-      setStatus("unverified");
-    }
-  };
+  }, [router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { 
-        alert("Ukuran KTP maksimal 2MB "); 
+        toast("Ukuran KTP maksimal 2MB!", "warning"); 
         return; 
       }
       setKtpFile(file);
@@ -95,11 +97,11 @@ export default function CustomerVerificationPage() {
 
       if (dbError) throw dbError;
 
-      alert("Berkas KTP berhasil dikirim!");
+      toast("Berkas KTP berhasil dikirim! Mohon tunggu konfirmasi admin.", "success");
       setStatus("pending");
       
     } catch (error: any) {
-      alert("Error: " + error.message);
+      toast("Error: " + error.message, "error");
     } finally {
       setIsSubmitting(false);
     }

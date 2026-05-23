@@ -60,66 +60,66 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FCFAF1] noise ${poppins.className}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise ${poppins.className}`}>
       <motion.div 
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
         className="relative w-full max-w-md"
       >
-        <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 sm:translate-x-3 sm:translate-y-3" />
+        <div className="absolute inset-0 bg-black dark:bg-zinc-950 translate-x-2 translate-y-2 sm:translate-x-3 sm:translate-y-3" />
         
-        <div className="relative bg-white border-4 sm:border-[6px] border-black p-6 sm:p-10 lg:p-12 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF]">
+        <div className="relative bg-white dark:bg-zinc-900 border-4 sm:border-[6px] border-black dark:border-zinc-700 p-6 sm:p-10 lg:p-12 shadow-[6px_6px_0_0_#6D4AFF] sm:shadow-[8px_8px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
           {!submitted ? (
             <form onSubmit={handleReset} className="space-y-6 sm:space-y-8">
               <div className="space-y-2">
                 <motion.div 
-                  initial={{ rotate: -10, scale: 0.9 }}
-                  animate={{ rotate: 3, scale: 1 }}
-                  whileHover={{ rotate: -5, scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                  className="bg-[#6D4AFF] p-3 w-max mb-4 border-4 border-black cursor-pointer"
+                   initial={{ rotate: -10, scale: 0.9 }}
+                   animate={{ rotate: 3, scale: 1 }}
+                   whileHover={{ rotate: -5, scale: 1.05 }}
+                   transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                   className="bg-[#6D4AFF] p-3 w-max mb-4 border-4 border-black dark:border-zinc-700 cursor-pointer"
                 >
                   <Key size={32} className="text-white" strokeWidth={3} />
                 </motion.div>
-                <h2 className="text-3xl sm:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter">LUPA KUNCI?</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tenang, bakal kita kirim link reset ke email</p>
+                <h2 className="text-3xl sm:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900 dark:text-zinc-50">LUPA KUNCI?</h2>
+                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Tenang, bakal kita kirim link reset ke email</p>
               </div>
-
+ 
               <div className="space-y-2">
                 <input 
                   type="email" 
                   placeholder="EMAIL@GMAIL.COM" 
                   required
                   value={email}
-                  className="w-full p-4 sm:p-5 border-4 border-black font-black uppercase text-base sm:text-lg outline-none focus:bg-amber-100 transition-colors"
+                  className="w-full p-4 sm:p-5 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-base sm:text-lg outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 {errorMsg && (
-                  <p className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wide border-2 border-red-600 bg-red-50 p-3">
+                  <p className="text-xs sm:text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wide border-2 border-red-600 dark:border-red-400 bg-red-50 dark:bg-red-950/20 p-3">
                     ⚠ {errorMsg}
                   </p>
                 )}
               </div>
-
+ 
               <div className="space-y-3">
                 <motion.button 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-black text-white p-4 sm:p-5 font-black uppercase text-lg sm:text-xl italic hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-black dark:bg-zinc-800 text-white p-4 sm:p-5 border-4 border-black dark:border-zinc-700 font-black uppercase text-lg sm:text-xl italic hover:bg-[#6D4AFF] dark:hover:bg-[#6D4AFF] transition-all active:translate-x-1 active:translate-y-1 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoading ? <Loader2 className="animate-spin" /> : <>KIRIM RESET <ArrowRight /></>}
                 </motion.button>
-
+ 
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <Link 
                     href="/login"
-                    className="w-full border-4 border-black p-4 font-black uppercase text-xs sm:text-sm hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                    className="w-full border-4 border-black dark:border-zinc-700 p-4 font-black uppercase text-xs sm:text-sm bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all flex items-center justify-center gap-2"
                   >
                     <ArrowLeft size={16} />
                     BALIK KE LOGIN
@@ -133,37 +133,37 @@ export default function ForgotPasswordPage() {
                 initial={{ rotate: -15, scale: 0.8 }}
                 animate={{ rotate: 3, scale: 1 }}
                 whileHover={{ rotate: -3, scale: 1.1 }}
-                className="h-16 w-16 sm:h-20 sm:w-20 bg-emerald-500 mx-auto border-4 border-black flex items-center justify-center"
+                className="h-16 w-16 sm:h-20 sm:w-20 bg-emerald-500 mx-auto border-4 border-black dark:border-zinc-700 flex items-center justify-center"
               >
                 <Mail size={32} className="text-white sm:hidden" />
                 <Mail size={40} className="text-white hidden sm:block" />
               </motion.div>
-              <h2 className="text-3xl sm:text-4xl font-black italic uppercase text-emerald-600 -skew-x-6">CEK EMAIL!</h2>
-              <p className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-600">
+              <h2 className="text-3xl sm:text-4xl font-black italic uppercase text-emerald-600 dark:text-emerald-400 -skew-x-6">CEK EMAIL!</h2>
+              <p className="text-xs sm:text-sm font-black uppercase tracking-widest text-slate-600 dark:text-zinc-400">
                 Link reset udah meluncur ke kotak masuk
               </p>
-              <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wide">
+              <p className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wide">
                 Dikirim ke: {email.trim()}
               </p>
-
+ 
               <div className="space-y-3 pt-2">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleTryAgain}
-                  className="w-full border-4 border-black p-4 font-black uppercase text-xs sm:text-sm hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                  className="w-full border-4 border-black dark:border-zinc-700 p-4 font-black uppercase text-xs sm:text-sm bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-slate-900 transition-all flex items-center justify-center gap-2"
                 >
                   <RotateCcw size={16} />
                   SALAH EMAIL? COBA LAGI
                 </motion.button>
-
+ 
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <Link 
                     href="/login"
-                    className="w-full bg-black text-white p-4 font-black uppercase text-xs sm:text-sm hover:bg-[#6D4AFF] transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-black dark:bg-zinc-800 text-white p-4 border-4 border-black dark:border-zinc-700 font-black uppercase text-xs sm:text-sm hover:bg-[#6D4AFF] dark:hover:bg-[#6D4AFF] transition-all flex items-center justify-center gap-2"
                   >
                     <ArrowLeft size={16} />
                     BALIK KE LOGIN
@@ -176,4 +176,5 @@ export default function ForgotPasswordPage() {
       </motion.div>
     </div>
   );
+
 }

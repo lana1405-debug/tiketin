@@ -75,7 +75,8 @@
   --foreground: #333333;
   
   /* Warna Ungu (Purple) dari Logo untuk tombol & aksen */
-  --primary: #553C9A;
+  --primary-color: #6D4AFF;
+  --primary: var(--primary-color);
   --primary-foreground: #fafafa;
 
   /* Warna Coral Pink dari Logo untuk teks 'Daftar' */
@@ -89,46 +90,46 @@
   --muted: #f5f3e9;
   --muted-foreground: #7f7f7f;
   --accent: #f5f3e9;
-  --accent-foreground: #553C9A;
+  --accent-foreground: var(--primary-color);
   --destructive: #ef4444;
   --border: #e5e5e5;
   --input: #e5e5e5;
-  --ring: #553C9A;
+  --ring: var(--primary-color);
   --radius: 1.25rem; /* Bikin rounded lebih lebar biar 'groovy' */
 }
 
 .dark {
-  --background: #181818;
-  --foreground: #fafafa;
-  --card: #202020;
-  --card-foreground: #fafafa;
-  --popover: #202020;
-  --popover-foreground: #fafafa;
-  --primary: #eaeaea;
-  --primary-foreground: #202020;
-  --secondary: #404040;
-  --secondary-foreground: #fafafa;
-  --muted: #404040;
-  --muted-foreground: #b5b5b5;
-  --accent: #404040;
-  --accent-foreground: #fafafa;
-  --destructive: #ef4444;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.15);
-  --ring: #8c8c8c;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #080808;
+  --card-foreground: #ffffff;
+  --popover: #080808;
+  --popover-foreground: #ffffff;
+  --primary: var(--primary-color);
+  --primary-foreground: #000000;
+  --secondary: #00FF99; /* Neon Green */
+  --secondary-foreground: #000000;
+  --muted: #111111;
+  --muted-foreground: #a0a0a0;
+  --accent: #111111;
+  --accent-foreground: var(--primary-color);
+  --destructive: #FF0055;
+  --border: #222222;
+  --input: #222222;
+  --ring: var(--primary-color);
   --chart-1: #dedede;
   --chart-2: #8c8c8c;
   --chart-3: #707070;
   --chart-4: #5e5e5e;
   --chart-5: #404040;
-  --sidebar: #202020;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #583ba3;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #404040;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #8c8c8c;
+  --sidebar: #080808;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: var(--primary-color);
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #111111;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #222222;
+  --sidebar-ring: var(--primary-color);
 }
 
 @layer base {

@@ -6,11 +6,13 @@ import { Poppins } from "next/font/google";
 import { 
   ChevronLeft, Receipt, AlertCircle, Clock, 
   CheckCircle2, ChevronRight, Zap, XCircle,
-  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut
+  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut, Loader2
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/components/ui/toast-brutal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +47,14 @@ const GLOBAL_STYLES = `
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // ⚡ Cancel transaction states
+  const [txToCancel, setTxToCancel] = useState<any | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -151,12 +158,12 @@ export default function HistoryPage() {
 
   const handleLanjutBayar = async (tx: any) => {
     if (tx.status_pembayaran === 'expired') {
-      alert("Waduh! Tagihan ini sudah hangus karena lewat 12 jam.");
+      toast("Waduh! Tagihan ini sudah hangus karena lewat 12 jam.", "error");
       return;
     }
 
     if (!tx.snap_token) {
-      alert("Token tidak ditemukan. Silakan checkout ulang.");
+      toast("Token tidak ditemukan. Silakan checkout ulang.", "error");
       return;
     }
 
@@ -173,22 +180,44 @@ export default function HistoryPage() {
           
           const statusData = await statusResponse.json();
           if (statusData.success) {
-            alert("MANTAP! PEMBAYARAN BERHASIL. 🎉");
+            toast("MANTAP! PEMBAYARAN BERHASIL. 🎉", "success");
           } else {
             console.warn("Verifikasi status gagal:", statusData.message);
-            alert("Pembayaran berhasil dicatat. Tiket sedang diproses.");
+            toast("Pembayaran berhasil dicatat. Tiket sedang diproses.", "info");
           }
           router.push("/explore/tickets"); 
         } catch (error) {
           console.error(error);
-          alert("Pembayaran sukses! Sistem sedang melakukan sinkronisasi otomatis, silakan cek Tiket Saya beberapa saat lagi.");
+          toast("Pembayaran sukses! Sistem sedang melakukan sinkronisasi otomatis, silakan cek Tiket Saya beberapa saat lagi.", "warning");
           router.push("/explore/tickets");
         }
       },
-      onPending: () => alert("Menunggu pembayaran..."),
-      onError: () => alert("Gagal memproses pembayaran."),
-      onClose: () => alert("Selesaikan sebelum 12 jam ya!")
+      onPending: () => toast("Menunggu pembayaran...", "info"),
+      onError: () => toast("Gagal memproses pembayaran.", "error"),
+      onClose: () => toast("Selesaikan sebelum 12 jam ya!", "warning")
     });
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!txToCancel) return;
+    setIsCancelling(true);
+    try {
+      const { error } = await supabase
+        .from("transaksi")
+        .update({ status_pembayaran: "expired" })
+        .eq("id", txToCancel.id);
+
+      if (error) throw error;
+
+      toast("Tagihan berhasil dibatalkan.", "success");
+      setTxToCancel(null);
+      await fetchHistory();
+    } catch (err: any) {
+      console.error(err);
+      toast("Gagal membatalkan tagihan. Coba lagi.", "error");
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   return (
@@ -333,12 +362,20 @@ export default function HistoryPage() {
                   </div>
                   
                   {tx.status_pembayaran === 'pending' && (
-                    <button 
-                      onClick={() => handleLanjutBayar(tx)}
-                      className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
-                    >
-                      LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                      <button 
+                        onClick={() => handleLanjutBayar(tx)}
+                        className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
+                      >
+                        LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
+                      </button>
+                      <button 
+                        onClick={() => setTxToCancel(tx)}
+                        className="w-full md:w-auto bg-red-500 text-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-red-600"
+                      >
+                        BATALKAN
+                      </button>
+                    </div>
                   )}
                   {tx.status_pembayaran === 'expired' && (
                     <p className="text-[10px] font-black text-red-500 uppercase italic underline underline-offset-4">Transaction Closed</p>
@@ -349,6 +386,73 @@ export default function HistoryPage() {
           </div>
         )}
       </main>
+
+      {/* ─── CANCEL CONFIRMATION MODAL ─── */}
+      <AnimatePresence>
+        {txToCancel && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isCancelling && setTxToCancel(null)}
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+            >
+              <div className="inline-block bg-red-500 text-white p-4 border-4 border-slate-900 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
+                <AlertCircle className="text-white" size={48} strokeWidth={3} />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900">
+                  BATALKAN TAGIHAN?
+                </h2>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-slate-500">Aksi ini tidak dapat dibatalkan</p>
+              </div>
+
+              <div className="bg-[#FCFAF1] border-4 border-slate-900 p-4 text-left space-y-2 font-bold">
+                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 pb-2 text-slate-900">
+                  {txToCancel.events?.title || "EVENT"}
+                </p>
+                <div className="text-xs space-y-1 text-slate-600">
+                  <p className="uppercase"><span className="text-slate-400">Tagihan:</span> {formatRupiah(txToCancel.total_bayar)}</p>
+                  <p className="uppercase"><span className="text-slate-400">Kategori:</span> {txToCancel.total_qty}x {txToCancel.ticket_categories?.name || "TIKET"}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isCancelling}
+                  onClick={() => setTxToCancel(null)}
+                  className="w-1/2 bg-white hover:bg-slate-100 text-slate-900 font-black italic uppercase text-xs py-4 border-4 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                >
+                  TIDAK, KEMBALI
+                </button>
+                <button
+                  type="button"
+                  disabled={isCancelling}
+                  onClick={handleCancelConfirm}
+                  className="w-1/2 bg-red-500 hover:bg-red-600 text-white font-black italic uppercase text-xs py-4 border-4 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2"
+                >
+                  {isCancelling ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : null}
+                  YA, BATALKAN
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

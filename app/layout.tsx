@@ -4,6 +4,7 @@ import "./globals.css";
 
 // ⚡ 1. Import ThemeProvider yang baru saja kita buat
 import { ThemeProvider } from "@/components/theme-provider";
+import { ToastProvider } from "@/components/ui/toast-brutal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +33,7 @@ export default function RootLayout({
       suppressHydrationWarning // Proteksi buat tag html
     >
       <body 
-        // ⚡ Tambahkan bg-white dan dark:bg-slate-900 agar background utama ikut berubah
-        className="min-h-full flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors duration-300" 
+        className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300" 
         suppressHydrationWarning // Proteksi buat tag body dari extension browser
       >
         {/* ⚡ 2. Bungkus children dengan ThemeProvider */}
@@ -43,7 +43,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

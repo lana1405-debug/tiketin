@@ -13,6 +13,7 @@ import {
   Percent, Star, ChevronLeft, Menu
 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/toast-brutal";
 import {
   ResponsiveContainer,
   LineChart,
@@ -48,6 +49,7 @@ const getLocalDateString = (d: Date = new Date()) => {
 
 export default function EODashboard() {
   const router = useRouter();
+  const { toast } = useToast();
   const today = getLocalDateString();
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +81,15 @@ export default function EODashboard() {
 
   // ⚡ STATE REVIEWS
   const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState<string | null>(null);
+
+  // ⚡ STATE EO NAME SETTING
+  const [newEoNameInput, setNewEoNameInput] = useState("");
+  const [isSavingEoName, setIsSavingEoName] = useState(false);
+  const [isEoVerified, setIsEoVerified] = useState(false);
+  const [isEoNameSet, setIsEoNameSet] = useState(false);
 
   // ⚡ STATE KEUANGAN
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -178,8 +189,21 @@ export default function EODashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push("/login"); return; }
       setEoId(session.user.id);
-      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", session.user.id).single();
-      if (profile) setEoName(profile.full_name);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, eo_name, verification_status")
+        .eq("id", session.user.id)
+        .single();
+      if (profile) {
+        if (profile.eo_name) {
+          setEoName(profile.eo_name);
+          setIsEoNameSet(true);
+        } else {
+          setEoName(profile.full_name || "Organizer");
+          setIsEoNameSet(false);
+        }
+        setIsEoVerified(profile.verification_status === "approved");
+      }
       fetchMyEvents(session.user.id);
       fetchMyComplaints(session.user.id);
     };
@@ -222,6 +246,61 @@ export default function EODashboard() {
       .in("event_id", eventIds)
       .order("created_at", { ascending: false });
     if (data) setReviewsList(data);
+  };
+
+  const handleSubmitReply = async (reviewId: string) => {
+    if (!replyText.trim()) {
+      toast("Komentar balasan tidak boleh kosong!", "warning");
+      return;
+    }
+
+    setIsSubmittingReply(reviewId);
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .update({
+          reply_comment: replyText.trim(),
+          replied_at: new Date().toISOString()
+        })
+        .eq("id", reviewId);
+
+      if (error) throw error;
+
+      toast("Tanggapan ulasan berhasil disimpan! 💬", "success");
+      setReviewsList(prev => prev.map(r => r.id === reviewId ? { ...r, reply_comment: replyText.trim(), replied_at: new Date().toISOString() } : r));
+      setActiveReplyId(null);
+      setReplyText("");
+    } catch (err: any) {
+      console.error("Gagal mengirim balasan ulasan:", err);
+      toast("Gagal mengirim tanggapan: " + err.message, "error");
+    } finally {
+      setIsSubmittingReply(null);
+    }
+  };
+
+  const handleDeleteReply = async (reviewId: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus tanggapan ini?")) return;
+
+    setIsSubmittingReply(reviewId);
+    try {
+      const { error } = await supabase
+        .from("reviews")
+        .update({
+          reply_comment: null,
+          replied_at: null
+        })
+        .eq("id", reviewId);
+
+      if (error) throw error;
+
+      toast("Tanggapan berhasil dihapus.", "success");
+      setReviewsList(prev => prev.map(r => r.id === reviewId ? { ...r, reply_comment: null, replied_at: null } : r));
+    } catch (err: any) {
+      console.error("Gagal menghapus balasan ulasan:", err);
+      toast("Gagal menghapus tanggapan: " + err.message, "error");
+    } finally {
+      setIsSubmittingReply(null);
+    }
   };
 
   const fetchSalesAnalytics = async (eventIds: string[]) => {
@@ -331,6 +410,34 @@ export default function EODashboard() {
     if (data) setMyComplaints(data);
   };
 
+  const handleSaveEoName = async () => {
+    if (!newEoNameInput.trim()) {
+      toast("Nama organizer tidak boleh kosong!", "warning");
+      return;
+    }
+    if (!eoId) return;
+
+    setIsSavingEoName(true);
+    try {
+      const trimmedName = newEoNameInput.trim();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ eo_name: trimmedName })
+        .eq("id", eoId);
+
+      if (error) throw error;
+
+      setEoName(trimmedName);
+      setIsEoNameSet(true);
+      toast("Nama organizer berhasil disimpan dan dikunci! 🔒", "success");
+    } catch (err: any) {
+      console.error("Gagal menyimpan nama organizer:", err);
+      toast("Gagal menyimpan nama organizer: " + err.message, "error");
+    } finally {
+      setIsSavingEoName(false);
+    }
+  };
+
   const openChatThread = async (complaint: any) => {
     setSelectedComplaint(complaint);
     const { data } = await supabase.from("complaint_messages").select("*").eq("complaint_id", complaint.id).order("created_at", { ascending: true });
@@ -349,7 +456,7 @@ export default function EODashboard() {
     setIsSendingComplaint(true);
     const { error } = await supabase.from("complaints").insert([{ user_id: eoId, title: complaintForm.title, message: complaintForm.message, status: "pending" }]);
     if (!error) {
-      alert("Laporan terkirim!");
+      toast("Laporan terkirim!", "success");
       setComplaintForm({ title: "", message: "" });
       fetchMyComplaints(eoId!);
     }
@@ -359,7 +466,8 @@ export default function EODashboard() {
   const handleSubmitVoucher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!voucherForm.code || !voucherForm.event_id || !voucherForm.discount_value || !voucherForm.valid_to) {
-      return alert("Harap isi semua kolom wajib!");
+      toast("Harap isi semua kolom wajib!", "warning");
+      return;
     }
 
     setIsVoucherSubmitting(true);
@@ -378,7 +486,7 @@ export default function EODashboard() {
       const { error } = await supabase.from("vouchers").insert([payload]);
       if (error) throw error;
 
-      alert("Voucher berhasil dibuat!");
+      toast("Voucher berhasil dibuat!", "success");
       setVoucherForm({
         code: "",
         event_id: events[0]?.id || "",
@@ -391,7 +499,7 @@ export default function EODashboard() {
       const eventIds = events.map(e => e.id);
       fetchVouchers(eventIds);
     } catch (err: any) {
-      alert("Gagal membuat voucher: " + err.message);
+      toast("Gagal membuat voucher: " + err.message, "error");
     } finally {
       setIsVoucherSubmitting(false);
     }
@@ -401,9 +509,9 @@ export default function EODashboard() {
     if (!confirm("Hapus voucher ini?")) return;
     const { error } = await supabase.from("vouchers").delete().eq("id", id);
     if (error) {
-      alert("Gagal menghapus voucher: " + error.message);
+      toast("Gagal menghapus voucher: " + error.message, "error");
     } else {
-      alert("Voucher berhasil dihapus!");
+      toast("Voucher berhasil dihapus!", "success");
       const eventIds = events.map(e => e.id);
       fetchVouchers(eventIds);
     }
@@ -412,7 +520,7 @@ export default function EODashboard() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { alert("Maksimal 2MB "); return; }
+      if (file.size > 2 * 1024 * 1024) { toast("Maksimal 2MB!", "warning"); return; }
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
@@ -427,13 +535,20 @@ export default function EODashboard() {
     // Validasi tanggal real-time
     const todayStr = getLocalDateString();
     if (formData.date < todayStr) {
-      return alert("Bro, tanggal mulai tidak boleh di masa lalu!");
+      toast("Bro, tanggal mulai tidak boleh di masa lalu!", "warning");
+      return;
     }
     if (formData.end_date && formData.end_date < formData.date) {
-      return alert("Bro, tanggal selesai tidak boleh sebelum tanggal mulai!");
+      toast("Bro, tanggal selesai tidak boleh sebelum tanggal mulai!", "warning");
+      return;
     }
 
-    for (let cat of categories) { if (!cat.name || !cat.price || !cat.stock) return alert("Bro, data kategori tiket masih ada yang kosong!"); }
+    for (let cat of categories) { 
+      if (!cat.name || !cat.price || !cat.stock) {
+        toast("Bro, data kategori tiket masih ada yang kosong!", "warning"); 
+        return;
+      }
+    }
     setIsSubmitting(true);
     try {
       let finalImageUrl = imagePreview; 
@@ -515,7 +630,7 @@ export default function EODashboard() {
         await supabase.from("ticket_categories").insert(categoryInserts);
       }
       closeModal(); fetchMyEvents(eoId);
-    } catch (err: any) { alert(err.message); } finally { setIsSubmitting(false); }
+    } catch (err: any) { toast(err.message, "error"); } finally { setIsSubmitting(false); }
   };
 
   const openEditModal = async (event: any) => {
@@ -537,7 +652,7 @@ export default function EODashboard() {
       .eq("event_id", event.id);
 
     if (error) {
-      alert("Gagal mengambil data kategori tiket: " + error.message);
+      toast("Gagal mengambil data kategori tiket: " + error.message, "error");
     } else if (catData && catData.length > 0) {
       setCategories(catData.map(c => ({
         id: c.id,
@@ -582,8 +697,8 @@ export default function EODashboard() {
         status: "pending" 
       }]);
       if (error) throw error;
-      alert("Pengajuan terkirim!"); setIsWithdrawModalOpen(false); fetchMyEvents(eoId!);
-    } catch (err: any) { alert(err.message); } finally { setIsWithdrawing(false); }
+      toast("Pengajuan terkirim!", "success"); setIsWithdrawModalOpen(false); fetchMyEvents(eoId!);
+    } catch (err: any) { toast(err.message, "error"); } finally { setIsWithdrawing(false); }
   };
 
   const formatRupiah = (angka: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka || 0);
@@ -591,7 +706,7 @@ export default function EODashboard() {
   if (!mounted) return null;
 
   return (
-    <main className={`min-h-screen bg-white flex flex-col ${poppins.className} text-black`}>
+    <main className={`flex min-h-screen bg-white xl:flex-row flex-col ${poppins.className} text-black`}>
       {/* ── DESKTOP SIDEBAR (xl+) ── */}
       <aside className="hidden xl:flex w-80 bg-white border-r-8 border-black xl:min-h-screen flex-col p-8 z-20 shrink-0 text-left sticky top-0 h-screen">
         <div className="mb-12 flex items-center gap-3">
@@ -604,7 +719,7 @@ export default function EODashboard() {
           <button className="w-full flex items-center gap-4 bg-black text-white px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(109,74,255,1)] font-black uppercase italic text-xs tracking-widest translate-x-[-2px] translate-y-[-2px]">
             <LayoutDashboard size={20} /> Control Room
           </button>
-          <button onClick={() => alert("Pilih event di tabel, lalu klik 'Scanner'")} className="w-full flex items-center gap-4 bg-amber-400 text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+          <button onClick={() => toast("Pilih event di tabel, lalu klik 'Scanner'", "info")} className="w-full flex items-center gap-4 bg-amber-400 text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
             <QrCode size={20} /> Scan Check-In
           </button>
           <button onClick={() => setIsComplaintModalOpen(true)} className="w-full flex items-center gap-4 bg-white text-black px-6 py-5 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 transition-all">
@@ -615,9 +730,15 @@ export default function EODashboard() {
           </Link>
         </nav>
         <div className="border-t-8 border-black pt-8 mt-auto">
-           <div className="bg-black text-white p-4 border-2 border-black font-black uppercase italic text-[9px] flex items-center gap-2 mb-4">
-              <ShieldCheck size={14} className="text-emerald-400"/> EO Account Verified
-           </div>
+           {isEoVerified ? (
+             <div className="bg-black text-white p-4 border-2 border-black font-black uppercase italic text-[9px] flex items-center gap-2 mb-4">
+                <ShieldCheck size={14} className="text-emerald-400"/> EO Account Verified
+             </div>
+           ) : (
+             <div className="bg-slate-100 text-slate-500 p-4 border-2 border-black font-black uppercase italic text-[9px] flex items-center gap-2 mb-4">
+                <ShieldCheck size={14} className="text-slate-400"/> Pending Verification
+             </div>
+           )}
           <button onClick={() => { supabase.auth.signOut(); router.push("/login"); }} className="w-full flex items-center justify-center gap-3 bg-red-500 text-white p-4 border-4 border-black font-black uppercase italic text-xs tracking-widest shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
             <LogOut size={18} /> Exit Matrix
           </button>
@@ -650,7 +771,7 @@ export default function EODashboard() {
               <button className="w-full flex items-center gap-4 bg-black text-white px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(109,74,255,1)] font-black uppercase italic text-xs tracking-widest">
                 <LayoutDashboard size={18} /> Control Room
               </button>
-              <button onClick={() => { alert("Pilih event di tabel, lalu klik 'Scanner'"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 bg-amber-400 text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
+              <button onClick={() => { toast("Pilih event di tabel, lalu klik 'Scanner'", "info"); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 bg-amber-400 text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
                 <QrCode size={18} /> Scan Check-In
               </button>
               <button onClick={() => { setIsComplaintModalOpen(true); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 bg-white text-black px-5 py-4 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black uppercase italic text-xs tracking-widest hover:translate-x-1 transition-all">
@@ -700,12 +821,69 @@ export default function EODashboard() {
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-8xl font-black italic uppercase tracking-tighter leading-[0.85]">
                 AGENT <span className="text-amber-400 drop-shadow-[2px_2px_0_#000]">{eoName.split(' ')[0]}.</span>
               </h1>
-              <p className="text-slate-500 font-bold italic text-lg mt-4 max-w-xl">Pantau pergerakan penjualan dan atur amunisi event lo di sini.</p>
+              <p className="text-slate-500 font-bold italic text-lg mt-4 max-w-xl">Pantau pergerakan penjualan dan atur amunisi event Anda di sini.</p>
             </div>
             <button onClick={() => setIsModalOpen(true)} className="bg-black text-white border-4 border-black px-8 py-5 font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_#6D4AFF] hover:shadow-none hover:translate-x-2 hover:translate-y-2 transition-all flex items-center gap-3 shrink-0">
               <PlusCircle size={22} strokeWidth={3} className="text-amber-400" /> DEPLOY NEW EVENT
             </button>
           </div>
+
+          {/* EO Organizer Name Setup Box */}
+          {!isEoNameSet ? (
+            <div className="bg-amber-100 border-8 border-black p-6 sm:p-8 shadow-[8px_8px_0px_0px_#000] space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-amber-400 p-2 border-4 border-black rotate-[-3deg] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <ShieldCheck size={20} className="text-black" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter">
+                  Set Nama Organizer Anda
+                </h3>
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-700 italic">
+                PERINGATAN: Nama organizer hanya bisa diatur satu kali dan TIDAK BISA diubah setelah disimpan. Nama ini akan dipublikasikan ke pembeli tiket pada semua event Anda.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch max-w-2xl">
+                <input
+                  type="text"
+                  placeholder="NAMA ORGANIZER RESMI (e.g. Nada Promotama)"
+                  className="flex-1 p-4 border-4 border-black font-black uppercase italic bg-white outline-none focus:bg-amber-50 text-black animate-none"
+                  value={newEoNameInput}
+                  onChange={(e) => setNewEoNameInput(e.target.value)}
+                  maxLength={50}
+                />
+                <button
+                  onClick={handleSaveEoName}
+                  disabled={isSavingEoName}
+                  className="bg-[#6D4AFF] text-white border-4 border-black px-6 py-4 font-black uppercase italic text-xs tracking-widest shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isSavingEoName ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      MENYIMPAN...
+                    </>
+                  ) : (
+                    "SIMPAN NAMA ORGANIZER"
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border-8 border-black p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Nama Organizer:</span>
+                <span className="text-lg sm:text-xl font-black uppercase italic tracking-tight">{eoName}</span>
+                {isEoVerified && (
+                  <span className="bg-emerald-400 text-black border-2 border-black px-2 py-0.5 text-[9px] font-black uppercase italic inline-flex items-center gap-1 shadow-[2px_2px_0px_0px_#000] rotate-[-2deg]">
+                    ✓ VERIFIED EO
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 bg-slate-100 border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase italic">
+                <span>TERKUNCI</span>
+                <span>🔒</span>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 bg-emerald-400 border-8 border-black p-8 shadow-[12px_12px_0_0_#000] relative overflow-hidden group">
@@ -1100,42 +1278,184 @@ export default function EODashboard() {
           )}
 
           {/* ⚡ TAB 4: FEEDBACK ULASAN */}
-          {activeTab === "feedback" && (
-            <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
-              <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
-                <h3 className="text-3xl font-black italic uppercase tracking-tighter">Feedback & Ulasan</h3>
-                <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{reviewsList.length} Reviews</span>
-              </div>
-              <div className="p-8 space-y-6">
-                {reviewsList.length === 0 ? (
-                  <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
-                    Belum ada ulasan dari pembeli.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {reviewsList.map((rev) => (
-                      <div key={rev.id} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] hover:-translate-y-1 transition-all">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">{rev.profiles?.full_name || "Customer"}</h4>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {rev.events?.title}</p>
-                          </div>
-                          <div className="flex items-center gap-1 bg-black text-amber-400 px-2 py-1 border-2 border-black font-black text-xs">
-                            <Star className="fill-amber-400 text-amber-400" size={14} />
-                            {rev.rating}
-                          </div>
-                        </div>
-                        <p className="text-slate-700 italic font-medium text-sm">"{rev.comment}"</p>
-                        <div className="mt-4 text-[9px] text-slate-400 font-bold uppercase text-right">
-                          {new Date(rev.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}
-                        </div>
+          {activeTab === "feedback" && (() => {
+            const totalReviewsCount = reviewsList.length;
+            const starCounts = [0, 0, 0, 0, 0, 0];
+            reviewsList.forEach(r => {
+              if (r.rating >= 1 && r.rating <= 5) {
+                starCounts[r.rating]++;
+              }
+            });
+            const averageRating = totalReviewsCount > 0 
+              ? (reviewsList.reduce((acc: number, r: any) => acc + r.rating, 0) / totalReviewsCount).toFixed(1)
+              : "0.0";
+
+            return (
+              <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
+                <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
+                  <h3 className="text-3xl font-black italic uppercase tracking-tighter">Feedback & Ulasan</h3>
+                  <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{totalReviewsCount} Reviews</span>
+                </div>
+                
+                {totalReviewsCount > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border-b-8 border-black bg-slate-50">
+                    <div className="flex flex-col items-center justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] text-center">
+                      <p className="text-[10px] font-black uppercase text-slate-400">RATA-RATA RATING</p>
+                      <p className="text-6xl font-black italic -skew-x-6 text-[#6D4AFF] mt-2">{averageRating}</p>
+                      <div className="flex gap-1 mt-3">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={16}
+                            className={i < Math.round(Number(averageRating)) ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                          />
+                        ))}
                       </div>
-                    ))}
+                      <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{totalReviewsCount} Ulasan Total</p>
+                    </div>
+                    
+                    <div className="md:col-span-2 flex flex-col justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] space-y-2">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const count = starCounts[star];
+                        const pct = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
+                        return (
+                          <div key={star} className="flex items-center gap-3 text-xs font-black uppercase">
+                            <span className="w-20 text-left">{star} Bintang</span>
+                            <div className="flex-grow h-4 bg-slate-100 border-2 border-black relative overflow-hidden">
+                              <div 
+                                className="h-full bg-amber-400 border-r-2 border-black" 
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="w-16 text-right">{count} ({Math.round(pct)}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+
+                <div className="p-8 space-y-6">
+                  {totalReviewsCount === 0 ? (
+                    <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
+                      Belum ada ulasan dari pembeli.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {reviewsList.map((rev) => (
+                        <div key={rev.id} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] flex flex-col justify-between transition-all">
+                          <div>
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">{rev.profiles?.full_name || "Customer"}</h4>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {rev.events?.title}</p>
+                              </div>
+                              <div className="flex items-center gap-1 bg-black text-amber-400 px-2 py-1 border-2 border-black font-black text-xs">
+                                <Star className="fill-amber-400 text-amber-400" size={14} />
+                                {rev.rating}
+                              </div>
+                            </div>
+                            <p className="text-slate-700 italic font-medium text-sm">"{rev.comment}"</p>
+                            <div className="mt-2 text-[9px] text-slate-400 font-bold uppercase text-right">
+                              {new Date(rev.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}
+                            </div>
+
+                            {/* Nested EO Response Card */}
+                            {rev.reply_comment && (
+                              <div className="mt-4 p-4 bg-white border-2 border-dashed border-[#6D4AFF] relative text-left">
+                                <div className="absolute top-2 right-2 flex gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setActiveReplyId(rev.id);
+                                      setReplyText(rev.reply_comment);
+                                    }}
+                                    className="text-[9px] font-black uppercase text-blue-500 hover:underline cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <span className="text-[9px] text-slate-300">|</span>
+                                  <button
+                                    onClick={() => handleDeleteReply(rev.id)}
+                                    className="text-[9px] font-black uppercase text-red-500 hover:underline cursor-pointer"
+                                    disabled={isSubmittingReply === rev.id}
+                                  >
+                                    Hapus
+                                  </button>
+                                </div>
+                                <p className="text-[9px] font-black uppercase text-[#6D4AFF] tracking-widest mb-1 flex items-center gap-1">
+                                  <span>💬 TANGGAPAN RESMI EO</span>
+                                </p>
+                                <p className="text-xs text-slate-700 italic">"{rev.reply_comment}"</p>
+                                {rev.replied_at && (
+                                  <p className="text-[8px] text-slate-400 uppercase mt-2 text-right">
+                                    Dibalas pada: {new Date(rev.replied_at).toLocaleDateString("id-ID")}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Inline Reply Form */}
+                            {activeReplyId === rev.id && (
+                              <div className="mt-4 p-4 border-2 border-black bg-white space-y-3">
+                                <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Tulis Tanggapan Resmi</p>
+                                <textarea
+                                  rows={3}
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  placeholder="Tulis balasan resmi dari panitia..."
+                                  className="w-full p-2 border-2 border-black text-xs font-medium outline-none focus:bg-amber-50"
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setActiveReplyId(null);
+                                      setReplyText("");
+                                    }}
+                                    className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-white hover:bg-slate-100 cursor-pointer"
+                                  >
+                                    Batal
+                                  </button>
+                                  <button
+                                    onClick={() => handleSubmitReply(rev.id)}
+                                    disabled={isSubmittingReply === rev.id}
+                                    className="px-3 py-1.5 bg-[#6D4AFF] text-white border border-[#6D4AFF] text-[10px] font-black uppercase hover:bg-slate-900 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {isSubmittingReply === rev.id ? (
+                                      <>
+                                        <Loader2 className="animate-spin" size={10} />
+                                        Proses...
+                                      </>
+                                    ) : (
+                                      "Kirim"
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Reply Action Button (if not already showing reply form and has no reply yet) */}
+                          {!rev.reply_comment && activeReplyId !== rev.id && (
+                            <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setActiveReplyId(rev.id);
+                                  setReplyText("");
+                                }}
+                                className="bg-white border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                💬 TANGGAPI
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
         </div>
       </div>
@@ -1180,7 +1500,7 @@ export default function EODashboard() {
                            <div key={i} className={`flex flex-col ${msg.is_admin ? 'items-start' : 'items-end'}`}>
                               <div className={`p-4 border-4 border-black max-w-[75%] shadow-[4px_4px_0_0_#000] ${msg.is_admin ? 'bg-white' : 'bg-[#6D4AFF] text-white'}`}>
                                  <p className={`text-[8px] font-black uppercase mb-1 ${msg.is_admin ? 'text-[#6D4AFF]' : 'text-purple-200'}`}>
-                                    {msg.is_admin ? 'Admin Tiketin' : 'LO'}
+                                    {msg.is_admin ? 'Admin Tiketin' : 'Anda'}
                                  </p>
                                  <p className="text-sm font-bold italic">{msg.message}</p>
                               </div>

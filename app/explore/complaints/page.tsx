@@ -9,6 +9,7 @@ import {
   CheckCircle, LifeBuoy, Zap, ArrowLeft, Ticket, CreditCard, UserCog, AlertCircle,
   ShieldCheck, Trophy, Receipt, LogOut
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast-brutal";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -32,6 +33,7 @@ const CATEGORIES = [
 
 export default function CustomerComplaintsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [myComplaints, setMyComplaints] = useState<any[]>([]);
@@ -140,7 +142,7 @@ export default function CustomerComplaintsPage() {
 
   const handleSubmitNewReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !title || !message) return alert("Isi yang lengkap ");
+    if (!userId || !title || !message) { toast("Isi semua kolom dulu!", "warning"); return; }
     setIsSubmitting(true);
 
     const { data, error } = await supabase
@@ -156,7 +158,9 @@ export default function CustomerComplaintsPage() {
       
       setTitle(""); setMessage("");
       fetchMyComplaints(userId);
-      alert("Aduan terkirim!");
+      toast("Aduan berhasil terkirim! Admin akan segera merespons.", "success");
+    } else {
+      toast("Gagal mengirim aduan. Coba lagi!", "error");
     }
     setIsSubmitting(false);
   };
