@@ -174,24 +174,24 @@ export default function CustomerComplaintsPage() {
   if (!mounted) return null;
 
   return (
-    <div className={`min-h-screen bg-[#FCFAF1] text-black ${poppins.className}`}>
+    <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-black dark:text-zinc-50 ${poppins.className}`}>
       {/* NAVBAR */}
-      <nav className="w-full bg-white border-b-8 border-slate-900 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] h-20">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20">
         <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
               <ArrowLeft className="text-white" size={18} strokeWidth={3} />
             </div>
-            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline">Kembali</span>
+            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline text-slate-900 dark:text-zinc-50">Kembali</span>
           </Link>
-          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase">Support Center</span>
+          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900 dark:text-zinc-50">Support Center</span>
 
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
                   <div className="text-right hidden md:block">
-                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 mb-1 px-2 py-0.5 inline-block bg-slate-100">
+                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 dark:border-zinc-700 mb-1 px-2 py-0.5 inline-block bg-slate-100 dark:bg-zinc-800 dark:text-zinc-300">
                       {userProfile?.verification_status === "approved" ? (
                         <span className="text-emerald-500">✓ VERIFIED</span>
                       ) : userProfile?.verification_status === "pending" ? (
@@ -200,7 +200,7 @@ export default function CustomerComplaintsPage() {
                         <span className="text-red-500">✗ UNVERIFIED</span>
                       )}
                     </p>
-                    <p className="text-xs font-black italic -skew-x-6 uppercase">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
+                    <p className="text-xs font-black italic -skew-x-6 uppercase text-slate-900 dark:text-zinc-50">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
                   </div>
                   <Avatar className="h-10 w-10 border-4 border-slate-900 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
                     <AvatarImage src={userProfile?.avatar_url} />
@@ -208,27 +208,27 @@ export default function CustomerComplaintsPage() {
                   </Avatar>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
+              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
-                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Ticket className="mr-2 h-4 w-4" /> Tiket Saya
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem
-                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 cursor-pointer"
+                  className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -243,8 +243,8 @@ export default function CustomerComplaintsPage() {
         
         {/* KIRI: FORM & LIST TIKET */}
         <div className="lg:col-span-4 space-y-10">
-          <section className="bg-white border-8 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
-            <h2 className="text-xl font-black italic uppercase mb-4 border-b-4 border-black pb-2 text-left">Lapor Masalah</h2>
+          <section className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
+            <h2 className="text-xl font-black italic uppercase mb-4 border-b-4 border-black dark:border-zinc-700 pb-2 text-left text-slate-900 dark:text-zinc-50">Lapor Masalah</h2>
             <form onSubmit={handleSubmitNewReport} className="space-y-4">
               
               {/* --- BAGIAN KATEGORI YANG TADI ILANG --- */}
@@ -260,10 +260,10 @@ export default function CustomerComplaintsPage() {
           key={cat.id}
           type="button"
           onClick={() => setCategory(cat.id)}
-          className={`flex items-center justify-center gap-3 p-4 border-4 border-black transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
+          className={`flex items-center justify-center gap-3 p-4 border-4 border-black dark:border-zinc-700 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
             isActive 
-            ? 'bg-black text-white shadow-none translate-x-1 translate-y-1' 
-            : 'bg-white text-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]'
+            ? 'bg-black dark:bg-zinc-50 text-white dark:text-black shadow-none translate-x-1 translate-y-1' 
+            : 'bg-white dark:bg-zinc-800 text-black dark:text-zinc-200 shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)]'
           }`}
         >
           <Icon size={20} strokeWidth={isActive ? 3 : 2} />
@@ -274,23 +274,23 @@ export default function CustomerComplaintsPage() {
   </div>
 </div>
 
-              <input type="text" placeholder="SUBJEK..." value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border-4 border-black font-black italic outline-none text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)]" />
-              <textarea placeholder="DETAIL KELUHAN..." value={message} onChange={e => setMessage(e.target.value)} className="w-full p-3 border-4 border-black font-bold italic outline-none h-24 text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)]" />
+              <input type="text" placeholder="SUBJEK..." value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-black italic outline-none text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] placeholder:text-slate-400 dark:placeholder:text-zinc-600" />
+              <textarea placeholder="DETAIL KELUHAN..." value={message} onChange={e => setMessage(e.target.value)} className="w-full p-3 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-bold italic outline-none h-24 text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] placeholder:text-slate-400 dark:placeholder:text-zinc-600" />
               
-              <button disabled={isSubmitting} className="w-full py-3 bg-emerald-400 border-4 border-black font-black uppercase italic shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none transition-all text-sm">
+              <button disabled={isSubmitting} className="w-full py-3 bg-emerald-400 border-4 border-black dark:border-zinc-700 font-black uppercase italic shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:shadow-none transition-all text-sm text-black">
                 {isSubmitting ? "Kirim..." : "Kirim Aduan"}
               </button>
             </form>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-black italic uppercase tracking-tighter text-left">Riwayat Aduan</h2>
+            <h2 className="text-xl font-black italic uppercase tracking-tighter text-left text-slate-900 dark:text-zinc-50">Riwayat Aduan</h2>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {myComplaints.map(ticket => (
                 <div 
                   key={ticket.id} 
                   onClick={() => handleSelectTicket(ticket)}
-                  className={`p-4 border-4 border-black cursor-pointer transition-all shadow-[4px_4px_0_0_rgba(0,0,0,1)] ${selectedTicket?.id === ticket.id ? 'bg-amber-300 translate-x-1 translate-y-1 shadow-none' : 'bg-white hover:bg-slate-50'}`}
+                  className={`p-4 border-4 border-black dark:border-zinc-700 cursor-pointer transition-all shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] ${selectedTicket?.id === ticket.id ? 'bg-amber-300 text-black translate-x-1 translate-y-1 shadow-none' : 'bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-black dark:text-zinc-100'}`}
                 >
                   <div className="flex justify-between items-start mb-1 text-left">
                     <span className={`text-[7px] font-black uppercase px-2 py-0.5 border-2 border-black ${ticket.status === 'resolved' ? 'bg-emerald-400' : 'bg-red-500 text-white'}`}>{ticket.status}</span>
@@ -306,7 +306,7 @@ export default function CustomerComplaintsPage() {
         {/* KANAN: CHAT INTERFACE */}
         <div className="lg:col-span-8">
           {selectedTicket ? (
-            <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_rgba(0,0,0,1)] flex flex-col h-[650px]">
+            <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 shadow-[12px_12px_0_0_rgba(0,0,0,1)] dark:shadow-[12px_12px_0_0_var(--primary-color)] flex flex-col h-[650px]">
               <div className="p-5 border-b-8 border-black bg-slate-900 text-white flex justify-between items-center">
                 <div className="text-left">
                   <h3 className="font-black italic uppercase tracking-tighter text-lg leading-tight">{selectedTicket.title}</h3>
@@ -315,10 +315,10 @@ export default function CustomerComplaintsPage() {
                 <div className="bg-[#6D4AFF] px-3 py-1 border-2 border-white text-[9px] font-black italic uppercase">Chat Active</div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FCFAF1] custom-scrollbar flex flex-col">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FCFAF1] dark:bg-zinc-950 custom-scrollbar flex flex-col">
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`flex flex-col ${msg.is_admin ? 'items-start' : 'items-end'}`}>
-                    <div className={`max-w-[80%] p-4 border-4 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] ${msg.is_admin ? 'bg-white' : 'bg-[#6D4AFF] text-white text-right'}`}>
+                    <div className={`max-w-[80%] p-4 border-4 border-black dark:border-zinc-700 shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] ${msg.is_admin ? 'bg-white dark:bg-zinc-800 text-black dark:text-zinc-100' : 'bg-[#6D4AFF] text-white text-right'}`}>
                        <p className={`text-[8px] font-black uppercase mb-1 ${msg.is_admin ? 'text-slate-400' : 'text-purple-200'}`}>
                          {msg.is_admin ? 'Admin Tiketin' : 'Saya'}
                        </p>
@@ -332,8 +332,8 @@ export default function CustomerComplaintsPage() {
               </div>
 
               {selectedTicket.status !== 'resolved' ? (
-                <div className="p-5 border-t-8 border-black bg-white flex gap-4">
-                  <input type="text" placeholder="BALAS ADMIN DI SINI..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendReply()} className="flex-1 p-4 border-4 border-black font-bold italic outline-none focus:bg-slate-50 text-sm" />
+                <div className="p-5 border-t-8 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 flex gap-4">
+                  <input type="text" placeholder="BALAS ADMIN DI SINI..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendReply()} className="flex-1 p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-bold italic outline-none focus:bg-slate-50 dark:focus:bg-zinc-700 text-sm placeholder:text-slate-400 dark:placeholder:text-zinc-600" />
                   <button onClick={handleSendReply} className="bg-black text-white px-6 border-4 border-black shadow-[4px_4px_0_0_rgba(109,74,255,1)] hover:shadow-none transition-all">
                     <Send size={20} />
                   </button>
@@ -343,7 +343,7 @@ export default function CustomerComplaintsPage() {
               )}
             </div>
           ) : (
-            <div className="h-full border-8 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center text-slate-300 p-10 text-center">
+            <div className="h-full border-8 border-dashed border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex flex-col items-center justify-center text-slate-300 dark:text-zinc-700 p-10 text-center">
               <MessageSquare size={80} strokeWidth={1} />
               <p className="font-black italic uppercase mt-8 text-2xl tracking-tighter">Pilih Tiket di Kiri</p>
             </div>
