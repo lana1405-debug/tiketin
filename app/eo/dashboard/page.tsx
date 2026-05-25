@@ -123,6 +123,10 @@ export default function EODashboard() {
     title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "",
   });
 
+  const [seatingEnabled, setSeatingEnabled] = useState(false);
+  const [seatingRows, setSeatingRows] = useState(5);
+  const [seatingCols, setSeatingCols] = useState(8);
+
   const [categories, setCategories] = useState<any[]>([{ id: Date.now(), name: "REGULAR", price: "", stock: "", isNew: true }]);
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<any[]>([]);
 
@@ -562,6 +566,12 @@ export default function EODashboard() {
       }
       const minPrice = Math.min(...categories.map(c => Number(c.price)));
       const totalStock = categories.reduce((acc, c) => acc + Number(c.stock), 0);
+      
+      let finalDescription = formData.description || "";
+      if (seatingEnabled && formData.category === "TEATER") {
+        finalDescription = `${finalDescription.trim()}\n\n--seating-enabled:${seatingRows}x${seatingCols}--`;
+      }
+
       const payload = { 
         title: formData.title, 
         category: formData.category, 
@@ -572,7 +582,7 @@ export default function EODashboard() {
         price: minPrice, 
         stock: totalStock, 
         max_buy: Number(formData.max_buy), 
-        description: formData.description || null, 
+        description: finalDescription || null, 
         image_url: finalImageUrl, 
         organizer_id: eoId, 
         status: "pending" 
@@ -593,22 +603,32 @@ export default function EODashboard() {
 
         const categoriesToInsert = categories
           .filter(cat => cat.isNew)
-          .map(cat => ({
-            event_id: editingEventId,
-            name: cat.name,
-            price: Number(cat.price),
-            stock: Number(cat.stock)
-          }));
+          .map(cat => {
+            const finalName = seatingEnabled && cat.seatingRowsSpec
+              ? `${cat.name.trim()} [${cat.seatingRowsSpec.trim()}]`
+              : cat.name;
+            return {
+              event_id: editingEventId,
+              name: finalName,
+              price: Number(cat.price),
+              stock: Number(cat.stock)
+            };
+          });
 
         const categoriesToUpdate = categories
           .filter(cat => !cat.isNew)
-          .map(cat => ({
-            id: cat.id,
-            event_id: editingEventId,
-            name: cat.name,
-            price: Number(cat.price),
-            stock: Number(cat.stock)
-          }));
+          .map(cat => {
+            const finalName = seatingEnabled && cat.seatingRowsSpec
+              ? `${cat.name.trim()} [${cat.seatingRowsSpec.trim()}]`
+              : cat.name;
+            return {
+              id: cat.id,
+              event_id: editingEventId,
+              name: finalName,
+              price: Number(cat.price),
+              stock: Number(cat.stock)
+            };
+          });
 
         if (categoriesToInsert.length > 0) {
           const { error: insErr } = await supabase
@@ -626,7 +646,12 @@ export default function EODashboard() {
       } else {
         const { data: eventData, error: err } = await supabase.from("events").insert([payload]).select().single();
         if (err) throw err;
-        const categoryInserts = categories.map(cat => ({ event_id: eventData.id, name: cat.name, price: Number(cat.price), stock: Number(cat.stock) }));
+        const categoryInserts = categories.map(cat => {
+          const finalName = seatingEnabled && cat.seatingRowsSpec
+            ? `${cat.name.trim()} [${cat.seatingRowsSpec.trim()}]`
+            : cat.name;
+          return { event_id: eventData.id, name: finalName, price: Number(cat.price), stock: Number(cat.stock) };
+        });
         await supabase.from("ticket_categories").insert(categoryInserts);
       }
       closeModal(); fetchMyEvents(eoId);
@@ -634,6 +659,20 @@ export default function EODashboard() {
   };
 
   const openEditModal = async (event: any) => {
+    const desc = event.description || "";
+    let isSeating = false;
+    let rows = 5;
+    let cols = 8;
+    let cleanDesc = desc;
+
+    const match = desc.match(/--seating-enabled:(\d+)x(\d+)--/);
+    if (match) {
+      isSeating = true;
+      rows = parseInt(match[1], 10);
+      cols = parseInt(match[2], 10);
+      cleanDesc = desc.replace(match[0], "").trim();
+    }
+
     setEditingEventId(event.id);
     setFormData({ 
       title: event.title, 
@@ -643,8 +682,11 @@ export default function EODashboard() {
       start_time: event.start_time || "", 
       location: event.location, 
       max_buy: event.max_buy?.toString() || "4", 
-      description: event.description || "" 
+      description: cleanDesc 
     });
+    setSeatingEnabled(isSeating);
+    setSeatingRows(rows);
+    setSeatingCols(cols);
 
     const { data: catData, error } = await supabase
       .from("ticket_categories")
@@ -654,15 +696,25 @@ export default function EODashboard() {
     if (error) {
       toast("Gagal mengambil data kategori tiket: " + error.message, "error");
     } else if (catData && catData.length > 0) {
-      setCategories(catData.map(c => ({
-        id: c.id,
-        name: c.name,
-        price: c.price.toString(),
-        stock: c.stock.toString(),
-        isNew: false
-      })));
+      setCategories(catData.map(c => {
+        let cleanName = c.name;
+        let rowsSpec = "";
+        const match = c.name.match(/(.+) \[(.+)\]/);
+        if (match) {
+          cleanName = match[1];
+          rowsSpec = match[2];
+        }
+        return {
+          id: c.id,
+          name: cleanName,
+          seatingRowsSpec: rowsSpec,
+          price: c.price.toString(),
+          stock: c.stock.toString(),
+          isNew: false
+        };
+      }));
     } else {
-      setCategories([{ id: Date.now(), name: "REGULAR", price: event.price.toString(), stock: event.stock.toString(), isNew: true }]);
+      setCategories([{ id: Date.now(), name: "REGULAR", price: event.price.toString(), stock: event.stock.toString(), isNew: true, seatingRowsSpec: "" }]);
     }
 
     setImagePreview(event.image_url); setImageFile(null); setIsModalOpen(true);
@@ -674,6 +726,9 @@ export default function EODashboard() {
     setCategories([{ id: Date.now(), name: "REGULAR", price: "", stock: "", isNew: true }]);
     setDeletedCategoryIds([]);
     setImageFile(null); setImagePreview(null);
+    setSeatingEnabled(false);
+    setSeatingRows(5);
+    setSeatingCols(8);
   };
 
   const openWithdrawModal = (event: any) => { setWithdrawEvent(event); setWithdrawForm({ bank_name: "", account_number: "", account_name: "" }); setIsWithdrawModalOpen(true); };
@@ -1555,7 +1610,57 @@ export default function EODashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50 border-4 border-black p-6">
                 <div className="space-y-6 text-left">
                   <div><label className="text-xs font-black uppercase text-slate-400 mb-2 block italic text-left">Nama Event</label><input type="text" required className="w-full p-4 border-4 border-black bg-white font-black italic uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] outline-none focus:bg-amber-50" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} /></div>
-                  <div><label className="text-xs font-black uppercase text-slate-400 mb-2 block italic text-left">Kategori</label><select className="w-full p-4 border-4 border-black bg-white font-black italic uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] cursor-pointer" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}><option value="MUSIK">MUSIK</option><option value="TEATER">TEATER</option><option value="FESTIVAL">FESTIVAL</option><option value="LAINNYA">LAINNYA</option></select></div>
+                  <div><label className="text-xs font-black uppercase text-slate-400 mb-2 block italic text-left">Kategori</label><select className="w-full p-4 border-4 border-black bg-white font-black italic uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] cursor-pointer" value={formData.category} onChange={(e) => {
+                    const cat = e.target.value;
+                    setFormData({...formData, category: cat});
+                    if (cat !== "TEATER") {
+                      setSeatingEnabled(false);
+                    }
+                  }}><option value="MUSIK">MUSIK</option><option value="TEATER">TEATER</option><option value="FESTIVAL">FESTIVAL</option><option value="LAINNYA">LAINNYA</option></select></div>
+
+                  {/* Seating Map Option for Theater */}
+                  {formData.category === "TEATER" && (
+                    <div className="border-4 border-black bg-amber-100 p-4 space-y-4 shadow-[3px_3px_0_0_#000] text-left">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={seatingEnabled}
+                          onChange={(e) => setSeatingEnabled(e.target.checked)}
+                          className="w-5 h-5 accent-slate-900 cursor-pointer"
+                        />
+                        <span className="font-black uppercase text-xs text-slate-900">Buka Opsi Pilih Kursi (Seating Map)</span>
+                      </label>
+                      
+                      {seatingEnabled && (
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t-2 border-dashed border-black/20">
+                          <div>
+                            <label className="text-[9px] font-black uppercase text-slate-600 block mb-1">Jumlah Baris Kursi</label>
+                            <select
+                              value={seatingRows}
+                              onChange={(e) => setSeatingRows(Number(e.target.value))}
+                              className="w-full p-2 border-2 border-black bg-white font-bold text-xs cursor-pointer outline-none"
+                            >
+                              {[3, 4, 5, 6, 7, 8, 9, 10].map(r => (
+                                <option key={r} value={r}>{r} Baris (A - {String.fromCharCode(65 + r - 1)})</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black uppercase text-slate-600 block mb-1">Jumlah Kursi/Baris</label>
+                            <select
+                              value={seatingCols}
+                              onChange={(e) => setSeatingCols(Number(e.target.value))}
+                              className="w-full p-2 border-2 border-black bg-white font-bold text-xs cursor-pointer outline-none"
+                            >
+                              {[4, 5, 6, 7, 8, 9, 10, 11, 12].map(c => (
+                                <option key={c} value={c}>{c} Kursi</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-black uppercase text-slate-400 mb-2 block italic tracking-widest text-left">Poster Panggung (Maks 2MB)</label>
                     <div className="flex gap-4">
@@ -1602,6 +1707,9 @@ export default function EODashboard() {
                     <div key={cat.id} className="bg-white border-4 border-black p-4 relative flex flex-col md:flex-row gap-4 items-center group shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
                       <div className="absolute -top-3 -left-3 bg-black text-white px-2 py-1 font-black italic text-[9px] uppercase border-2 border-black">Tier {index + 1}</div>
                       <div className="flex-1 w-full mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Nama Kategori</label><input type="text" value={cat.name} onChange={e => updateCategory(cat.id, 'name', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="FESTIVAL" /></div>
+                      {seatingEnabled && (
+                        <div className="w-full md:w-28 mt-2 md:mt-0"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Baris Kursi</label><input type="text" value={cat.seatingRowsSpec || ""} onChange={e => updateCategory(cat.id, 'seatingRowsSpec', e.target.value.toUpperCase())} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="A-B atau C" /></div>
+                      )}
                       <div className="flex-1 w-full"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Harga (Rp)</label><input type="number" value={cat.price} onChange={e => updateCategory(cat.id, 'price', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm text-[#6D4AFF]" placeholder="50000" /></div>
                       <div className="w-full md:w-32"><label className="text-[9px] font-black uppercase text-slate-400 italic block text-left">Stok</label><input type="number" value={cat.stock} onChange={e => updateCategory(cat.id, 'stock', e.target.value)} className="w-full p-2 border-2 border-black font-black italic uppercase text-sm" placeholder="100" /></div>
                       {categories.length > 1 && (<button type="button" onClick={() => removeCategory(cat.id)} className="w-full md:w-auto mt-4 bg-red-100 text-red-500 border-2 border-black p-2 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20} strokeWidth={3} /></button>)}

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { 
   LayoutDashboard, CalendarCheck, Users, Wallet, 
   ShieldCheck, LifeBuoy, LogOut, Loader2, Landmark, Zap, Terminal, AlertTriangle, IdCard, BarChart3, Ticket as TicketIcon,
-  Menu, X
+  Menu, X, HelpCircle, BookOpen
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import "./admin.css";
@@ -74,6 +74,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Event Analytics", icon: BarChart3, href: "/admin/event-analytics" },
     { name: "Sertifikasi/Legal", icon: ShieldCheck, href: "/admin/legal" },
     { name: "Pencairan Dana", icon: Landmark, href: "/admin/withdrawals" },
+    { name: "Kuis Harian", icon: HelpCircle, href: "/admin/quiz" },
+    { name: "Verifikasi Artikel", icon: BookOpen, href: "/admin/articles" },
     { name: "Layanan Pengaduan", icon: LifeBuoy, href: "/admin/complaints" },
   ];
 

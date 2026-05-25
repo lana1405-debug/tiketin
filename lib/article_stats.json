@@ -1,0 +1,17 @@
+{
+  "4e125540-0219-433c-9d15-4dfde5e48c7d": {
+    "views": 2,
+    "reactions": {
+      "PANAS": 1,
+      "APRESIASI": 1,
+      "MANTAP": 1
+    },
+    "user_reactions": {
+      "ef6ae025-7100-414a-a7a9-75f60f9ffbfe": [
+        "APRESIASI",
+        "PANAS",
+        "MANTAP"
+      ]
+    }
+  }
+}

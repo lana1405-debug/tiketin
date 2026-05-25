@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/components/ui/toast-brutal";
 import NotificationBell from "@/components/NotificationBell";
+import ChatDrawer from "@/components/ChatDrawer";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -63,6 +64,14 @@ const GLOBAL_STYLES = `
   }
   .dark .ticket-stub-divider {
     background-image: linear-gradient(to bottom, #fff 50%, transparent 50%);
+  }
+  .ticket-stub-divider-horizontal {
+    background-image: linear-gradient(to right, #0f172a 50%, transparent 50%);
+    background-size: 16px 4px;
+    background-repeat: repeat-x;
+  }
+  .dark .ticket-stub-divider-horizontal {
+    background-image: linear-gradient(to right, #fff 50%, transparent 50%);
   }
 `;
 
@@ -120,6 +129,28 @@ function CountdownBadge({ dateStr }: { dateStr: string }) {
   );
 }
 
+const stubVariants = {
+  aktif: {
+    x: 0,
+    y: 0,
+    rotate: 0,
+    opacity: 1,
+    scale: 1,
+  },
+  tearing: {
+    y: [0, -15, 300],
+    x: [0, 10, 80],
+    rotate: [0, -8, 25],
+    opacity: [1, 1, 0],
+    scale: [1, 1.05, 0.9],
+    transition: {
+      duration: 1.2,
+      times: [0, 0.15, 1],
+      ease: [0.25, 1, 0.5, 1] as any
+    }
+  }
+};
+
 export default function MyTicketsPage() {
   const router = useRouter();
   const today = getLocalDateString();
@@ -127,6 +158,7 @@ export default function MyTicketsPage() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
   // ⚡ Tiga Tab Baru
   const [activeTab, setActiveTab] = useState("AKTIF"); // "PENDING", "AKTIF", "TERPAKAI"
@@ -146,6 +178,21 @@ export default function MyTicketsPage() {
     scanTime: string;
   } | null>(null);
 
+  // ⚡ State untuk animasi sobek tiket real-time
+  const [animatingTearId, setAnimatingTearId] = useState<string | null>(null);
+  const [pendingNotification, setPendingNotification] = useState<{
+    isOpen: boolean;
+    eventTitle: string;
+    ticketCode: string;
+    seatInfo: string;
+    scanTime: string;
+    dbUpdate: {
+      ticket_code: string;
+      last_scanned_date: string | null;
+      checked_in_at: string | null;
+    };
+  } | null>(null);
+
   const ticketsRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -163,6 +210,17 @@ export default function MyTicketsPage() {
   const [comment, setComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // ⚡ Group Chat States
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatEventId, setChatEventId] = useState("");
+  const [chatEventTitle, setChatEventTitle] = useState("");
+
+  const handleOpenEventChat = (eventId: string, eventTitle: string) => {
+    setChatEventId(eventId);
+    setChatEventTitle(eventTitle);
+    setChatOpen(true);
+  };
+
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = GLOBAL_STYLES;
@@ -177,11 +235,30 @@ export default function MyTicketsPage() {
     document.head.appendChild(script);
 
     setMounted(true);
+    
+    // Set status offline di awal
+    setIsOffline(!navigator.onLine);
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      toast("Kembali online! Mensinkronisasikan tiket... ⚡", "success", 3000);
+      fetchUserAndTickets();
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      toast("Koneksi terputus. Mode offline aktif. 📴", "warning", 3000);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     fetchUserAndTickets();
 
     return () => { 
       document.head.removeChild(style); 
       document.head.removeChild(script);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
@@ -216,22 +293,22 @@ export default function MyTicketsPage() {
               minute: "2-digit"
             });
 
-            setScannedTicketNotification({
+            // Simpan info notifikasi untuk dipicu setelah animasi sobek selesai
+            setPendingNotification({
               isOpen: true,
               eventTitle: localTicket.title,
               ticketCode: localTicket.id,
               seatInfo: localTicket.seat,
-              scanTime: scanTimeFormatted
+              scanTime: scanTimeFormatted,
+              dbUpdate: {
+                ticket_code: updatedTicket.ticket_code,
+                last_scanned_date: updatedTicket.last_scanned_date,
+                checked_in_at: updatedTicket.checked_in_at
+              }
             });
 
-            // Update status tiket di state lokal
-            setTickets(prev =>
-              prev.map(t =>
-                t.id === updatedTicket.ticket_code
-                  ? { ...t, status: "TERPAKAI", status_checkin: true, last_scanned_date: updatedTicket.last_scanned_date, checked_in_at: updatedTicket.checked_in_at }
-                  : t
-              )
-            );
+            // Mulai pemicu animasi sobek di UI
+            setAnimatingTearId(updatedTicket.ticket_code);
           }
         }
       )
@@ -242,157 +319,231 @@ export default function MyTicketsPage() {
     };
   }, [userProfile]);
 
+  // Fungsi callback setelah karcis sobek selesai beranimasi
+  const handleTearComplete = useCallback((ticketId: string) => {
+    if (pendingNotification && pendingNotification.ticketCode === ticketId) {
+      setScannedTicketNotification({
+        isOpen: true,
+        eventTitle: pendingNotification.eventTitle,
+        ticketCode: pendingNotification.ticketCode,
+        seatInfo: pendingNotification.seatInfo,
+        scanTime: pendingNotification.scanTime
+      });
+
+      const { dbUpdate } = pendingNotification;
+
+      // Update status karcis lokal ke TERPAKAI
+      setTickets(prev =>
+        prev.map(t =>
+          t.id === dbUpdate.ticket_code
+            ? { 
+                ...t, 
+                status: "TERPAKAI", 
+                status_checkin: true, 
+                last_scanned_date: dbUpdate.last_scanned_date, 
+                checked_in_at: dbUpdate.checked_in_at 
+              }
+            : t
+        )
+      );
+
+      // Reset state animasi
+      setAnimatingTearId(null);
+      setPendingNotification(null);
+
+      toast("Karcis Anda berhasil disobek oleh petugas gate! 🎟️", "success", 4000);
+    } else {
+      setAnimatingTearId(null);
+    }
+  }, [pendingNotification, toast]);
+
   const fetchUserAndTickets = async () => {
     setIsLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      router.push("/login");
+    
+    if (!navigator.onLine) {
+      const lastUserId = localStorage.getItem("tiketin_last_user_id");
+      if (lastUserId) {
+        const cachedProfile = localStorage.getItem(`tiketin_cached_profile_${lastUserId}`);
+        const cachedTickets = localStorage.getItem(`tiketin_cached_tickets_${lastUserId}`);
+        if (cachedProfile) setUserProfile(JSON.parse(cachedProfile));
+        if (cachedTickets) setTickets(JSON.parse(cachedTickets));
+        toast("Koneksi offline. Menampilkan tiket lokal. 📴", "warning", 3000);
+      } else {
+        toast("Kamu sedang offline dan tidak ada data tiket tersimpan di perangkat ini.", "error", 4000);
+      }
+      setIsLoading(false);
       return;
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .single();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (profile) setUserProfile(profile);
+      if (!session) {
+        router.push("/login");
+        return;
+      }
 
-    // Fetch user reviews
-    const { data: userReviews } = await supabase
-      .from("reviews")
-      .select("event_id")
-      .eq("user_id", session.user.id);
+      localStorage.setItem("tiketin_last_user_id", session.user.id);
 
-    const reviewedSet = new Set<string>();
-    if (userReviews) {
-      userReviews.forEach((r: any) => reviewedSet.add(r.event_id));
-    }
-    setReviewedEvents(reviewedSet);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
 
-    const { data: ticketData, error } = await supabase
-      .from("tiket")
-      .select(`
-        id,
-        ticket_code,
-        seat_info,
-        status_checkin,
-        last_scanned_date,
-        checked_in_at,
-        events (
+      if (profile) {
+        setUserProfile(profile);
+        localStorage.setItem(`tiketin_cached_profile_${session.user.id}`, JSON.stringify(profile));
+      }
+
+      // Fetch user reviews
+      const { data: userReviews } = await supabase
+        .from("reviews")
+        .select("event_id")
+        .eq("user_id", session.user.id);
+
+      const reviewedSet = new Set<string>();
+      if (userReviews) {
+        userReviews.forEach((r: any) => reviewedSet.add(r.event_id));
+      }
+      setReviewedEvents(reviewedSet);
+
+      const { data: ticketData, error } = await supabase
+        .from("tiket")
+        .select(`
           id,
-          title,
-          date,
-          end_date,
-          location,
-          category,
-          image_url,
-          price
-        ),
-        transaksi!inner (
+          ticket_code,
+          seat_info,
+          status_checkin,
+          last_scanned_date,
+          checked_in_at,
+          events (
+            id,
+            title,
+            date,
+            end_date,
+            location,
+            category,
+            image_url,
+            price
+          ),
+          transaksi!inner (
+            id,
+            status_pembayaran,
+            total_bayar,
+            user_id
+          )
+        `)
+        .eq("transaksi.user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      const formattedTickets: any[] = [];
+
+      if (!error && ticketData) {
+        ticketData.forEach((t: any) => {
+          let currentStatus = "AKTIF";
+          if (t.status_checkin === true) {
+            currentStatus = "TERPAKAI";
+          }
+          formattedTickets.push({
+            id: t.ticket_code,
+            event_id: t.events.id,
+            transaksi_id: t.transaksi.id,
+            title: t.events.title,
+            date: t.events.date,
+            end_date: t.events.end_date,
+            location: t.events.location,
+            category: t.events.category,
+            price: t.transaksi.total_bayar,
+            status: currentStatus,
+            seat: t.seat_info || "GENERAL ADMISSION",
+            image: t.events.image_url,
+            status_checkin: t.status_checkin,
+            last_scanned_date: t.last_scanned_date,
+            checked_in_at: t.checked_in_at
+          });
+        });
+      }
+
+      // ⚡ FETCH PENDING TRANSAKSI yang belum punya tiket
+      const { data: pendingTx } = await supabase
+        .from("transaksi")
+        .select(`
           id,
-          status_pembayaran,
+          order_id,
           total_bayar,
-          user_id
-        )
-      `)
-      .eq("transaksi.user_id", session.user.id)
-      .order("created_at", { ascending: false });
+          total_qty,
+          created_at,
+          event_id,
+          snap_token,
+          category_id,
+          events (
+            id,
+            title,
+            date,
+            end_date,
+            location,
+            category,
+            image_url,
+            price
+          )
+        `)
+        .eq("user_id", session.user.id)
+        .eq("status_pembayaran", "pending")
+        .order("created_at", { ascending: false });
 
-    const formattedTickets: any[] = [];
+      if (pendingTx) {
+        const existingTxIds = new Set(formattedTickets.map(t => t.transaksi_id));
+        pendingTx.forEach((tx: any) => {
+          if (existingTxIds.has(tx.id)) return;
+          if (!tx.events) return;
 
-    if (!error && ticketData) {
-      ticketData.forEach((t: any) => {
-        // Tiket yang sudah paid atau sudah check-in
-        let currentStatus = "AKTIF";
-        if (t.status_checkin === true) {
-          currentStatus = "TERPAKAI";
-        }
-        formattedTickets.push({
-          id: t.ticket_code,
-          event_id: t.events.id,
-          transaksi_id: t.transaksi.id,
-          title: t.events.title,
-          date: t.events.date,
-          end_date: t.events.end_date,
-          location: t.events.location,
-          category: t.events.category,
-          price: t.transaksi.total_bayar,
-          status: currentStatus,
-          seat: t.seat_info || "GENERAL ADMISSION",
-          image: t.events.image_url,
-          status_checkin: t.status_checkin,
-          last_scanned_date: t.last_scanned_date,
-          checked_in_at: t.checked_in_at
+          formattedTickets.push({
+            id: `PENDING-${tx.order_id}`,
+            event_id: tx.events.id,
+            transaksi_id: tx.id,
+            title: tx.events.title,
+            date: tx.events.date,
+            end_date: tx.events.end_date,
+            location: tx.events.location,
+            category: tx.events.category,
+            price: tx.total_bayar,
+            status: "PENDING",
+            seat: `${tx.total_qty}x Tiket`,
+            image: tx.events.image_url,
+            status_checkin: false,
+            last_scanned_date: null,
+            checked_in_at: null,
+            snap_token: tx.snap_token,
+            category_id: tx.category_id,
+            total_qty: tx.total_qty,
+            order_id: tx.order_id
+          });
         });
-      });
+      }
+
+      setTickets(formattedTickets);
+      localStorage.setItem(`tiketin_cached_tickets_${session.user.id}`, JSON.stringify(formattedTickets));
+    } catch (err) {
+      console.error("Gagal sinkronisasi data dari server, memakai fallback cache:", err);
+      const lastUserId = localStorage.getItem("tiketin_last_user_id");
+      if (lastUserId) {
+        const cachedProfile = localStorage.getItem(`tiketin_cached_profile_${lastUserId}`);
+        const cachedTickets = localStorage.getItem(`tiketin_cached_tickets_${lastUserId}`);
+        if (cachedProfile) setUserProfile(JSON.parse(cachedProfile));
+        if (cachedTickets) setTickets(JSON.parse(cachedTickets));
+        toast("Gagal menghubungi server. Menggunakan versi offline.", "warning", 3000);
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    // ⚡ FETCH PENDING TRANSAKSI yang belum punya tiket (tiket diinsert SETELAH bayar)
-    const { data: pendingTx } = await supabase
-      .from("transaksi")
-      .select(`
-        id,
-        order_id,
-        total_bayar,
-        total_qty,
-        created_at,
-        event_id,
-        snap_token,
-        category_id,
-        events (
-          id,
-          title,
-          date,
-          end_date,
-          location,
-          category,
-          image_url,
-          price
-        )
-      `)
-      .eq("user_id", session.user.id)
-      .eq("status_pembayaran", "pending")
-      .order("created_at", { ascending: false });
-
-    if (pendingTx) {
-      const existingTxIds = new Set(formattedTickets.map(t => t.transaksi_id));
-      pendingTx.forEach((tx: any) => {
-        // Hindari duplikat jika sudah ada tiketnya
-        if (existingTxIds.has(tx.id)) return;
-        if (!tx.events) return;
-
-        // Buat 1 virtual ticket per transaksi pending
-        formattedTickets.push({
-          id: `PENDING-${tx.order_id}`,
-          event_id: tx.events.id,
-          transaksi_id: tx.id,
-          title: tx.events.title,
-          date: tx.events.date,
-          end_date: tx.events.end_date,
-          location: tx.events.location,
-          category: tx.events.category,
-          price: tx.total_bayar,
-          status: "PENDING",
-          seat: `${tx.total_qty}x Tiket`,
-          image: tx.events.image_url,
-          status_checkin: false,
-          last_scanned_date: null,
-          checked_in_at: null,
-          snap_token: tx.snap_token,
-          category_id: tx.category_id,
-          total_qty: tx.total_qty,
-          order_id: tx.order_id
-        });
-      });
-    }
-
-    setTickets(formattedTickets);
-    setIsLoading(false);
   };
 
   const handlePayPending = async (ticket: any) => {
+    if (isOffline) {
+      toast("Gagal melakukan pembayaran. Anda sedang offline! 📴", "error");
+      return;
+    }
     if (!ticket.snap_token) {
       router.push(`/explore/checkout/${ticket.event_id}`);
       return;
@@ -442,6 +593,10 @@ export default function MyTicketsPage() {
   };
 
   const handleCancelConfirm = async () => {
+    if (isOffline) {
+      toast("Gagal membatalkan pesanan. Anda sedang offline! 📴", "error");
+      return;
+    }
     if (!txToCancel) return;
     setIsCancelling(true);
     try {
@@ -614,6 +769,10 @@ export default function MyTicketsPage() {
   };
 
   const handleSubmitReview = async () => {
+    if (isOffline) {
+      toast("Gagal mengirim ulasan. Anda sedang offline! 📴", "error");
+      return;
+    }
     if (!comment.trim()) {
       toast("Tulis komentar ulasan terlebih dahulu!", "warning");
       return;
@@ -774,6 +933,17 @@ export default function MyTicketsPage() {
           </div>
         </div>
 
+        {/* ⚡ BANNER OFFLINE */}
+        {isOffline && (
+          <div className="mb-12 bg-amber-400 text-slate-900 border-4 border-slate-900 p-4 font-black italic uppercase shadow-[6px_6px_0_0_#000] flex items-center gap-3 animate-pulse rounded-2xl">
+            <AlertCircle size={24} className="shrink-0 animate-bounce" />
+            <div className="text-left leading-tight">
+              <p className="text-sm font-black">MODE OFFLINE AKTIF 📴</p>
+              <p className="text-[9.5px] font-bold mt-0.5">Menampilkan tiket dari penyimpanan lokal browser. Pembayaran pending dan pengisian ulasan dinonaktifkan.</p>
+            </div>
+          </div>
+        )}
+
         {/* ── TICKET LIST ── */}
         <div className="space-y-16">
           <AnimatePresence mode="popLayout">
@@ -806,22 +976,27 @@ export default function MyTicketsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="w-full flex flex-col md:flex-row bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 brutal-shadow-card group relative"
+                    className="w-full flex flex-col md:flex-row bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 brutal-shadow-card group relative overflow-hidden"
                   >
 
                     {/* ⚡ OVERLAY TERPAKAI */}
                     {ticket.status === "TERPAKAI" && (
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-                        <div className="bg-slate-900 border-4 border-white px-6 py-2 text-3xl md:text-5xl font-black italic uppercase -rotate-12 shadow-[8px_8px_0_0_#FBBF24] text-white">
+                      <motion.div 
+                        initial={{ scale: 3, rotate: -35, opacity: 0 }}
+                        animate={{ scale: 1, rotate: -12, opacity: 1 }}
+                        transition={{ type: "spring", damping: 10, stiffness: 100 }}
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                      >
+                        <div className="bg-slate-900 border-4 border-white px-6 py-2 text-3xl md:text-5xl font-black italic uppercase shadow-[8px_8px_0_0_#FBBF24] text-white">
                           USED / TERPAKAI
                         </div>
-                      </div>
+                      </motion.div>
                     )}
 
                     {/* KIRI: Info Event */}
                     <div className={`flex-1 flex flex-col sm:flex-row ${(ticket.status === "TERPAKAI" || isEventEnded) ? 'opacity-50 grayscale-[100%]' : ''}`}>
                       <div className="w-full sm:w-48 h-48 sm:h-full border-b-4 sm:border-b-0 sm:border-r-4 border-slate-900 dark:border-zinc-700 overflow-hidden relative bg-black shrink-0">
-                        <img src={ticket.image} alt={ticket.title} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
+                        <img src={ticket.image} alt={ticket.title} className="w-full h-full object-contain grayscale-[30%] group-hover:grayscale-0 transition-all duration-500 opacity-80 group-hover:opacity-100" />
 
                         <div className="absolute top-3 left-3 flex flex-col gap-2">
                           <div className="bg-slate-900 text-white px-2 py-1 font-black text-[10px] tracking-widest uppercase border-2 border-white">
@@ -868,15 +1043,39 @@ export default function MyTicketsPage() {
                       </div>
                     </div>
 
-                    {/* PEMBATAS TIKET */}
-                    <div className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[#FCFAF1] dark:bg-zinc-950">
-                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 absolute -top-4 -translate-y-1/2 z-10" />
+                    {/* PEMBATAS TIKET VERTIKAL (DESKTOP) */}
+                    <motion.div 
+                      animate={animatingTearId === ticket.id ? { opacity: 0, scaleY: 0.5 } : { opacity: 1, scaleY: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[var(--background)]"
+                    >
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[var(--background)] absolute -top-4 -translate-y-1/2 z-10" />
                       <div className="w-0.5 h-full ticket-stub-divider my-2" />
-                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 absolute -bottom-4 translate-y-1/2 z-10" />
-                    </div>
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[var(--background)] absolute -bottom-4 translate-y-1/2 z-10" />
+                    </motion.div>
+
+                    {/* PEMBATAS TIKET HORIZONTAL (MOBILE) */}
+                    <motion.div 
+                      animate={animatingTearId === ticket.id ? { opacity: 0, scaleX: 0.5 } : { opacity: 1, scaleX: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="flex md:hidden items-center justify-between relative h-8 w-full bg-[var(--background)]"
+                    >
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[var(--background)] absolute -left-4 -translate-x-1/2 z-10" />
+                      <div className="h-0.5 w-full ticket-stub-divider-horizontal mx-2" />
+                      <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-zinc-700 bg-[var(--background)] absolute -right-4 translate-x-1/2 z-10" />
+                    </motion.div>
 
                     {/* KANAN: QR Code & Aksi */}
-                    <div className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white dark:bg-zinc-900 shrink-0 border-t-4 md:border-t-0 border-slate-900 dark:border-zinc-700">
+                    <motion.div
+                      variants={stubVariants}
+                      animate={animatingTearId === ticket.id ? "tearing" : "aktif"}
+                      onAnimationComplete={() => {
+                        if (animatingTearId === ticket.id) {
+                          handleTearComplete(ticket.id);
+                        }
+                      }}
+                      className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white dark:bg-zinc-900 shrink-0 border-t-4 md:border-t-0 border-slate-900 dark:border-zinc-700 relative z-10"
+                    >
 
                       {ticket.status === "PENDING" ? (
                         <div className="flex flex-col items-center justify-center h-full w-full space-y-4">
@@ -887,9 +1086,9 @@ export default function MyTicketsPage() {
                           </div>
                           <div className="w-full flex flex-col gap-2 mt-4">
                             <button 
-                              onClick={() => handlePayPending(ticket)} 
-                              disabled={isProcessingPay !== null}
-                              className="w-full bg-[#6D4AFF] text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"
+                               onClick={() => handlePayPending(ticket)} 
+                               disabled={isProcessingPay !== null || isOffline}
+                               className={`w-full bg-[#6D4AFF] text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               {isProcessingPay === ticket.transaksi_id ? (
                                 <Loader2 className="animate-spin" size={14} />
@@ -900,15 +1099,17 @@ export default function MyTicketsPage() {
                             </button>
                             
                             <button 
+                              disabled={isOffline}
                               onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} 
-                              className="w-full bg-amber-400 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                              className={`w-full bg-amber-400 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               PAKAI VOUCHER / EDIT TIKET
                             </button>
-
+ 
                             <button 
                               onClick={() => setTxToCancel(ticket)} 
-                              className="w-full bg-red-500 text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                              disabled={isOffline}
+                              className={`w-full bg-red-500 text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               BATALKAN PESANAN
                             </button>
@@ -967,13 +1168,20 @@ export default function MyTicketsPage() {
                               >
                                 <Download size={14} strokeWidth={3} /> E-TICKET
                               </button>
+                              <button
+                                onClick={() => handleOpenEventChat(ticket.event_id, ticket.title)}
+                                className="mt-2.5 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center justify-center gap-2"
+                              >
+                                <MessageSquare size={14} strokeWidth={3} /> GRUP CHAT & TEBENGAN
+                              </button>
                             </>
                           )}
 
                           {canReview && (
                             <button
+                              disabled={isOffline}
                               onClick={() => openReviewModal(ticket.event_id, ticket.title)}
-                              className="mt-4 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2"
+                              className={`mt-4 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               <Star size={14} fill="currentColor" strokeWidth={3} /> BERI ULASAN
                             </button>
@@ -986,7 +1194,7 @@ export default function MyTicketsPage() {
                           )}
                         </>
                       )}
-                    </div>
+                    </motion.div>
                   </motion.div>
                 );
               })
@@ -1224,6 +1432,19 @@ export default function MyTicketsPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* 💬 CHAT DRAWER KOMUNITAS */}
+      <ChatDrawer
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        eventId={chatEventId}
+        eventTitle={chatEventTitle}
+        userProfile={userProfile ? {
+          id: userProfile.id,
+          full_name: userProfile.full_name,
+          avatar_url: userProfile.avatar_url || ""
+        } : null}
+      />
     </div>
   );
 }

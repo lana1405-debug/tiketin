@@ -7,7 +7,8 @@ import { Poppins } from "next/font/google";
 import { 
   Camera, User, Key, Trophy, Ticket as TicketIcon, 
   CheckCircle2, AlertTriangle, LogOut, ArrowLeft, 
-  Sparkles, ShieldCheck, Check, Loader2, Award
+  Sparkles, ShieldCheck, Check, Loader2, Award,
+  BookOpen, Eye, Activity, FileText, XCircle, Clock
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,6 +45,12 @@ export default function UserProfilePage() {
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Feature 5: Author Articles state
+  const [authorArticles, setAuthorArticles] = useState<any[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(false);
+  // Stats dictionary for views and reactions
+  const [articlesStats, setArticlesStats] = useState<any>({});
 
   useEffect(() => {
     setMounted(true);
@@ -85,6 +92,32 @@ export default function UserProfilePage() {
         .eq("status_checkin", true);
 
       setAttendedEvents(checkinCount || 0);
+
+      // Fetch user's articles if verified (approved)
+      if (profile.verification_status === "approved") {
+        setLoadingArticles(true);
+        try {
+          const { data: articlesData, error } = await supabase
+            .from("articles")
+            .select("*")
+            .eq("author_id", currentUserId)
+            .order("created_at", { ascending: false });
+          if (!error && articlesData) {
+            setAuthorArticles(articlesData);
+          }
+
+          // Fetch stats for all articles
+          const statsRes = await fetch("/api/articles/stats");
+          const statsJson = await statsRes.json();
+          if (statsJson.success) {
+            setArticlesStats(statsJson.data || {});
+          }
+        } catch (err) {
+          console.error("Gagal memuat artikel penulis:", err);
+        } finally {
+          setLoadingArticles(false);
+        }
+      }
     }
   };
 
@@ -337,6 +370,124 @@ export default function UserProfilePage() {
             </div>
           </Link>
         </div>
+
+        {/* AUTHOR ARTICLES DASHBOARD */}
+        {userProfile?.verification_status === "approved" && (
+          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-[8px_8px_0_0_#6D4AFF] mb-8 space-y-6">
+            <div className="flex items-center justify-between border-b-4 border-slate-900 dark:border-zinc-700 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="bg-purple-100 dark:bg-purple-950/40 p-2 border-2 border-slate-900 dark:border-zinc-700">
+                  <BookOpen className="text-purple-600 dark:text-purple-400" size={20} strokeWidth={3} />
+                </div>
+                <h3 className="text-xl font-black uppercase italic -skew-x-3 text-slate-900 dark:text-zinc-50">Dashboard Penulis</h3>
+              </div>
+              <span className="text-[9px] font-black uppercase italic bg-amber-400 border-2 border-black px-2 py-0.5 shadow-[2px_2px_0_0_#000] text-slate-950">
+                Author Analytics Active
+              </span>
+            </div>
+
+            {/* Sub Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="border-2 border-black p-4 bg-slate-50 dark:bg-zinc-800 text-left">
+                <div className="text-[10px] font-black uppercase text-slate-400">Total Artikel</div>
+                <div className="text-2xl font-black italic -skew-x-6 text-[#6D4AFF] mt-1">{authorArticles.length}</div>
+              </div>
+              <div className="border-2 border-black p-4 bg-emerald-50 dark:bg-emerald-950/20 text-left">
+                <div className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">Disetujui</div>
+                <div className="text-2xl font-black italic -skew-x-6 text-emerald-600 dark:text-emerald-400 mt-1">
+                  {authorArticles.filter(a => a.status === 'approved').length}
+                </div>
+              </div>
+              <div className="border-2 border-black p-4 bg-amber-50 dark:bg-amber-950/20 text-left">
+                <div className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400">Menunggu</div>
+                <div className="text-2xl font-black italic -skew-x-6 text-amber-600 dark:text-amber-400 mt-1">
+                  {authorArticles.filter(a => a.status === 'pending').length}
+                </div>
+              </div>
+              <div className="border-2 border-black p-4 bg-red-50 dark:bg-red-950/20 text-left">
+                <div className="text-[10px] font-black uppercase text-red-600 dark:text-red-400">Ditolak</div>
+                <div className="text-2xl font-black italic -skew-x-6 text-red-600 dark:text-red-400 mt-1">
+                  {authorArticles.filter(a => a.status === 'rejected').length}
+                </div>
+              </div>
+            </div>
+
+            {/* Interaction Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border-2 border-black p-4 bg-sky-50 dark:bg-sky-950/20 text-left flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-sky-800 dark:text-sky-400">Total Pembaca (Views)</div>
+                  <div className="text-3xl font-black italic -skew-x-6 text-sky-950 dark:text-white mt-1">
+                    {authorArticles.reduce((acc, a) => acc + (articlesStats[a.id]?.views || 0), 0)}
+                  </div>
+                </div>
+                <Eye className="text-sky-500 shrink-0" size={32} strokeWidth={2} />
+              </div>
+              <div className="border-2 border-black p-4 bg-purple-50 dark:bg-purple-950/20 text-left flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-purple-800 dark:text-purple-400">Total Reaksi (Interaksi)</div>
+                  <div className="text-3xl font-black italic -skew-x-6 text-purple-950 dark:text-white mt-1">
+                    {authorArticles.reduce((acc, a) => {
+                      const reactionsObj = articlesStats[a.id]?.reactions || {};
+                      const sumReactions = Object.values(reactionsObj).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+                      return acc + sumReactions;
+                    }, 0)} Reaksi
+                  </div>
+                </div>
+                <Activity className="text-purple-500 shrink-0" size={32} strokeWidth={2} />
+              </div>
+            </div>
+
+            {/* Articles List */}
+            <div className="space-y-3">
+              <div className="text-xs font-black uppercase text-slate-400 dark:text-zinc-500 text-left">Daftar Artikel Anda</div>
+              {loadingArticles ? (
+                <div className="text-center py-6 font-black italic uppercase text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin text-[#6D4AFF]" size={14} strokeWidth={3} /> Memuat artikel...
+                </div>
+              ) : authorArticles.length === 0 ? (
+                <div className="text-center py-6 border-2 border-dashed border-black dark:border-zinc-700 font-black italic uppercase text-xs text-slate-400">
+                  Anda belum menulis artikel. Mulai menulis di halaman Explore!
+                </div>
+              ) : (
+                <div className="border-2 border-black divide-y divide-black max-h-60 overflow-y-auto">
+                  {authorArticles.map((art) => {
+                    const date = new Date(art.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+                    const viewsCount = articlesStats[art.id]?.views || 0;
+                    const reactionsObj = articlesStats[art.id]?.reactions || {};
+                    const reactionsCount = Object.values(reactionsObj).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
+                    return (
+                      <div key={art.id} className="p-3 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-800/40 text-left">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-zinc-100 truncate uppercase italic">{art.title}</h4>
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold flex-wrap">
+                            <span className="bg-slate-200 dark:bg-zinc-700 px-1.5 py-0.5 text-[8px] border border-black font-black uppercase italic">{art.category}</span>
+                            <span>{date}</span>
+                            <span className="flex items-center gap-1"><Eye size={10} /> {viewsCount} views</span>
+                            <span className="flex items-center gap-1"><Activity size={10} /> {reactionsCount} reaksi</span>
+                          </div>
+                          {art.status === "rejected" && art.rejection_reason && (
+                            <p className="text-[10px] font-black text-rose-500 uppercase bg-rose-50 dark:bg-rose-950/20 p-2 border border-rose-200 dark:border-rose-800 leading-normal mt-1">
+                              Alasan Takedown/Ditolak: {art.rejection_reason}
+                            </p>
+                          )}
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase border-2 border-black ${
+                            art.status === "approved" ? "bg-emerald-400 text-slate-950" :
+                            art.status === "pending" ? "bg-amber-400 text-slate-950" : "bg-red-500 text-white"
+                          }`}>
+                            {art.status === "approved" ? "Aktif" : art.status === "pending" ? "Review" : "Ditolak"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* FORMS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">

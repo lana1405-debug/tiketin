@@ -178,7 +178,7 @@ export default function GateScanner() {
 
       // Format tanggal hari ini (YYYY-MM-DD)
       const hariIni = getLocalDateString();
-      const seatUpper = ticket.seat_info.toUpperCase();
+      const seatUpper = (ticket.seat_info || "").toUpperCase();
 
       // Gunakan Regex /(?:DAY|HARI)\s*([1-9])/ untuk parsing hari harian secara dinamis
       const match = seatUpper.match(/(?:DAY|HARI)\s*([1-9])/);

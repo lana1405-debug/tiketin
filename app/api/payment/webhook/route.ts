@@ -110,12 +110,22 @@ export async function POST(request: Request) {
     }
 
     // 5. Buat entri tiket baru di tabel tiket
+    let seatCodes: string[] = [];
+    if (order_id && order_id.includes('-SEAT-')) {
+      const seatPart = order_id.split('-SEAT-')[1]?.split('-VCHR-')[0];
+      if (seatPart) {
+        seatCodes = seatPart.split('_');
+      }
+    }
+
     const ticketsToInsert = Array.from({ length: txData.total_qty }).map((_, idx) => ({
       transaksi_id: txData.id,
       event_id: txData.event_id,
       ticket_category_id: txData.category_id, 
       ticket_code: `TKT-${txData.order_id}-${idx}`, 
-      seat_info: (txData.ticket_categories as any)?.name || 'REGULAR', 
+      seat_info: seatCodes[idx] 
+        ? `${(txData.ticket_categories as any)?.name || 'REGULAR'} - ${seatCodes[idx]}`
+        : ((txData.ticket_categories as any)?.name || 'REGULAR'), 
       status_checkin: false
     }));
 

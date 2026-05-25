@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -37,6 +37,7 @@ const GLOBAL_STYLES = `
 export default function CheckoutPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const eventId = params.id as string;
   const { toast } = useToast();
 
@@ -49,6 +50,8 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [alreadyBought, setAlreadyBought] = useState(0);
+  const [bookedSeats, setBookedSeats] = useState<string[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   // ⚡ Live Viewer & Urgency Alerts
   const [liveViewers, setLiveViewers] = useState(12);
@@ -152,8 +155,20 @@ export default function CheckoutPage() {
     const { data: catData } = await supabase.from("ticket_categories").select("*").eq("event_id", eventId).order("price", { ascending: true });
     if (catData && catData.length > 0) {
       setCategories(catData);
-      const availableCat = catData.find((c: any) => c.stock > 0) || catData[0];
-      setSelectedCatId(availableCat.id);
+      
+      const paramCatId = searchParams ? searchParams.get("category_id") : null;
+      const paramQty = searchParams ? searchParams.get("qty") : null;
+      const categoryExists = catData.some((c: any) => c.id === paramCatId);
+      
+      if (paramCatId && categoryExists) {
+        setSelectedCatId(paramCatId);
+        if (paramQty) {
+          setQty(Math.max(1, Number(paramQty)));
+        }
+      } else {
+        const availableCat = catData.find((c: any) => c.stock > 0) || catData[0];
+        setSelectedCatId(availableCat.id);
+      }
     }
 
     const { data: userTickets } = await supabase
@@ -164,6 +179,14 @@ export default function CheckoutPage() {
       
     const boughtCount = userTickets ? userTickets.length : 0;
     setAlreadyBought(boughtCount);
+
+    const { data: bookedData } = await supabase
+      .from("tiket")
+      .select("seat_info")
+      .eq("event_id", eventId);
+    if (bookedData) {
+      setBookedSeats(bookedData.map((t: any) => t.seat_info).filter(Boolean));
+    }
 
     setIsLoading(false);
   };
@@ -197,6 +220,65 @@ export default function CheckoutPage() {
       }
     }
   }, [selectedCatId, absoluteMaxQty]);
+
+  useEffect(() => {
+    setSelectedSeats([]);
+  }, [selectedCatId, qty]);
+
+  // Seating configuration parsing
+  const isSeatingEnabled = event?.category === "TEATER" && event?.description?.includes("--seating-enabled:");
+  let seatingRows = 5;
+  let seatingCols = 8;
+  if (isSeatingEnabled) {
+    const match = event.description.match(/--seating-enabled:(\d+)x(\d+)--/);
+    if (match) {
+      seatingRows = parseInt(match[1], 10);
+      seatingCols = parseInt(match[2], 10);
+    }
+  }
+
+  // Sort categories descending by price (VIP first)
+  const sortedCategories = [...categories].sort((a, b) => b.price - a.price);
+
+  const getCategoryForRow = (rowChar: string) => {
+    if (categories.length === 0) return null;
+
+    // Check if categories have custom row specifications like "VIP [A-B]"
+    const customMatch = categories.find(cat => {
+      const match = cat.name.match(/(.+) \[(.+)\]/);
+      if (match) {
+        const spec = match[2].toUpperCase().trim();
+        const rowsList: string[] = [];
+        const parts = spec.split(",");
+        parts.forEach((part: string) => {
+          if (part.includes("-")) {
+            const [start, end] = part.split("-");
+            const startCode = start.trim().charCodeAt(0);
+            const endCode = end.trim().charCodeAt(0);
+            if (!isNaN(startCode) && !isNaN(endCode)) {
+              for (let code = Math.min(startCode, endCode); code <= Math.max(startCode, endCode); code++) {
+                rowsList.push(String.fromCharCode(code));
+              }
+            }
+          } else {
+            rowsList.push(part.trim());
+          }
+        });
+        return rowsList.includes(rowChar);
+      }
+      return false;
+    });
+
+    if (customMatch) return customMatch;
+
+    const rowIndex = rowChar.charCodeAt(0) - 65; // A=0, B=1, ...
+    if (rowIndex < 0 || rowIndex >= seatingRows) return null;
+
+    const numCategories = sortedCategories.length;
+    const rowsPerCategory = Math.ceil(seatingRows / numCategories);
+    const catIndex = Math.min(numCategories - 1, Math.floor(rowIndex / rowsPerCategory));
+    return sortedCategories[catIndex];
+  };
 
   const handleApplyVoucher = async () => {
     if (!voucherCodeInput.trim()) return;
@@ -272,9 +354,12 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
+      const seatSuffix = isSeatingEnabled && selectedSeats.length > 0
+        ? `-SEAT-${selectedSeats.join('_')}`
+        : "";
       const orderId = appliedVoucher 
-        ? `INV-${Date.now().toString().slice(-6)}-VCHR-${appliedVoucher.code.toUpperCase()}`
-        : `INV-${Date.now().toString().slice(-6)}`;
+        ? `INV-${Date.now().toString().slice(-6)}${seatSuffix}-VCHR-${appliedVoucher.code.toUpperCase()}`
+        : `INV-${Date.now().toString().slice(-6)}${seatSuffix}`;
 
       // ⚡ HANDLE GRATIS (totalBayar = 0) — bypass Midtrans
       if (totalBayar === 0) {
@@ -300,7 +385,7 @@ export default function CheckoutPage() {
           event_id: event.id,
           ticket_category_id: selectedCategory.id,
           ticket_code: `TKT-${orderId}-${idx}`,
-          seat_info: selectedCategory.name,
+          seat_info: isSeatingEnabled ? `${selectedCategory.name} - ${selectedSeats[idx]}` : selectedCategory.name,
           status_checkin: false
         }));
         await supabase.from("tiket").insert(ticketsToInsert);
@@ -388,7 +473,7 @@ export default function CheckoutPage() {
               event_id: event.id,
               ticket_category_id: selectedCategory.id, 
               ticket_code: `TKT-${orderId}-${idx}`, 
-              seat_info: selectedCategory.name, 
+              seat_info: isSeatingEnabled ? `${selectedCategory.name} - ${selectedSeats[idx]}` : selectedCategory.name, 
               status_checkin: false
             }));
             await supabase.from("tiket").insert(ticketsToInsert);
@@ -526,7 +611,7 @@ export default function CheckoutPage() {
                   <div className="border-t-4 border-slate-900 pt-6">
                     <h3 className="text-lg font-black italic uppercase text-slate-400 mb-2">Details</h3>
                     <div className="font-medium text-slate-700 whitespace-pre-wrap leading-relaxed">
-                      {event.description}
+                      {event.description.replace(/--seating-enabled:\d+x\d+--/g, "").trim()}
                     </div>
                   </div>
                 )}
@@ -588,6 +673,122 @@ export default function CheckoutPage() {
                 })()}
               </div>
             </div>
+
+            {/* SEATING MAP SELECTOR */}
+            {isSeatingEnabled && selectedCategory && qty > 0 && (
+              <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card text-left mt-8">
+                <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter mb-2 flex items-center gap-3">
+                  🎟️ PILIH KURSI ({selectedSeats.length}/{qty})
+                </h3>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 italic">
+                  Silakan pilih {qty} kursi di area {selectedCategory.name.replace(/\s*\[.+\]/, "").toUpperCase()} (Baris berwarna putih).
+                </p>
+                <div className="bg-amber-400 border-3 border-slate-900 p-3 mb-6 shadow-[3px_3px_0_0_#000] font-black uppercase text-[10px] sm:text-xs tracking-wider flex items-center gap-2 italic text-slate-950">
+                  <span>⚠️</span>
+                  <span>LAYOUT ACARA BELUM TENTU SEPERTI DIGAMBAR (HANYA GAMBARAN). UNTUK HARI H AKAN DIARAHKAN OLEH PANITIA ACARA.</span>
+                </div>
+
+                {/* Seating Grid Map container */}
+                <div className="border-4 border-slate-900 bg-slate-100 dark:bg-zinc-900 p-6 flex flex-col items-center gap-8 overflow-x-auto rounded-2xl shadow-[4px_4px_0_0_#000] min-w-full">
+                  {/* Stage indicator */}
+                  <div className="w-full max-w-md bg-slate-900 text-white font-black text-center py-2.5 uppercase tracking-widest -skew-x-3 text-xs border-4 border-black shadow-[3px_3px_0_0_#000]">
+                    💻 STAGE / PANGGUNG UTAMA
+                  </div>
+
+                  {/* Seat grid */}
+                  <div className="flex flex-col gap-3 min-w-max pb-2">
+                    {Array.from({ length: seatingRows }).map((_, rIdx) => {
+                      const rowChar = String.fromCharCode(65 + rIdx); // A, B, C...
+                      const rowCategory = getCategoryForRow(rowChar);
+                      const isMyCategory = rowCategory?.id === selectedCategory.id;
+
+                      return (
+                        <div key={rowChar} className="flex items-center gap-4">
+                          {/* Row label left */}
+                          <span className="w-6 text-center font-black text-base text-slate-900 dark:text-zinc-100">{rowChar}</span>
+
+                          {/* Row seats */}
+                          <div className="flex gap-2">
+                            {Array.from({ length: seatingCols }).map((_, cIdx) => {
+                              const seatNum = cIdx + 1;
+                              const seatId = `${rowChar}${seatNum}`;
+                              const fullSeatLabel = `${rowCategory?.name || 'REGULAR'} - ${seatId}`;
+                              
+                              // Check if seat is booked
+                              const isBooked = bookedSeats.some(
+                                s => s === fullSeatLabel || s === seatId || s.endsWith(`- ${seatId}`)
+                              );
+
+                              // Check if seat is selected
+                              const isSelected = selectedSeats.includes(seatId);
+
+                              // Seat styling
+                              let seatClass = "w-9 h-9 border-3 text-[10px] font-black flex items-center justify-center transition-all ";
+                              if (isBooked) {
+                                seatClass += "bg-slate-950 text-slate-500 border-slate-950 cursor-not-allowed shadow-none select-none";
+                              } else if (!isMyCategory) {
+                                seatClass += "bg-slate-200/50 text-slate-400 border-slate-300 dark:border-zinc-800 cursor-not-allowed shadow-none";
+                              } else if (isSelected) {
+                                seatClass += "bg-amber-400 hover:bg-amber-300 text-slate-900 border-slate-900 shadow-[2px_2px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5";
+                              } else {
+                                seatClass += "bg-white hover:bg-emerald-300 text-slate-900 border-slate-900 shadow-[2px_2px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5";
+                              }
+
+                              return (
+                                <button
+                                  key={seatId}
+                                  type="button"
+                                  disabled={isBooked || !isMyCategory}
+                                  onClick={() => {
+                                    if (selectedSeats.includes(seatId)) {
+                                      setSelectedSeats(prev => prev.filter(s => s !== seatId));
+                                    } else {
+                                      if (selectedSeats.length < qty) {
+                                        setSelectedSeats(prev => [...prev, seatId]);
+                                      } else {
+                                        // rolling selection
+                                        setSelectedSeats(prev => [...prev.slice(1), seatId]);
+                                      }
+                                    }
+                                  }}
+                                  className={`${seatClass} rounded-lg`}
+                                  title={isBooked ? `Kursi ${seatId} (Terisi)` : !isMyCategory ? `Kursi ${seatId} (${rowCategory?.name.replace(/\s*\[.+\]/, "") || 'Kategori Lain'})` : `Pilih Kursi ${seatId}`}
+                                >
+                                  {isBooked ? "✕" : seatId}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Row label right */}
+                          <span className="w-6 text-center font-black text-base text-slate-900 dark:text-zinc-100">{rowChar}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-5 justify-center border-t-2 border-dashed border-black/20 pt-4 w-full text-[10px] font-black uppercase text-slate-700 dark:text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 bg-white border-2 border-black rounded-md" />
+                      <span>Tersedia ({selectedCategory.name.replace(/\s*\[.+\]/, "")})</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 bg-amber-400 border-2 border-black rounded-md" />
+                      <span>Dipilih</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 bg-slate-950 border-2 border-slate-950 rounded-md" />
+                      <span>Terisi</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 bg-slate-200/50 border-2 border-slate-350 rounded-md" />
+                      <span>Tier Lain (Disabled)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="w-full lg:w-[450px]">
@@ -713,7 +914,12 @@ export default function CheckoutPage() {
 
               <button 
                 onClick={handleCheckout} 
-                disabled={isProcessing || absoluteMaxQty === 0 || isExpired} 
+                disabled={
+                  isProcessing || 
+                  absoluteMaxQty === 0 || 
+                  isExpired || 
+                  (isSeatingEnabled && selectedSeats.length !== qty)
+                } 
                 className={`w-full border-4 border-slate-900 p-6 font-black text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
                   totalBayar === 0 && absoluteMaxQty > 0
                     ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300" 
@@ -728,9 +934,11 @@ export default function CheckoutPage() {
                       ? "LIMIT HABIS"
                       : isExpired
                         ? "WAKTU HABIS"
-                        : totalBayar === 0 
-                          ? <><CheckCircle size={28} strokeWidth={3} /> KLAIM GRATIS!</>
-                          : <><CreditCard size={28} strokeWidth={3} /> BAYAR SEKARANG</>
+                        : isSeatingEnabled && selectedSeats.length !== qty
+                          ? `PILIH KURSINYA DULU (Kurang ${qty - selectedSeats.length})`
+                          : totalBayar === 0 
+                            ? <><CheckCircle size={28} strokeWidth={3} /> KLAIM GRATIS!</>
+                            : <><CreditCard size={28} strokeWidth={3} /> BAYAR SEKARANG</>
                 }
               </button>
 

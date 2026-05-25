@@ -8,7 +8,7 @@ import { Poppins } from "next/font/google";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   ShieldCheck, Ticket, MessageSquare, Receipt, LogOut,
-  Volume2, VolumeX, HelpCircle, Lock, Gift, Sparkles, User
+  Volume2, VolumeX, HelpCircle, Lock, Gift, Sparkles, User, BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -170,6 +170,11 @@ export default function LuckySpinPage() {
       if (session) {
         const { data } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
         if (data) {
+          if (data.verification_status !== "approved") {
+            toast("⚠️ Kamu harus verifikasi KTP terlebih dahulu untuk bermain Lucky Spin!", "warning");
+            router.push("/verify");
+            return;
+          }
           setUserProfile(data);
           setPoints(data.points || 0);
 
@@ -526,6 +531,9 @@ export default function LuckySpinPage() {
                 <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/articles")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
+                  <BookOpen className="mr-2 h-4 w-4" /> Baca Artikel
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}

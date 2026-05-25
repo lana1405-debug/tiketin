@@ -19,6 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Tiketin - War Tiket Tanpa Ribet",
   description: "Platform war tiket konser dan teater paling gila di Indonesia.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -45,6 +46,21 @@ export default function RootLayout({
         >
           <ToastProvider>
             {children}
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                        console.log('ServiceWorker registration successful with scope: ', reg.scope);
+                      }, function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                      });
+                    });
+                  }
+                `,
+              }}
+            />
           </ToastProvider>
         </ThemeProvider>
       </body>

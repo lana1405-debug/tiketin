@@ -1,0 +1,22 @@
+{
+  "short_name": "Tiketin",
+  "name": "Tiketin - War Tiket Tanpa Ribet",
+  "description": "Platform war tiket konser dan teater paling gila di Indonesia.",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/explore",
+  "background_color": "#FCFAF1",
+  "theme_color": "#6D4AFF",
+  "display": "standalone",
+  "orientation": "portrait"
+}

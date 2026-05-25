@@ -77,7 +77,7 @@ export default function VerifyEventsPage() {
       .select(`
         *, 
         ticket_categories(*),
-        profiles:user_id(full_name)
+        profiles:organizer_id(full_name)
       `)
       .order("created_at", { ascending: false });
 
@@ -271,15 +271,15 @@ export default function VerifyEventsPage() {
       {/* MODAL PREVIEW EVENT BRUTAL */}
       {isDetailOpen && selectedEvent && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[100] overflow-y-auto">
-          <div className="bg-white border-8 border-black p-8 md:p-12 w-full max-w-5xl shadow-[25px_25px_0px_0px_rgba(109,74,255,1)] relative my-8">
-            <button onClick={() => setIsDetailOpen(false)} className="absolute top-6 right-6 p-2 border-4 border-black bg-white hover:bg-red-500 transition-colors z-[110]">
+          <div className="bg-white border-4 sm:border-8 border-black p-4 sm:p-8 md:p-12 w-full max-w-5xl shadow-[10px_10px_0_0_#6D4AFF] sm:shadow-[25px_25px_0_0_#6D4AFF] relative my-8">
+            <button onClick={() => setIsDetailOpen(false)} className="absolute top-3 right-3 sm:top-6 sm:right-6 p-2 border-4 border-black bg-white hover:bg-red-500 transition-colors z-[110]">
               <CloseIcon size={28} strokeWidth={4} />
             </button>
 
             <div className="grid grid-cols-1 md:grid-cols-[1fr,2fr] gap-12 text-left">
               {/* KOLOM KIRI */}
               <div className="space-y-6">
-                <div className="w-full aspect-[3/4] bg-slate-100 border-8 border-black shadow-[10px_10px_0px_0px_#000] overflow-hidden relative">
+                <div className="w-full aspect-video md:aspect-[3/4] bg-slate-100 border-8 border-black shadow-[10px_10px_0px_0px_#000] overflow-hidden relative">
                   <img src={selectedEvent.image_url} alt="Poster" className="w-full h-full object-cover" />
                 </div>
                 <div className="bg-amber-400 border-4 border-black p-6 shadow-[6px_6px_0px_0px_#000]">
@@ -302,7 +302,7 @@ export default function VerifyEventsPage() {
                       }`}>{selectedEvent.status}</div>
                     )}
                   </div>
-                  <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">{selectedEvent.title}</h2>
+                  <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-none">{selectedEvent.title}</h2>
                 </header>
                 
                 <div className="grid grid-cols-2 gap-6">

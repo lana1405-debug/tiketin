@@ -7,7 +7,7 @@ import { Poppins } from "next/font/google";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   ShieldCheck, Ticket, MessageSquare, Receipt, LogOut,
-  Sparkles, User
+  Sparkles, User, BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -90,7 +90,7 @@ export default function RewardsPage() {
       if (txData && txData.length > 0) {
         await Promise.all(
           txData.map(async (tx) => {
-            let eventTitle = "War Tiket";
+            let eventTitle = "Pemesanan Tiket";
             if (tx.event_id) {
               const { data: e } = await supabase
                 .from("events")
@@ -386,6 +386,9 @@ export default function RewardsPage() {
                 <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/explore/articles")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
+                  <BookOpen className="mr-2 h-4 w-4" /> Baca Artikel
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>
@@ -471,12 +474,19 @@ export default function RewardsPage() {
               Putar roda keberuntungan gratis setiap hari untuk memenangkan Poin ekstra atau Voucher Diskon 25RB!
             </p>
           </div>
-          <Link
-            href="/explore/rewards/spin"
-            className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-black px-6 py-4 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 w-full md:w-auto text-center"
+          <button
+            onClick={() => {
+              if (userProfile?.verification_status !== "approved") {
+                toast("⚠️ Kamu harus lolos verifikasi KTP terlebih dahulu untuk bermain Lucky Spin!", "warning");
+                router.push("/verify");
+                return;
+              }
+              router.push("/explore/rewards/spin");
+            }}
+            className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-black px-6 py-4 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 w-full md:w-auto text-center cursor-pointer"
           >
             MAIN LUCKY SPIN SEKARANG! ⚡
-          </Link>
+          </button>
         </div>
 
         {/* TAB BUTTONS */}
@@ -680,7 +690,7 @@ export default function RewardsPage() {
             </div>
             <p className="text-[11px] font-medium text-slate-600 dark:text-zinc-300 normal-case mb-6 text-left">
               {successVoucher.name.includes("DISKON") 
-                ? "Salin kode di atas dan gunakan di kolom promo saat Anda melakukan checkout war tiket konser!"
+                ? "Salin kode di atas dan gunakan di kolom promo saat Anda melakukan checkout pembelian tiket konser!"
                 : "Tunjukkan kode unik di atas beserta KTP Anda ke panitia / EO di venue untuk mengklaim merchandise resmi!"
               }
             </p>
