@@ -18,6 +18,63 @@ interface ScanLogItem {
   msg: string;
 }
 
+// 🔊 Web Audio API Synthesized Audio Feedback
+const playBeep = (type: 'success' | 'warning' | 'error') => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    if (type === 'success') {
+      // 2 quick high pitches: beep-beep!
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1109, ctx.currentTime + 0.08); // C#6
+      gain2.gain.setValueAtTime(0.08, ctx.currentTime + 0.08);
+      osc2.start(ctx.currentTime + 0.08);
+      osc2.stop(ctx.currentTime + 0.22);
+    } else if (type === 'warning') {
+      // flat alert tone
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } else {
+      // low buzz error sound
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, ctx.currentTime); // D3 low
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.4);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    }
+  } catch (err) {
+    console.error("Audio feedback error:", err);
+  }
+};
+
 export default function GateScanner() {
   const params = useParams();
   const eventId = params.id as string;
@@ -146,6 +203,7 @@ export default function GateScanner() {
       if (fetchError || !ticket) {
         const errorMsg = "TIKET TIDAK VALID / PALSU!";
         setScanStatus({ status: 'error', msg: errorMsg });
+        playBeep('error');
         
         // Catat ke log scan
         const logItem: ScanLogItem = {
@@ -203,6 +261,7 @@ export default function GateScanner() {
           status: 'error', 
           msg: `TIKET HANYA VALID UNTUK HARI ${specificDayNum} (TGL: ${restrictedDate})! HARI INI: ${hariIni}` 
         });
+        playBeep('error');
         
         // Catat ke log scan
         const logItem: ScanLogItem = {
@@ -224,6 +283,7 @@ export default function GateScanner() {
         if (ticket.status_checkin === true) {
           const warnMsg = "TIKET SUDAH HANGUS / DIPAKAI!";
           setScanStatus({ status: 'warning', msg: `PERINGATAN: ${warnMsg}` });
+          playBeep('warning');
           
           const logItem: ScanLogItem = {
             id: `${Date.now()}-${Math.random()}`,
@@ -239,6 +299,7 @@ export default function GateScanner() {
           // Udah masuk hari ini
           const warnMsg = "SUDAH CHECK-IN HARI INI!";
           setScanStatus({ status: 'warning', msg: `${warnMsg} 1 TIKET 1 ORANG.` });
+          playBeep('warning');
 
           const logItem: ScanLogItem = {
             id: `${Date.now()}-${Math.random()}`,
@@ -276,6 +337,7 @@ export default function GateScanner() {
             status: 'success', 
             msg: successMsg
           });
+          playBeep('success');
 
           const logItem: ScanLogItem = {
             id: `${Date.now()}-${Math.random()}`,
@@ -294,6 +356,7 @@ export default function GateScanner() {
         if (ticket.status_checkin === true) {
           const warnMsg = "TIKET SUDAH HANGUS / DIPAKAI!";
           setScanStatus({ status: 'warning', msg: `PERINGATAN: ${warnMsg}` });
+          playBeep('warning');
 
           const logItem: ScanLogItem = {
             id: `${Date.now()}-${Math.random()}`,
@@ -317,6 +380,7 @@ export default function GateScanner() {
           if (updateError) throw updateError;
           
           setScanStatus({ status: 'success', msg: `BERHASIL! SILAKAN MASUK.` });
+          playBeep('success');
 
           const logItem: ScanLogItem = {
             id: `${Date.now()}-${Math.random()}`,
@@ -334,6 +398,7 @@ export default function GateScanner() {
     } catch (err: any) {
       console.error("Error scan:", err);
       setScanStatus({ status: 'error', msg: "KONEKSI BERMASALAH!" });
+      playBeep('error');
       toast("Koneksi bermasalah: " + err.message, "error");
     } finally {
       // Cooldown 3 detik biar gak spam

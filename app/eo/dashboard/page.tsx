@@ -120,7 +120,7 @@ export default function EODashboard() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "",
+    title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "", gate_passkey: "",
   });
 
   const [seatingEnabled, setSeatingEnabled] = useState(false);
@@ -553,6 +553,11 @@ export default function EODashboard() {
         return;
       }
     }
+    if (!formData.gate_passkey || formData.gate_passkey.trim().length < 4) {
+      toast("Bro, Gate Passkey minimal harus 4 karakter!", "warning");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let finalImageUrl = imagePreview; 
@@ -585,6 +590,7 @@ export default function EODashboard() {
         description: finalDescription || null, 
         image_url: finalImageUrl, 
         organizer_id: eoId, 
+        gate_passkey: formData.gate_passkey || null,
         status: "pending" 
       };
       
@@ -682,7 +688,8 @@ export default function EODashboard() {
       start_time: event.start_time || "", 
       location: event.location, 
       max_buy: event.max_buy?.toString() || "4", 
-      description: cleanDesc 
+      description: cleanDesc,
+      gate_passkey: event.gate_passkey || ""
     });
     setSeatingEnabled(isSeating);
     setSeatingRows(rows);
@@ -722,7 +729,7 @@ export default function EODashboard() {
 
   const closeModal = () => {
     setIsModalOpen(false); setEditingEventId(null);
-    setFormData({ title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "" });
+    setFormData({ title: "", category: "MUSIK", date: "", end_date: "", start_time: "", location: "", max_buy: "4", description: "", gate_passkey: "" });
     setCategories([{ id: Date.now(), name: "REGULAR", price: "", stock: "", isNew: true }]);
     setDeletedCategoryIds([]);
     setImageFile(null); setImagePreview(null);
@@ -1676,6 +1683,7 @@ export default function EODashboard() {
                     <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Tgl Selesai (Ops)</label><input type="date" min={formData.date || today} className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]" value={formData.end_date} onChange={(e) => setFormData({...formData, end_date: e.target.value})} /></div>
                     <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block italic text-left">Jam Mulai</label><input type="time" className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)]" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} /></div>
                     <div><label className="text-[10px] font-black uppercase text-[#FF6B6B] mb-1 block italic text-left">Maks Beli/Akun</label><input type="number" required className="w-full p-4 border-4 border-black bg-red-50 font-black shadow-[4px_4px_0_0_rgba(239,68,68,1)]" value={formData.max_buy} onChange={(e) => setFormData({...formData, max_buy: e.target.value})} /></div>
+                    <div className="col-span-2"><label className="text-[10px] font-black uppercase text-[#6D4AFF] mb-1 block italic text-left">Gate Passkey (Kunci Gate Scanner)</label><input type="text" required placeholder="CONTOH: KONSER2026 (MINIMAL 4 KARAKTER)" className="w-full p-4 border-4 border-black bg-white font-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] outline-none focus:bg-amber-50 uppercase" value={formData.gate_passkey} onChange={(e) => setFormData({...formData, gate_passkey: e.target.value.toUpperCase().replace(/\s+/g, "")})} /></div>
                   </div>
                   <div><label className="text-xs font-black uppercase text-slate-400 mb-2 block italic text-left">Deskripsi Event</label><textarea rows={5} className="w-full p-4 border-4 border-black bg-white font-medium shadow-[4px_4px_0_0_rgba(0,0,0,1)] outline-none focus:bg-amber-50" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} /></div>
                 </div>

@@ -162,3 +162,33 @@
     scrollbar-width: none;
   }
 }
+
+/* Custom Brutalist Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #FCFAF1;
+  border-left: 4px solid #0f172a;
+  border-top: 4px solid #0f172a;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #000000;
+  border-left: 4px solid #ffffff;
+  border-top: 4px solid #ffffff;
+}
+::-webkit-scrollbar-thumb {
+  background: #FBBF24;
+  border: 3px solid #0f172a;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #6D4AFF;
+  border: 3px solid #ffffff;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6D4AFF;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #FBBF24;
+}

@@ -210,6 +210,13 @@ export default function MyTicketsPage() {
   const [comment, setComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // ⚡ STICKER CUSTOMIZER STATES
+  const [stickerModal, setStickerModal] = useState<{ isOpen: boolean; ticket: any | null }>({
+    isOpen: false,
+    ticket: null
+  });
+  const [selectedSticker, setSelectedSticker] = useState<string>("NONE");
+
   // ⚡ Group Chat States
   const [chatOpen, setChatOpen] = useState(false);
   const [chatEventId, setChatEventId] = useState("");
@@ -624,7 +631,7 @@ export default function MyTicketsPage() {
   };
 
   // ─── Download E-Ticket sebagai PNG ────────────────────────────────────────
-  const handleDownloadTicket = async (ticket: any) => {
+  const handleDownloadTicket = async (ticket: any, sticker: string = "NONE") => {
     const qrEl = document.getElementById(`qr-${ticket.id}`);
     if (!qrEl) { toast("Gagal menemukan QR Code.", "error"); return; }
 
@@ -737,6 +744,58 @@ export default function MyTicketsPage() {
           img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve(); };
           img.src = svgUrl;
         });
+      }
+
+      // Draw Custom Sticker Badge (if selected)
+      if (sticker && sticker !== "NONE") {
+        ctx.save();
+        ctx.translate(380, 240); // center of the sticker badge space
+        ctx.rotate(-8 * Math.PI / 180); // brutalist tilt
+
+        let bg = "#FBBF24"; // Gold default
+        let fg = "#000000";
+        let txt = "★ VIP ACCESS ★";
+
+        if (sticker === "VIP") {
+          bg = "#FBBF24";
+          fg = "#000000";
+          txt = "★ VIP ACCESS ★";
+        } else if (sticker === "BRUTALIST") {
+          bg = "#FF3B30";
+          fg = "#ffffff";
+          txt = "🔥 BRUTALIST FAN";
+        } else if (sticker === "ROCKSTAR") {
+          bg = "#6D4AFF";
+          fg = "#FBBF24";
+          txt = "🎸 ROCKSTAR";
+        } else if (sticker === "LUNAS") {
+          bg = "#10B981";
+          fg = "#000000";
+          txt = "✓ TIKET LUNAS";
+        } else if (sticker === "VALID") {
+          bg = "#0f172a";
+          fg = "#FBBF24";
+          txt = "🎫 VALID TICKET";
+        }
+
+        // Draw sticker black shadow
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(-85, -25, 170, 50);
+
+        // Draw sticker border & background
+        ctx.fillStyle = bg;
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 3;
+        ctx.fillRect(-88, -28, 170, 50);
+        ctx.strokeRect(-88, -28, 170, 50);
+
+        // Draw sticker text
+        ctx.fillStyle = fg;
+        ctx.font = "bold italic 13px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(txt, -3, -3);
+        ctx.restore();
       }
 
       // Footer
@@ -1163,7 +1222,7 @@ export default function MyTicketsPage() {
                                 </div>
                               )}
                               <button
-                                onClick={() => handleDownloadTicket(ticket)}
+                                onClick={() => setStickerModal({ isOpen: true, ticket })}
                                 className="mt-4 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-2"
                               >
                                 <Download size={14} strokeWidth={3} /> E-TICKET
@@ -1200,7 +1259,7 @@ export default function MyTicketsPage() {
               })
             ) : (
               <motion.div className="py-32 text-center border-[8px] border-dashed border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 w-full">
-                <p className="text-5xl font-black italic uppercase text-slate-300 dark:text-zinc-700 mb-2">TIKET KOSONG!</p>
+                <p className="text-5xl font-black italic uppercase text-slate-300 dark:border-zinc-700 mb-2">TIKET KOSONG!</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1308,6 +1367,108 @@ export default function MyTicketsPage() {
                     ) : (
                       "KIRIM ULASAN"
                     )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── TICKET STICKER CUSTOMIZER MODAL ─── */}
+      <AnimatePresence>
+        {stickerModal.isOpen && stickerModal.ticket && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setStickerModal({ isOpen: false, ticket: null })}
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 50 }}
+              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setStickerModal({ isOpen: false, ticket: null })}
+                className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-50 hover:bg-red-500 dark:hover:bg-red-500 hover:text-white dark:hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90"
+              >
+                <X size={20} strokeWidth={3} />
+              </button>
+
+              <div className="space-y-6">
+                <div>
+                  <div className="bg-amber-400 border-4 border-slate-900 px-3 py-1 font-black uppercase text-[10px] shadow-[3px_3px_0_0_#000] -rotate-1 inline-flex items-center gap-1.5 italic mb-3">
+                    🎟️ CUSTOMIZE YOUR TICKET
+                  </div>
+                  <h2 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter leading-tight break-words pr-10">
+                    Sticker E-Ticket
+                  </h2>
+                  <p className="text-xs font-black uppercase text-slate-400 mt-1">Tempelkan stiker keren di E-Ticket-mu sebelum didownload!</p>
+                </div>
+
+                {/* Sticker Selection Grid */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Pilih Sticker</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: "NONE", label: "Tanpa Sticker", preview: "Plain" },
+                      { key: "VIP", label: "★ VIP ACCESS ★", bg: "bg-amber-400 text-black border-slate-900" },
+                      { key: "BRUTALIST", label: "🔥 BRUTALIST FAN", bg: "bg-red-500 text-white border-slate-900" },
+                      { key: "ROCKSTAR", label: "🎸 ROCKSTAR", bg: "bg-[#6D4AFF] text-amber-300 border-slate-900" },
+                      { key: "LUNAS", label: "✓ TIKET LUNAS", bg: "bg-emerald-400 text-black border-slate-900" },
+                      { key: "VALID", label: "🎫 VALID TICKET", bg: "bg-slate-900 text-amber-300 border-slate-900 dark:border-zinc-700" }
+                    ].map((st) => {
+                      const isSelected = selectedSticker === st.key;
+                      return (
+                        <button
+                          key={st.key}
+                          type="button"
+                          onClick={() => setSelectedSticker(st.key)}
+                          className={`p-3 border-4 font-black italic uppercase text-xs text-center transition-all shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1.5px_1.5px_0_0_#000] ${
+                            isSelected 
+                              ? "bg-amber-300 text-slate-900 border-[#6D4AFF] -skew-x-3" 
+                              : "bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border-slate-900 dark:border-zinc-700"
+                          }`}
+                        >
+                          {st.key !== "NONE" ? (
+                            <span className={`inline-block px-2 py-0.5 border-2 ${st.bg} text-[9px]`}>
+                              {st.label}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">Plain (Kosong)</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Submit Actions */}
+                <div className="pt-4 border-t-4 border-slate-900 dark:border-zinc-700 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStickerModal({ isOpen: false, ticket: null })}
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-700 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDownloadTicket(stickerModal.ticket, selectedSticker);
+                      setStickerModal({ isOpen: false, ticket: null });
+                    }}
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
+                  >
+                    <Download size={14} /> DOWNLOAD E-TICKET
                   </button>
                 </div>
               </div>
