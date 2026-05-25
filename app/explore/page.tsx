@@ -448,8 +448,8 @@ function TiltEventCard({
             </div>
           )}
         </div>
-        <div className="h-[3rem] overflow-hidden">
-          <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tight leading-snug break-words group-hover:text-[var(--primary-color)] transition-colors duration-300">
+        <div className="min-h-[3rem] flex items-center">
+          <h3 className="text-lg lg:text-xl font-black italic uppercase -skew-x-6 tracking-tight leading-snug break-words group-hover:text-[var(--primary-color)] transition-colors duration-300 line-clamp-2">
             {event.title}
           </h3>
         </div>
@@ -1569,9 +1569,9 @@ export default function ExplorePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
               transition={{ type: "spring", stiffness: 150, damping: 18 }}
-              className="bg-[#FCFAF1] dark:bg-zinc-950 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row my-8 text-slate-900 dark:text-zinc-50"
+              className="bg-[#FCFAF1] dark:bg-zinc-950 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row my-4 md:my-8 max-h-[calc(100vh-3rem)] md:max-h-none text-slate-900 dark:text-zinc-50"
             >
-              <div className="w-full md:w-1/2 relative min-h-[250px] md:min-h-[450px] border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-black">
+              <div className="w-full md:w-1/2 relative h-48 md:h-auto md:min-h-[450px] shrink-0 border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-black">
                 <img
                   src={selectedEventDetails.image_url}
                   alt={selectedEventDetails.title}
@@ -1604,7 +1604,7 @@ export default function ExplorePage() {
                 })()}
               </div>
 
-              <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto max-h-[90vh] md:max-h-[600px] text-left relative bg-white dark:bg-zinc-900">
+              <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto flex-1 md:max-h-[600px] text-left relative bg-white dark:bg-zinc-900">
                 <button
                   onClick={() => setSelectedEventDetails(null)}
                   className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-900 hover:bg-red-500 hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90"
