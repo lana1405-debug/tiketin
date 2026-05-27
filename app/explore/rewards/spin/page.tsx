@@ -272,6 +272,9 @@ export default function LuckySpinPage() {
     setTimeout(async () => {
       setIsSpinning(false);
       
+      const originalRole = userProfile.role || "customer";
+      let escalated = false;
+
       try {
         // Lock spin for today
         localStorage.setItem(`last_spin_date_${userProfile.id}`, todayStr);
@@ -282,26 +285,12 @@ export default function LuckySpinPage() {
         if (prize.type === "points" && prize.value > 0) {
           newPoints = points + prize.value;
           
-          // RLS bypass: switch role to eo -> update points -> revert role
-          const originalRole = userProfile.role || "customer";
-          
-          const { error: roleErr } = await supabase
-            .from("profiles")
-            .update({ role: "eo" })
-            .eq("id", userProfile.id);
-          
-          if (roleErr) throw roleErr;
-
           const { error: pointsErr } = await supabase
             .from("profiles")
-            .update({ points: newPoints, role: originalRole })
+            .update({ points: newPoints })
             .eq("id", userProfile.id);
 
-          if (pointsErr) {
-            // Rollback role just in case
-            await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
-            throw pointsErr;
-          }
+          if (pointsErr) throw pointsErr;
 
           // Local state updates
           setPoints(newPoints);
@@ -313,8 +302,6 @@ export default function LuckySpinPage() {
           const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
           generatedVoucherCode = `RW25K-${randomSuffix}`;
 
-          const originalRole = userProfile.role || "customer";
-          
           // RLS bypass: change role to eo
           const { error: roleErr } = await supabase
             .from("profiles")
@@ -322,6 +309,7 @@ export default function LuckySpinPage() {
             .eq("id", userProfile.id);
 
           if (roleErr) throw roleErr;
+          escalated = true;
 
           // Insert voucher
           const payload = {
@@ -339,10 +327,7 @@ export default function LuckySpinPage() {
             .from("vouchers")
             .insert([payload]);
 
-          if (voucherErr) {
-            await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
-            throw voucherErr;
-          }
+          if (voucherErr) throw voucherErr;
 
           // Revert role
           const { error: revertErr } = await supabase
@@ -351,6 +336,7 @@ export default function LuckySpinPage() {
             .eq("id", userProfile.id);
 
           if (revertErr) throw revertErr;
+          escalated = false;
 
           // Append claimed voucher to localStorage for page integration
           const savedVouchers = localStorage.getItem(`claimed_vouchers_${userProfile.id}`);
@@ -415,6 +401,10 @@ export default function LuckySpinPage() {
       } catch (err: any) {
         console.error("Gagal memproses hasil spin:", err);
         toast("Gagal mencatat hasil spin Anda. Silakan coba kembali.", "error");
+      } finally {
+        if (escalated) {
+          await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
+        }
       }
     }, 5000);
   };

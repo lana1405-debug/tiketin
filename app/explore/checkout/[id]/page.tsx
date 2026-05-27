@@ -226,7 +226,7 @@ export default function CheckoutPage() {
   }, [selectedCatId, qty]);
 
   // Seating configuration parsing
-  const isSeatingEnabled = event?.category === "TEATER" && event?.description?.includes("--seating-enabled:");
+  const isSeatingEnabled = !!event?.description?.includes("--seating-enabled:");
   let seatingRows = 5;
   let seatingCols = 8;
   if (isSeatingEnabled) {
@@ -725,7 +725,7 @@ export default function CheckoutPage() {
                               // Seat styling
                               let seatClass = "w-9 h-9 border-3 text-[10px] font-black flex items-center justify-center transition-all ";
                               if (isBooked) {
-                                seatClass += "bg-slate-950 text-slate-500 border-slate-950 cursor-not-allowed shadow-none select-none";
+                                seatClass += "bg-[#FF3B30] text-white border-slate-900 cursor-not-allowed shadow-none select-none opacity-80";
                               } else if (!isMyCategory) {
                                 seatClass += "bg-slate-200/50 text-slate-400 border-slate-300 dark:border-zinc-800 cursor-not-allowed shadow-none";
                               } else if (isSelected) {
@@ -778,8 +778,8 @@ export default function CheckoutPage() {
                       <span>Dipilih</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 bg-slate-950 border-2 border-slate-950 rounded-md" />
-                      <span>Terisi</span>
+                      <div className="w-5 h-5 bg-[#FF3B30] border-2 border-black rounded-md" />
+                      <span>Terisi (Booked)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="w-5 h-5 bg-slate-200/50 border-2 border-slate-350 rounded-md" />

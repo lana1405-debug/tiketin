@@ -206,6 +206,9 @@ export default function RewardsPage() {
 
     setIsRedeeming(itemName);
 
+    const originalRole = userProfile.role || "customer";
+    let escalated = false;
+
     try {
       // 1. Generate unique voucher code
       let codePrefix = "";
@@ -221,9 +224,6 @@ export default function RewardsPage() {
       const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
       const voucherCode = `${codePrefix}-${randomSuffix}`;
 
-      // Simpan role asli untuk direvert nanti
-      const originalRole = userProfile.role || "customer";
-
       // 2. Bypass RLS: Ubah role ke eo
       const { error: roleUpdateError } = await supabase
         .from("profiles")
@@ -231,6 +231,7 @@ export default function RewardsPage() {
         .eq("id", userProfile.id);
 
       if (roleUpdateError) throw new Error("Gagal menginisialisasi proses penukaran: " + roleUpdateError.message);
+      escalated = true;
 
       // 3. Insert voucher ke tabel vouchers
       const payload = {
@@ -249,8 +250,6 @@ export default function RewardsPage() {
         .insert([payload]);
 
       if (voucherInsertError) {
-        // Rollback role
-        await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
         throw new Error("Gagal membuat voucher reward: " + voucherInsertError.message);
       }
 
@@ -266,6 +265,7 @@ export default function RewardsPage() {
         await supabase.from("vouchers").delete().eq("code", voucherCode);
         throw new Error("Gagal memotong poin pengguna: " + finalProfileError.message);
       }
+      escalated = false;
 
       // Sukses!
       const updatedProfile = { ...userProfile, points: newPoints, role: originalRole };
@@ -310,6 +310,9 @@ export default function RewardsPage() {
       toast(err.message || "Terjadi kesalahan saat menukar poin.", "error");
     } finally {
       setIsRedeeming(null);
+      if (escalated) {
+        await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
+      }
     }
   };
 

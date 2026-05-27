@@ -13,10 +13,13 @@ export async function POST(request: Request) {
       clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY as string
     });
 
+    const roundedPrice = Math.round(gross_amount / quantity);
+    const exactGrossAmount = roundedPrice * quantity;
+
     let parameter = {
       transaction_details: {
         order_id: order_id,
-        gross_amount: gross_amount
+        gross_amount: exactGrossAmount
       },
       customer_details: {
         first_name: first_name,
@@ -24,7 +27,7 @@ export async function POST(request: Request) {
       },
       item_details: [{
         id: item_id, // ⚡ Sekarang menggunakan ID dinamis
-        price: gross_amount / quantity, // ⚡ Harga satuan agar validasi Midtrans lolos
+        price: roundedPrice, // ⚡ Harga satuan bulat agar validasi Midtrans lolos
         quantity: quantity, // ⚡ Kuantitas dinamis
         name: item_name
       }]

@@ -323,32 +323,19 @@ export default function DailyQuizPage() {
     localStorage.setItem(`last_quiz_date_${userProfile.id}`, todayStr);
 
     const totalQuestions = quizConfig?.questions.length || 0;
-    const finalScore = score + (selectedOpt !== null && quizConfig?.questions[currentIdx].correctIndex === selectedOpt ? 1 : 0);
+    const finalScore = score;
     const perfectScore = finalScore === totalQuestions;
 
     if (perfectScore) {
+      const rewardPointsVal = quizConfig?.rewardPoints ?? 2;
+      const newPointsVal = points + rewardPointsVal;
       try {
-        const rewardPointsVal = quizConfig?.rewardPoints ?? 2;
-        const newPointsVal = points + rewardPointsVal;
-
-        // Bypass RLS using temporary role escalation
-        const originalRole = userProfile.role || "customer";
-        
-        await supabase
-          .from("profiles")
-          .update({ role: "eo" })
-          .eq("id", userProfile.id);
-
         const { error: updateErr } = await supabase
           .from("profiles")
-          .update({ points: newPointsVal, role: originalRole })
+          .update({ points: newPointsVal })
           .eq("id", userProfile.id);
 
-        if (updateErr) {
-          // Revert role just in case
-          await supabase.from("profiles").update({ role: originalRole }).eq("id", userProfile.id);
-          throw updateErr;
-        }
+        if (updateErr) throw updateErr;
 
         setPoints(newPointsVal);
         setUserProfile((prev: any) => ({ ...prev, points: newPointsVal }));
