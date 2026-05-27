@@ -164,6 +164,27 @@ export async function POST(request: Request) {
       }
     }
 
+    // 8. Kirim Notifikasi ke user
+    try {
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('title')
+        .eq('id', txData.event_id)
+        .single();
+      
+      const eventTitle = eventData?.title || 'Event';
+      
+      await supabase.from("notifications").insert({
+        user_id: txData.user_id,
+        title: "Tiket Berhasil Dibeli! 🎫",
+        message: `Pembelian ${txData.total_qty} tiket untuk event ${eventTitle} sukses. Selamat menikmati!`,
+        type: "success",
+        is_read: false
+      });
+    } catch (notifErr) {
+      console.error('Gagal mengirim notifikasi:', notifErr);
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: 'Transaksi berhasil disinkronisasi dan diverifikasi lunas.' 

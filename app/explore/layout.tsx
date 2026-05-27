@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import { useTheme } from "next-themes";
 import { Palette, Sun, Moon, Check } from "lucide-react";
 
@@ -22,6 +22,13 @@ export default function ExploreLayout({ children }: { children: React.ReactNode 
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 150,
+    damping: 30,
+    restDelta: 0.001
+  });
 
   // Load and apply color on mount
   useEffect(() => {
@@ -52,6 +59,12 @@ export default function ExploreLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="relative min-h-screen">
+      {/* Scroll Progress Bar */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1.5 bg-[var(--primary-color,#6D4AFF)] z-[99999] origin-left border-b-2 border-slate-900 dark:border-white"
+        style={{ scaleX }}
+      />
+
       {/* Dynamic Main Children Content */}
       {children}
 
@@ -98,25 +111,29 @@ export default function ExploreLayout({ children }: { children: React.ReactNode 
                 <span className="text-[10px] font-black uppercase italic tracking-widest text-slate-400 dark:text-zinc-500 block mb-2">
                   AKSEN NEO-BRUTAL
                 </span>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-y-4 gap-x-2">
                   {ACCENT_COLORS.map((color) => {
                     const isSelected = activeColor.toLowerCase() === color.hex.toLowerCase();
                     return (
-                      <button
-                        key={color.hex}
-                        onClick={() => changeAccentColor(color.hex)}
-                        style={{ backgroundColor: color.hex }}
-                        title={color.name}
-                        className={`h-12 w-full border-3 border-slate-900 dark:border-white shadow-[2px_2px_0_0_#000] dark:shadow-[2px_2px_0_0_#fff] flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 relative ${
-                          isSelected ? "translate-x-[1px] translate-y-[1px] shadow-none" : ""
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="bg-slate-900 text-white dark:bg-white dark:text-black p-0.5 rounded-none border-2 border-slate-900 dark:border-white">
-                            <Check size={12} strokeWidth={4} />
-                          </div>
-                        )}
-                      </button>
+                      <div key={color.hex} className="flex flex-col items-center gap-1.5 w-full">
+                        <button
+                          onClick={() => changeAccentColor(color.hex)}
+                          style={{ backgroundColor: color.hex }}
+                          title={color.name}
+                          className={`h-10 w-full border-3 border-slate-900 dark:border-white shadow-[2px_2px_0_0_#000] dark:shadow-[2px_2px_0_0_#fff] flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 relative ${
+                            isSelected ? "translate-x-[1px] translate-y-[1px] shadow-none" : ""
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="bg-slate-900 text-white dark:bg-white dark:text-black p-0.5 rounded-none border-2 border-slate-900 dark:border-white">
+                              <Check size={10} strokeWidth={4} />
+                            </div>
+                          )}
+                        </button>
+                        <span className="text-[9px] font-black uppercase text-slate-800 dark:text-zinc-300 tracking-wider">
+                          {color.name}
+                        </span>
+                      </div>
                     );
                   })}
                 </div>

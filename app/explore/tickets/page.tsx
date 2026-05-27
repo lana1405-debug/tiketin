@@ -201,6 +201,7 @@ export default function MyTicketsPage() {
 
   // ⚡ STATE UNTUK REVIEW/ULASAN
   const [reviewedEvents, setReviewedEvents] = useState<Set<string>>(new Set());
+  const [flippedTickets, setFlippedTickets] = useState<Set<string>>(new Set());
   const [reviewModal, setReviewModal] = useState<{ isOpen: boolean; eventId: string | null; eventTitle: string }>({
     isOpen: false,
     eventId: null,
@@ -821,6 +822,145 @@ export default function MyTicketsPage() {
     }
   };
 
+  const handleShareStory = async (ticket: any, sticker: string = "NONE") => {
+    const qrEl = document.getElementById(`qr-${ticket.id}`);
+    if (!qrEl) { toast("Gagal menemukan QR Code.", "error"); return; }
+
+    toast("Membuat E-Ticket Story...", "info", 2000);
+
+    try {
+      const canvas = document.createElement("canvas");
+      const W = 1080, H = 1920;
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context not available");
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = "rgba(109, 74, 255, 0.15)";
+      ctx.lineWidth = 6;
+      for (let i = 0; i < W + H; i += 90) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i - H, H);
+        ctx.stroke();
+      }
+
+      const cardX = 90, cardY = 250, cardW = 900, cardH = 1420;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(cardX + 24, cardY + 24, cardW, cardH);
+      ctx.fillStyle = "#FFEA00";
+      ctx.fillRect(cardX + 12, cardY + 12, cardW, cardH);
+      ctx.fillStyle = "#6D4AFF";
+      ctx.fillRect(cardX, cardY, cardW, cardH);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 10;
+      ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+      ctx.fillStyle = "#FFEA00";
+      ctx.font = "bold italic 48px Arial";
+      ctx.fillText("★ TIKETIN ARENA PASS ★", cardX + 60, cardY + 110);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold italic 56px Arial";
+      const title = ticket.title?.toUpperCase() || "";
+      let truncated = title;
+      if (title.length > 25) {
+        truncated = title.slice(0, 22) + "...";
+      }
+      ctx.fillText(truncated, cardX + 60, cardY + 210);
+
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(cardX + 60, cardY + 250, 320, 60);
+      ctx.fillStyle = "#FFEA00";
+      ctx.font = "bold 24px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(ticket.category?.toUpperCase() || "EVENT PASS", cardX + 220, cardY + 290);
+      ctx.textAlign = "left";
+
+      const svgEl = (qrEl.tagName && qrEl.tagName.toLowerCase() === "svg") ? qrEl : (qrEl.querySelector("svg") || qrEl);
+      if (svgEl) {
+        const svgData = new XMLSerializer().serializeToString(svgEl);
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            ctx.fillStyle = "#ffffff";
+            const qrSize = 420;
+            const qrX = cardX + (cardW - qrSize) / 2;
+            const qrY = cardY + 360;
+            ctx.fillRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 8;
+            ctx.strokeRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
+            ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+            URL.revokeObjectURL(svgUrl);
+            resolve();
+          };
+          img.onerror = () => { URL.revokeObjectURL(svgUrl); resolve(); };
+          img.src = svgUrl;
+        });
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 32px Arial";
+      ctx.fillText(`📅 TANGGAL: ${ticket.date}`, cardX + 80, cardY + 900);
+      ctx.fillText(`📍 TEMPAT  : ${ticket.location}`, cardX + 80, cardY + 970);
+      ctx.fillText(`🛋️ SEAT    : ${ticket.seat}`, cardX + 80, cardY + 1040);
+      ctx.fillText(`🎫 TICKET  : ${ticket.id}`, cardX + 80, cardY + 1110);
+
+      ctx.fillStyle = "#FFEA00";
+      ctx.font = "bold italic 36px Arial";
+      ctx.fillText("TIKETIN.ID", cardX + 80, cardY + 1250);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 24px Arial";
+      ctx.fillText("BANDUNG'S #1 EVENT HUB", cardX + 80, cardY + 1295);
+
+      if (sticker && sticker !== "NONE") {
+        ctx.save();
+        ctx.translate(cardX + cardW - 200, cardY + 1020);
+        ctx.rotate(-12 * Math.PI / 180);
+        
+        let bg = "#FBBF24";
+        let fg = "#000000";
+        let txt = "★ VIP ACCESS ★";
+
+        if (sticker === "VIP") { bg = "#FBBF24"; fg = "#000000"; txt = "★ VIP ACCESS ★"; }
+        else if (sticker === "BRUTALIST") { bg = "#FF3B30"; fg = "#ffffff"; txt = "🔥 BRUTALIST"; }
+        else if (sticker === "ROCKSTAR") { bg = "#00F0FF"; fg = "#000000"; txt = "🎸 ROCKSTAR"; }
+        else if (sticker === "LUNAS") { bg = "#10B981"; fg = "#ffffff"; txt = "✓ SECURED PASS"; }
+
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(-150, -35, 300, 70);
+        ctx.fillStyle = bg;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
+        ctx.fillRect(-153, -38, 300, 70);
+        ctx.strokeRect(-153, -38, 300, 70);
+
+        ctx.fillStyle = fg;
+        ctx.font = "bold italic 22px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(txt, 0, 0);
+        ctx.restore();
+      }
+
+      const link = document.createElement("a");
+      link.download = `tiketin-story-${ticket.id}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      toast("Preview E-Ticket Instagram Story berhasil didownload! 🚀", "success");
+    } catch (err) {
+      console.error("Story download error:", err);
+      toast("Gagal memproses gambar share.", "error");
+    }
+  };
+
   const openReviewModal = (eventId: string, eventTitle: string) => {
     setRating(5);
     setComment("");
@@ -1175,83 +1315,153 @@ export default function MyTicketsPage() {
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <p className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest mb-1">TICKET ID</p>
-                          <p className="text-base font-black uppercase bg-slate-100 dark:bg-zinc-800 px-4 py-1 border-2 border-slate-900 dark:border-zinc-700 mb-6 text-slate-900 dark:text-zinc-100">{ticket.id}</p>
-
-                          <div className="bg-white dark:bg-zinc-900 p-2 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#FBBF24] dark:shadow-[4px_4px_0_0_var(--primary-color)] mb-6 relative overflow-hidden flex items-center justify-center">
-                            <QRCodeSVG
-                              id={`qr-${ticket.id}`}
-                              value={ticket.id}
-                              size={120}
-                              level="H"
-                              includeMargin={false}
-                              fgColor={(alreadyScannedToday || isEventEnded) ? "#cbd5e1" : "#0f172a"}
-                            />
-                            {isEventEnded && (
-                              <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
-                                <span className="font-black italic text-xl border-4 border-red-500 text-red-500 bg-white px-3 py-1 -rotate-12 shadow-[2px_2px_0_0_#000] tracking-widest uppercase">
-                                  EXPIRED
-                                </span>
+                        <div className="w-full md:w-72 h-[340px] relative" style={{ perspective: 1000 }}>
+                          <motion.div
+                            animate={{ rotateY: flippedTickets.has(ticket.id) ? 180 : 0 }}
+                            transition={{ duration: 0.6, ease: "easeInOut" }}
+                            style={{ transformStyle: "preserve-3d" }}
+                            className="w-full h-full relative"
+                          >
+                            {/* FRONT SIDE (Physical Card Look) */}
+                            <div
+                              style={{ backfaceVisibility: "hidden" }}
+                              onClick={() => {
+                                setFlippedTickets(prev => {
+                                  const next = new Set(prev);
+                                  next.add(ticket.id);
+                                  return next;
+                                });
+                              }}
+                              className="absolute inset-0 bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col items-center justify-between shadow-[4px_4px_0_0_#000] cursor-pointer text-white rounded-2xl"
+                            >
+                              <div className="w-full text-center">
+                                <p className="text-[10px] font-black uppercase text-purple-200 tracking-widest mb-1">TIKET AKTIF</p>
+                                <p className="text-xl font-black italic uppercase -skew-x-6">{ticket.category}</p>
                               </div>
-                            )}
-                          </div>
-
-                          {/* ⚡ INDIKATOR STATUS SCAN HARIAN */}
-                          <div className="w-full space-y-2">
-                            <p className="text-sm font-black text-[#6D4AFF] italic uppercase">{ticket.seat}</p>
-
-                            {isMultiDay && ticket.last_scanned_date && (
-                              <div className={`mt-2 p-2 border-2 border-black flex items-center justify-center gap-2 text-[10px] font-black uppercase italic ${alreadyScannedToday ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                <Clock size={12} />
-                                {alreadyScannedToday ? "Checked-in Today!" : `Last Scan: ${ticket.last_scanned_date}`}
+                              
+                              <div className="h-20 w-20 bg-amber-400 border-4 border-slate-900 flex items-center justify-center -rotate-6 shadow-[3px_3px_0_0_#000] rounded-xl">
+                                <TicketIcon size={36} className="text-slate-900" strokeWidth={3} />
                               </div>
-                            )}
+                              
+                              <div className="w-full space-y-2 text-center">
+                                <p className="text-[9px] font-bold text-purple-200 uppercase italic">KLIK UNTUK SHOW QR & AKSI</p>
+                                <div className="bg-amber-400 hover:bg-white text-slate-900 font-black text-xs py-3 uppercase border-2 border-slate-900 shadow-[2px_2px_0_0_#000] rounded-xl">
+                                  TAP UNTUK FLIP ⚡
+                                </div>
+                              </div>
+                            </div>
 
-                            {alreadyScannedToday && (
-                              <p className="text-[8px] font-bold text-red-500 uppercase tracking-tighter mt-1">QR disabled until tomorrow</p>
-                            )}
-                          </div>
+                            {/* BACK SIDE (QR Code & Scan details) */}
+                            <div
+                              style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                              className="absolute inset-0 bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 flex flex-col items-center justify-start overflow-y-auto brutal-scroll shadow-[4px_4px_0_0_#000] rounded-2xl"
+                            >
+                              <div className="w-full flex justify-between items-center mb-3">
+                                <p className="text-[8px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest">ID: {ticket.id}</p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFlippedTickets(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(ticket.id);
+                                      return next;
+                                    });
+                                  }}
+                                  className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 border border-slate-900 px-2 py-0.5 uppercase italic rounded"
+                                >
+                                  ← BALIK
+                                </button>
+                              </div>
 
-                          {ticket.status === "AKTIF" && (
-                            <>
-                              {/* Countdown ke hari H */}
-                              {!isEventEnded && (
-                                <div className="mt-4">
-                                  <CountdownBadge dateStr={ticket.date} />
+                              <div className="bg-white p-2 border-3 border-slate-900 shadow-[3px_3px_0_0_#FBBF24] mb-3 relative overflow-hidden flex items-center justify-center w-32 h-32 shrink-0 rounded-xl">
+                                <QRCodeSVG
+                                  id={`qr-${ticket.id}`}
+                                  value={ticket.id}
+                                  size={110}
+                                  level="H"
+                                  includeMargin={false}
+                                  bgColor="#ffffff"
+                                  fgColor={(alreadyScannedToday || isEventEnded) ? "#cbd5e1" : "#0f172a"}
+                                  className="w-full h-full"
+                                />
+                                {isEventEnded && (
+                                  <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+                                    <span className="font-black italic text-sm border-2 border-red-500 text-red-500 bg-white px-2 py-0.5 -rotate-12 shadow-[1.5px_1.5px_0_0_#000] tracking-widest uppercase">
+                                      EXPIRED
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="w-full space-y-1 text-center">
+                                <p className="text-[11px] font-black text-[#6D4AFF] italic uppercase">{ticket.seat}</p>
+                                {isMultiDay && ticket.last_scanned_date && (
+                                  <div className={`p-1 border-2 border-black flex items-center justify-center gap-1.5 text-[8px] font-black uppercase italic ${alreadyScannedToday ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                    <Clock size={10} />
+                                    {alreadyScannedToday ? "Checked-in Today!" : `Last Scan: ${ticket.last_scanned_date}`}
+                                  </div>
+                                )}
+                                {alreadyScannedToday && (
+                                  <p className="text-[8px] font-bold text-red-500 uppercase tracking-tighter">QR disabled until tomorrow</p>
+                                )}
+                              </div>
+
+                              {ticket.status === "AKTIF" && (
+                                <div className="w-full mt-2.5 space-y-1.5">
+                                  {!isEventEnded && (
+                                    <CountdownBadge dateStr={ticket.date} />
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setStickerModal({ isOpen: true, ticket });
+                                    }}
+                                    className="w-full bg-slate-900 text-white font-black italic uppercase text-[9px] py-2 border border-slate-900 shadow-[2px_2px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-1.5 rounded"
+                                  >
+                                    <Download size={10} strokeWidth={3} /> E-TICKET
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEventChat(ticket.event_id, ticket.title);
+                                    }}
+                                    className="w-full bg-amber-400 text-slate-900 font-black italic uppercase text-[9px] py-2 border border-slate-900 shadow-[2px_2px_0_0_#000] hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center justify-center gap-1.5 rounded"
+                                  >
+                                    <MessageSquare size={10} strokeWidth={3} /> GRUP CHAT
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleShareStory(ticket, ticket.sticker || "NONE");
+                                    }}
+                                    className="w-full bg-[#FF007F] text-white font-black italic uppercase text-[9px] py-2 border border-slate-900 shadow-[2px_2px_0_0_#000] hover:bg-white hover:text-slate-900 transition-all flex items-center justify-center gap-1.5 rounded"
+                                  >
+                                    <Share2 size={10} strokeWidth={3} /> SHARE STORY
+                                  </button>
                                 </div>
                               )}
-                              <button
-                                onClick={() => setStickerModal({ isOpen: true, ticket })}
-                                className="mt-4 w-full bg-slate-900 text-white font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#6D4AFF] hover:bg-amber-400 hover:text-slate-900 transition-all flex items-center justify-center gap-2"
-                              >
-                                <Download size={14} strokeWidth={3} /> E-TICKET
-                              </button>
-                              <button
-                                onClick={() => handleOpenEventChat(ticket.event_id, ticket.title)}
-                                className="mt-2.5 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center justify-center gap-2"
-                              >
-                                <MessageSquare size={14} strokeWidth={3} /> GRUP CHAT & TEBENGAN
-                              </button>
-                            </>
-                          )}
 
-                          {canReview && (
-                            <button
-                              disabled={isOffline}
-                              onClick={() => openReviewModal(ticket.event_id, ticket.title)}
-                              className={`mt-4 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-xs py-3 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
-                            >
-                              <Star size={14} fill="currentColor" strokeWidth={3} /> BERI ULASAN
-                            </button>
-                          )}
+                              {canReview && (
+                                <button
+                                  disabled={isOffline}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openReviewModal(ticket.event_id, ticket.title);
+                                  }}
+                                  className={`mt-2 w-full bg-amber-400 text-slate-900 font-black italic uppercase text-[9px] py-2 border border-slate-900 shadow-[2px_2px_0_0_#000] hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-1.5 rounded ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
+                                >
+                                  <Star size={10} fill="currentColor" strokeWidth={3} /> BERI ULASAN
+                                </button>
+                              )}
 
-                          {reviewedEvents.has(ticket.event_id) && (
-                            <div className="mt-4 px-4 py-2 border-2 border-emerald-500 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase tracking-wider inline-flex items-center justify-center gap-1.5 shadow-[2px_2px_0_0_#10B981] w-full">
-                              ✓ Ulasan Terkirim
+                              {reviewedEvents.has(ticket.event_id) && (
+                                <div className="mt-2 px-2 py-1.5 border border-emerald-500 bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-wider inline-flex items-center justify-center gap-1 shadow-[1.5px_1.5px_0_0_#10B981] w-full rounded">
+                                  ✓ Ulasan Terkirim
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </>
+                          </motion.div>
+                        </div>
                       )}
                     </motion.div>
                   </motion.div>

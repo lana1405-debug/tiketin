@@ -46,6 +46,21 @@ const GLOBAL_STYLES = `
   }
 `;
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -30 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+};
+
 export default function HistoryPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -222,17 +237,17 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise ${poppins.className}`}>
+    <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise ${poppins.className}`}>
       {/* NAVBAR */}
-      <nav className="w-full bg-white border-b-8 border-slate-900 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
               <ChevronLeft className="text-white" size={24} strokeWidth={3} />
             </div>
-            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline">KEMBALI</span>
+            <span className="text-xl font-black italic -skew-x-12 tracking-tighter uppercase ml-2 hidden sm:inline text-slate-900 dark:text-zinc-50">KEMBALI</span>
           </Link>
-          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900">RIWAYAT TAGIHAN</span>
+          <span className="text-2xl font-black italic -skew-x-12 tracking-tighter uppercase text-slate-900 dark:text-zinc-50">RIWAYAT TAGIHAN</span>
 
           <div className="flex items-center gap-4">
             <NotificationBell userId={userProfile?.id} />
@@ -240,7 +255,7 @@ export default function HistoryPage() {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 cursor-pointer group p-1 pr-3 transition-all">
                   <div className="text-right hidden md:block">
-                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 mb-1 px-2 py-0.5 inline-block bg-slate-100">
+                    <p className="text-[10px] font-black uppercase border-2 border-slate-900 dark:border-zinc-700 mb-1 px-2 py-0.5 inline-block bg-slate-100 dark:bg-zinc-800 dark:text-zinc-300">
                       {userProfile?.verification_status === "approved" ? (
                         <span className="text-emerald-500">✓ VERIFIED</span>
                       ) : userProfile?.verification_status === "pending" ? (
@@ -249,36 +264,36 @@ export default function HistoryPage() {
                         <span className="text-red-500">✗ UNVERIFIED</span>
                       )}
                     </p>
-                    <p className="text-xs font-black italic -skew-x-6 uppercase">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
+                    <p className="text-xs font-black italic -skew-x-6 uppercase text-slate-900 dark:text-zinc-50">{userProfile?.full_name?.split(" ")[0] || "LEGEND"}</p>
                   </div>
-                  <Avatar className="h-10 w-10 border-4 border-slate-900 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
+                  <Avatar className="h-10 w-10 border-4 border-slate-900 dark:border-zinc-700 rounded-none -rotate-6 shadow-[4px_4px_0_0_#6D4AFF] group-hover:rotate-0 transition-transform">
                     <AvatarImage src={userProfile?.avatar_url} />
                     <AvatarFallback className="bg-[#6D4AFF] text-white font-black">{userProfile?.full_name?.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 bg-white z-[60]">
+              <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
-                <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/verify")} className="focus:bg-amber-400 font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <ShieldCheck className="mr-2 h-4 w-4" /> {userProfile?.verification_status === "approved" ? "Status KTP (Lolos)" : "Verifikasi KTP"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/tickets")} className="focus:bg-blue-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Ticket className="mr-2 h-4 w-4" /> Tiket Saya
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/complaints")} className="focus:bg-emerald-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <MessageSquare className="mr-2 h-4 w-4" /> Pengaduan
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer">
+                <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
                 <DropdownMenuItem
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
@@ -292,14 +307,14 @@ export default function HistoryPage() {
       </nav>
 
       <main className="max-w-4xl mx-auto px-6 sm:px-12 pt-12 pb-32 text-left">
-        <div className="mb-12 border-b-8 border-slate-900 pb-8 flex items-end justify-between">
+        <div className="mb-12 border-b-8 border-slate-900 dark:border-zinc-700 pb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter text-left">
+            <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter text-left text-slate-900 dark:text-zinc-50">
               RIWAYAT <span className="text-[#6D4AFF] drop-shadow-[4px_4px_0_#000]">TAGIHAN.</span>
             </h1>
-            <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm text-left">Maksimal bayar 12 jam setelah checkout.</p>
+            <p className="font-bold text-slate-500 dark:text-zinc-400 mt-2 uppercase tracking-widest text-sm text-left">Maksimal bayar 12 jam setelah checkout.</p>
           </div>
-          <Receipt size={64} strokeWidth={2} className="text-amber-400 drop-shadow-[4px_4px_0_#000] hidden md:block" />
+          <Receipt size={64} strokeWidth={2} className="text-amber-400 drop-shadow-[4px_4px_0_#000] dark:drop-shadow-[4px_4px_0_var(--primary-color)] hidden md:block" />
         </div>
 
         {isLoading ? (
@@ -308,87 +323,105 @@ export default function HistoryPage() {
              <p className="font-black italic uppercase tracking-widest text-slate-400">Syncing...</p>
           </div>
         ) : transactions.length === 0 ? (
-          <div className="bg-white border-4 border-slate-900 p-12 text-center brutal-shadow-card">
-            <AlertCircle size={48} className="mx-auto mb-4 text-slate-300" strokeWidth={2} />
-            <h3 className="text-2xl font-black italic uppercase -skew-x-6 mb-2">Belum Ada Transaksi!</h3>
+          <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-12 text-center brutal-shadow-card">
+            <AlertCircle size={48} className="mx-auto mb-4 text-slate-300 dark:text-zinc-650" strokeWidth={2} />
+            <h3 className="text-2xl font-black italic uppercase -skew-x-6 mb-2 text-slate-900 dark:text-zinc-50">Belum Ada Transaksi!</h3>
           </div>
         ) : (
-          <div className="space-y-6">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="relative border-l-4 border-slate-900 dark:border-zinc-700 ml-4 md:ml-8 pl-8 md:pl-12 space-y-12 my-10"
+          >
             {transactions.map((tx) => (
-              <div key={tx.id} className={`bg-white border-4 border-slate-900 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] transition-all ${tx.status_pembayaran === 'expired' ? 'opacity-60 grayscale' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF]'}`}>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-slate-900 text-white font-black italic uppercase px-3 py-1 text-xs tracking-widest">
-                      {tx.order_id}
-                    </span>
+              <motion.div 
+                key={tx.id} 
+                variants={itemVariants}
+                className="relative"
+              >
+                {/* TIMELINE NODE DOT */}
+                <div className={`absolute -left-[45px] md:-left-[61px] top-6 w-8 h-8 rounded-full border-4 border-slate-900 dark:border-zinc-700 flex items-center justify-center font-black text-sm z-10 shadow-[2px_2px_0_0_#000] ${
+                  tx.status_pembayaran === 'paid' ? 'bg-emerald-400 text-slate-900' : tx.status_pembayaran === 'pending' ? 'bg-amber-400 text-slate-900 animate-pulse' : 'bg-red-500 text-white'
+                }`}>
+                  {tx.status_pembayaran === 'paid' ? '✓' : tx.status_pembayaran === 'pending' ? '⏳' : '✗'}
+                </div>
+
+                <div className={`bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] transition-all ${tx.status_pembayaran === 'expired' ? 'opacity-60 grayscale' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF]'}`}>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-slate-900 text-white dark:bg-zinc-800 dark:text-zinc-300 font-black italic uppercase px-3 py-1 text-xs tracking-widest">
+                        {tx.order_id}
+                      </span>
+                      
+                      {/* ⚡ STATUS LABELS */}
+                      {tx.status_pembayaran === 'paid' && (
+                        <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-emerald-600 bg-emerald-100 border-2 border-emerald-500 px-2 py-0.5">
+                          <CheckCircle2 size={12} strokeWidth={3} /> LUNAS
+                        </span>
+                      )}
+                      {tx.status_pembayaran === 'pending' && (
+                        <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-amber-600 bg-amber-100 border-2 border-amber-500 px-2 py-0.5 animate-pulse">
+                          <Clock size={12} strokeWidth={3} /> PENDING
+                        </span>
+                      )}
+                      {tx.status_pembayaran === 'expired' && (
+                        <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-red-600 bg-red-100 border-2 border-red-500 px-2 py-0.5">
+                          <XCircle size={12} strokeWidth={3} /> CANCEL / EXPIRED
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-left">
+                      <p className="font-bold text-xs text-slate-400 dark:text-zinc-500 uppercase tracking-widest">{formatDate(tx.created_at)}</p>
+                      <p className="font-black text-xl italic uppercase text-slate-900 dark:text-zinc-50 leading-tight">
+                        {tx.events?.title || "EVENT"}
+                      </p>
+                      <p className="font-bold text-sm italic uppercase text-[#6D4AFF] mt-1">
+                        {tx.total_qty}x {tx.ticket_categories?.name || "TIKET"}
+                      </p>
+                      
+                      {/* ⚡ COUNTDOWN INFO */}
+                      {tx.status_pembayaran === 'pending' && (
+                        <p className="text-[10px] font-black text-red-500 uppercase mt-2 italic bg-red-50 dark:bg-red-950/20 px-2 border border-red-200 dark:border-red-800">
+                           Sisa Waktu: {tx.hours_left.toFixed(1)} Jam lagi!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:items-end gap-4 border-t-4 md:border-t-0 md:border-l-4 border-slate-900 dark:border-zinc-700 pt-4 md:pt-0 md:pl-6">
+                    <div className="md:text-right text-left w-full">
+                      <p className="text-[10px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest mb-1">TOTAL TAGIHAN</p>
+                      <p className="text-3xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
+                        {formatRupiah(tx.total_bayar)}
+                      </p>
+                    </div>
                     
-                    {/* ⚡ STATUS LABELS */}
-                    {tx.status_pembayaran === 'paid' && (
-                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-emerald-600 bg-emerald-100 border-2 border-emerald-500 px-2 py-0.5">
-                        <CheckCircle2 size={12} strokeWidth={3} /> LUNAS
-                      </span>
-                    )}
                     {tx.status_pembayaran === 'pending' && (
-                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-amber-600 bg-amber-100 border-2 border-amber-500 px-2 py-0.5 animate-pulse">
-                        <Clock size={12} strokeWidth={3} /> PENDING
-                      </span>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <button 
+                          onClick={() => handleLanjutBayar(tx)}
+                          className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
+                        >
+                          LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
+                        </button>
+                        <button 
+                          onClick={() => setTxToCancel(tx)}
+                          className="w-full md:w-auto bg-red-500 text-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-red-600"
+                        >
+                          BATALKAN
+                        </button>
+                      </div>
                     )}
                     {tx.status_pembayaran === 'expired' && (
-                      <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-red-600 bg-red-100 border-2 border-red-500 px-2 py-0.5">
-                        <XCircle size={12} strokeWidth={3} /> CANCEL / EXPIRED
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-left">
-                    <p className="font-bold text-xs text-slate-400 uppercase tracking-widest">{formatDate(tx.created_at)}</p>
-                    <p className="font-black text-xl italic uppercase text-slate-900 leading-tight">
-                      {tx.events?.title || "EVENT"}
-                    </p>
-                    <p className="font-bold text-sm italic uppercase text-[#6D4AFF] mt-1">
-                      {tx.total_qty}x {tx.ticket_categories?.name || "TIKET"}
-                    </p>
-                    
-                    {/* ⚡ COUNTDOWN INFO */}
-                    {tx.status_pembayaran === 'pending' && (
-                      <p className="text-[10px] font-black text-red-500 uppercase mt-2 italic bg-red-50 inline-block px-2 border border-red-200">
-                         Sisa Waktu: {tx.hours_left.toFixed(1)} Jam lagi!
-                      </p>
+                      <p className="text-[10px] font-black text-red-500 uppercase italic underline underline-offset-4">Transaction Closed</p>
                     )}
                   </div>
                 </div>
-
-                <div className="flex flex-col md:items-end gap-4 border-t-4 md:border-t-0 md:border-l-4 border-slate-900 pt-4 md:pt-0 md:pl-6">
-                  <div className="md:text-right text-left w-full">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">TOTAL TAGIHAN</p>
-                    <p className="text-3xl font-black text-[#6D4AFF] italic tracking-tighter leading-none">
-                      {formatRupiah(tx.total_bayar)}
-                    </p>
-                  </div>
-                  
-                  {tx.status_pembayaran === 'pending' && (
-                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                      <button 
-                        onClick={() => handleLanjutBayar(tx)}
-                        className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
-                      >
-                        LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
-                      </button>
-                      <button 
-                        onClick={() => setTxToCancel(tx)}
-                        className="w-full md:w-auto bg-red-500 text-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-red-600"
-                      >
-                        BATALKAN
-                      </button>
-                    </div>
-                  )}
-                  {tx.status_pembayaran === 'expired' && (
-                    <p className="text-[10px] font-black text-red-500 uppercase italic underline underline-offset-4">Transaction Closed</p>
-                  )}
-                </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </main>
 
@@ -410,26 +443,26 @@ export default function HistoryPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-white border-8 border-slate-900 shadow-[12px_12px_0_0_#000] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-8 text-center space-y-6"
             >
-              <div className="inline-block bg-red-500 text-white p-4 border-4 border-slate-900 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
+              <div className="inline-block bg-red-500 text-white p-4 border-4 border-slate-900 dark:border-zinc-700 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
                 <AlertCircle className="text-white" size={48} strokeWidth={3} />
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900">
+                <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter text-slate-900 dark:text-zinc-50">
                   BATALKAN TAGIHAN?
                 </h2>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-slate-500">Aksi ini tidak dapat dibatalkan</p>
+                <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Aksi ini tidak dapat dibatalkan</p>
               </div>
 
-              <div className="bg-[#FCFAF1] border-4 border-slate-900 p-4 text-left space-y-2 font-bold">
-                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 pb-2 text-slate-900">
+              <div className="bg-[#FCFAF1] dark:bg-zinc-950 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-2 font-bold">
+                <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 dark:border-zinc-700 pb-2 text-slate-900 dark:text-zinc-100">
                   {txToCancel.events?.title || "EVENT"}
                 </p>
-                <div className="text-xs space-y-1 text-slate-600">
-                  <p className="uppercase"><span className="text-slate-400">Tagihan:</span> {formatRupiah(txToCancel.total_bayar)}</p>
-                  <p className="uppercase"><span className="text-slate-400">Kategori:</span> {txToCancel.total_qty}x {txToCancel.ticket_categories?.name || "TIKET"}</p>
+                <div className="text-xs space-y-1 text-slate-600 dark:text-zinc-400">
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Tagihan:</span> {formatRupiah(txToCancel.total_bayar)}</p>
+                  <p className="uppercase"><span className="text-slate-400 dark:text-zinc-500">Kategori:</span> {txToCancel.total_qty}x {txToCancel.ticket_categories?.name || "TIKET"}</p>
                 </div>
               </div>
 
@@ -438,7 +471,7 @@ export default function HistoryPage() {
                   type="button"
                   disabled={isCancelling}
                   onClick={() => setTxToCancel(null)}
-                  className="w-1/2 bg-white hover:bg-slate-100 text-slate-900 font-black italic uppercase text-xs py-4 border-4 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
                 >
                   TIDAK, KEMBALI
                 </button>
@@ -446,7 +479,7 @@ export default function HistoryPage() {
                   type="button"
                   disabled={isCancelling}
                   onClick={handleCancelConfirm}
-                  className="w-1/2 bg-red-500 hover:bg-red-600 text-white font-black italic uppercase text-xs py-4 border-4 border-slate-900 shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2"
+                  className="w-1/2 bg-red-500 hover:bg-red-600 text-white font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center justify-center gap-2"
                 >
                   {isCancelling ? (
                     <Loader2 size={14} className="animate-spin" />

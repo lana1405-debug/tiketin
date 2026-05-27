@@ -547,13 +547,15 @@ export default function RewardsPage() {
               {/* Outer Progress Bar */}
               <div className="w-full h-6 bg-slate-100 dark:bg-zinc-800 border-4 border-slate-900 dark:border-zinc-700 overflow-hidden relative">
                 {/* Inner Filled Bar */}
-                <div 
-                  className="h-full bg-amber-400 border-r-4 border-slate-900 transition-all duration-500 ease-out relative overflow-hidden"
-                  style={{ width: `${progressPercent}%` }}
+                <motion.div 
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+                  className="h-full bg-amber-400 border-r-4 border-slate-900 relative overflow-hidden"
                 >
                   {/* Shimmer Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent animate-shimmer-bar" />
-                </div>
+                </motion.div>
               </div>
 
               <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider mt-2.5 italic text-slate-700 dark:text-zinc-300">

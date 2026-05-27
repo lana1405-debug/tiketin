@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
+import { playNotification } from "@/lib/soundEffects";
 
 interface Notification {
   id: string;
@@ -82,11 +83,7 @@ export default function NotificationBell({ userId }: NotificationBellProps) {
         (payload) => {
           // Play notification sound if new message is inserted
           if (payload.eventType === "INSERT") {
-            try {
-              const audio = new Audio("/sounds/notification.mp3");
-              audio.volume = 0.5;
-              audio.play().catch(() => {});
-            } catch (e) {}
+            playNotification();
           }
           fetchNotifications();
         }

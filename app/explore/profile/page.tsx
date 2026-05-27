@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { motion, useInView } from "framer-motion";
 import { 
   Camera, User, Key, Trophy, Ticket as TicketIcon, 
   CheckCircle2, AlertTriangle, LogOut, ArrowLeft, 
@@ -23,6 +24,24 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
 });
+
+function AnimatedNumber({ target }: { target: number }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  useEffect(() => {
+    if (!inView) return;
+    let start = 0;
+    const step = target / 60;
+    const interval = setInterval(() => {
+      start += step;
+      if (start >= target) { setCount(target); clearInterval(interval); return; }
+      setCount(Math.floor(start));
+    }, 16);
+    return () => clearInterval(interval);
+  }, [inView, target]);
+  return <span ref={ref}>{count.toLocaleString("id-ID")}</span>;
+}
 
 export default function UserProfilePage() {
   const router = useRouter();
@@ -340,7 +359,9 @@ export default function UserProfilePage() {
                 <TicketIcon className="text-sky-800 dark:text-sky-400" size={20} strokeWidth={3} />
               </div>
               <div className="mt-4">
-                <span className="text-4xl font-black italic -skew-x-6 text-sky-950 dark:text-white">{totalTickets}</span>
+                <span className="text-4xl font-black italic -skew-x-6 text-sky-950 dark:text-white">
+                  <AnimatedNumber target={totalTickets} />
+                </span>
                 <p className="text-[9px] font-bold text-sky-700 dark:text-sky-300 mt-1">LIHAT SEMUA TIKET →</p>
               </div>
             </div>
@@ -352,7 +373,9 @@ export default function UserProfilePage() {
               <CheckCircle2 className="text-emerald-800 dark:text-emerald-400" size={20} strokeWidth={3} />
             </div>
             <div className="mt-4">
-              <span className="text-4xl font-black italic -skew-x-6 text-emerald-950 dark:text-white">{attendedEvents}</span>
+              <span className="text-4xl font-black italic -skew-x-6 text-emerald-950 dark:text-white">
+                <AnimatedNumber target={attendedEvents} />
+              </span>
               <p className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 mt-1">CHECK-IN SUKSES</p>
             </div>
           </div>
@@ -364,7 +387,9 @@ export default function UserProfilePage() {
                 <Trophy className="text-purple-800 dark:text-purple-400" size={20} strokeWidth={3} />
               </div>
               <div className="mt-4">
-                <span className="text-4xl font-black italic -skew-x-6 text-purple-950 dark:text-white">{userProfile?.points || 0}</span>
+                <span className="text-4xl font-black italic -skew-x-6 text-purple-950 dark:text-white">
+                  <AnimatedNumber target={userProfile?.points || 0} />
+                </span>
                 <p className="text-[9px] font-bold text-purple-700 dark:text-purple-300 mt-1">TUKAR VOUCHER →</p>
               </div>
             </div>

@@ -328,7 +328,6 @@ function TiltEventCard({
   toggleLike: (id: string) => void;
   openDetailModal: (event: Event) => void;
   formatRupiah: (val: number) => string;
-  handleBookNow: (id: string) => void;
   handleShareEvent: (event: Event) => void;
   handleOpenQuickPurchase: (event: Event) => void;
 }) {
@@ -604,6 +603,33 @@ export default function ExplorePage() {
   const [activeTicketsCount, setActiveTicketsCount] = useState(0);
   const [userTicketEventIds, setUserTicketEventIds] = useState<Set<string>>(new Set());
 
+  // ─── PERSONALIZED RECOMMENDATIONS ───
+  const personalizedRecommendations = (() => {
+    if (!events.length) return [];
+    const preferredCategories = new Set<string>();
+    events.forEach(e => {
+      if (likedEvents.has(e.id) || userTicketEventIds.has(e.id)) {
+        preferredCategories.add(e.category.toUpperCase());
+      }
+    });
+
+    if (preferredCategories.size === 0) {
+      return [...events]
+        .sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0))
+        .slice(0, 3);
+    }
+
+    const recs = events.filter(e => 
+      preferredCategories.has(e.category.toUpperCase()) && 
+      !userTicketEventIds.has(e.id)
+    );
+
+    if (recs.length > 0) {
+      return recs.slice(0, 3);
+    }
+    return events.filter(e => !userTicketEventIds.has(e.id)).slice(0, 3);
+  })();
+
   const [chatOpen, setChatOpen] = useState(false);
   const [chatEventId, setChatEventId] = useState("");
   const [chatEventTitle, setChatEventTitle] = useState("");
@@ -794,27 +820,7 @@ export default function ExplorePage() {
     }
   };
 
-  const handleBookNow = async (eventId: string) => {
-    if (userProfile?.verification_status !== "approved") {
-      toast("⚠️ HOLD UP! Kamu harus lolos verifikasi KTP dulu sebelum bisa membeli tiket!", "warning");
-      router.push("/verify");
-      return;
-    }
-    try {
-      const { data: success, error } = await supabase.rpc('lock_ticket_stock', {
-        p_event_id: eventId,
-        p_qty: 1
-      });
-      if (error || !success) {
-        toast("Waduh! Kamu kalah cepat. Tiket barusan saja direbut orang lain.", "error");
-        return;
-      }
-      router.push(`/explore/checkout/${eventId}`);
-    } catch (err) {
-      console.warn("RPC lock_ticket_stock not found or failed, falling back to standard redirect.", err);
-      router.push(`/explore/checkout/${eventId}`);
-    }
-  };
+
 
   const openDetailModal = async (event: Event) => {
     setSelectedEventDetails(event);
@@ -1437,6 +1443,40 @@ export default function ExplorePage() {
           </motion.div>
         )}
 
+        {/* PILIHAN UNTUK KAMU / RECOMMENDATIONS */}
+        {!searchQuery && personalizedRecommendations.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="w-full max-w-7xl mx-auto mb-20 text-left"
+          >
+            <div className="flex items-center gap-3 mb-8 bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 shadow-[4px_4px_0_0_var(--primary-color,#6D4AFF)] -rotate-1 inline-flex">
+              <Sparkles className="text-amber-500 animate-pulse" size={24} strokeWidth={3} />
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase -skew-x-6 tracking-tight dark:text-white">
+                PILIHAN UNTUK KAMU
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {personalizedRecommendations.map((event, idx) => (
+                <TiltEventCard
+                  key={`rec-${event.id}`}
+                  event={event}
+                  idx={idx}
+                  today={today}
+                  likedEvents={likedEvents}
+                  toggleLike={toggleLike}
+                  openDetailModal={openDetailModal}
+                  formatRupiah={formatRupiah}
+                  handleShareEvent={handleShareEvent}
+                  handleOpenQuickPurchase={handleOpenQuickPurchase}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <div className="flex flex-col items-center justify-center space-y-10 mb-22 mt-10 pt-10">
           <motion.div
             variants={fadeInUp}
@@ -1545,7 +1585,6 @@ export default function ExplorePage() {
                     toggleLike={toggleLike}
                     openDetailModal={openDetailModal}
                     formatRupiah={formatRupiah}
-                    handleBookNow={handleBookNow}
                     handleShareEvent={handleShareEvent}
                     handleOpenQuickPurchase={handleOpenQuickPurchase}
                   />
@@ -1668,6 +1707,14 @@ export default function ExplorePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
               transition={{ type: "spring", stiffness: 150, damping: 18 }}
+              drag="y"
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.5 }}
+              onDragEnd={(event, info) => {
+                if (info.offset.y > 120) {
+                  setSelectedEventDetails(null);
+                }
+              }}
               className="bg-[#FCFAF1] dark:bg-zinc-950 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row my-4 md:my-8 max-h-[calc(100vh-3rem)] md:max-h-none text-slate-900 dark:text-zinc-50"
             >
               <div className="w-full md:w-1/2 relative h-48 md:h-auto md:min-h-[450px] shrink-0 border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-black">
@@ -1905,7 +1952,7 @@ export default function ExplorePage() {
                           disabled={selectedEventDetails.totalRemainingStock === 0 || isEnded}
                           onClick={() => {
                             setSelectedEventDetails(null);
-                            handleBookNow(selectedEventDetails.id);
+                            handleOpenQuickPurchase(selectedEventDetails);
                           }}
                           className={`py-4 px-8 border-4 border-slate-900 dark:border-zinc-750 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 rounded-xl ${selectedEventDetails.totalRemainingStock === 0 || isEnded
                               ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border-slate-300 dark:border-zinc-800"
@@ -1941,6 +1988,14 @@ export default function ExplorePage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 20, stiffness: 150 }}
+              drag="y"
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.5 }}
+              onDragEnd={(event, info) => {
+                if (info.offset.y > 120) {
+                  setQuickPurchaseEvent(null);
+                }
+              }}
               className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-950 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-y-auto brutal-scroll p-6 md:p-8"
             >
               <div className="flex justify-between items-center border-b-4 border-slate-900 dark:border-zinc-850 pb-4 mb-6">
@@ -2125,6 +2180,24 @@ export default function ExplorePage() {
           avatar_url: userProfile.avatar_url || ""
         } : null}
       />
+
+      {/* 🚀 BACK TO TOP BUTTON */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.5, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 50 }}
+            whileHover={{ scale: 1.1, rotate: -3 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-amber-400 hover:bg-[var(--primary-color,#6D4AFF)] text-slate-900 hover:text-white border-4 border-slate-900 shadow-[4px_4px_0_0_#000] flex items-center justify-center cursor-pointer transition-colors duration-200"
+          >
+            <ArrowUp size={24} strokeWidth={4} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       <SpeedInsights />
     </div>
   );

@@ -34,6 +34,141 @@ const GLOBAL_STYLES = `
   }
 `;
 
+const CheckoutSkeleton = () => {
+  return (
+    <div className="min-h-screen bg-[#FCFAF1] text-slate-900 noise animate-pulse">
+      {/* Sticky Header */}
+      <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center px-6 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
+        <div className="flex items-center gap-2 border-2 border-slate-200 p-2 bg-slate-100 w-32 h-10">
+          <div className="w-4 h-4 bg-slate-300 rounded animate-pulse" />
+          <div className="h-4 bg-slate-300 rounded w-16 animate-pulse" />
+        </div>
+      </nav>
+
+      <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-12 pb-32">
+        {/* Title skeleton */}
+        <div className="mb-12">
+          <div className="h-14 bg-slate-300 rounded-lg w-3/4 mb-4 animate-pulse" />
+          <div className="h-4 bg-slate-200 rounded w-1/2 animate-pulse" />
+        </div>
+
+        {/* Urgency banner skeleton */}
+        <div className="bg-slate-200 border-4 border-slate-900 p-4 mb-8 shadow-[6px_6px_0_0_#000] -skew-x-2 min-h-[50px] flex items-center justify-center">
+          <div className="h-4 bg-slate-300 rounded w-2/3 animate-pulse" />
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
+          {/* Left Column */}
+          <div className="flex-1 space-y-8">
+            <div className="bg-white border-4 border-slate-900 shadow-[8px_8px_0_0_#000] flex flex-col overflow-hidden">
+              {/* Event Image skeleton */}
+              <div className="h-64 bg-slate-200 relative border-b-4 border-slate-900">
+                <div className="absolute top-4 left-4 bg-slate-300 border-2 border-slate-900 w-24 h-6 shadow-[2px_2px_0_0_#000]" />
+              </div>
+              
+              {/* Event Details skeleton */}
+              <div className="p-8 space-y-6">
+                <div className="h-8 bg-slate-300 rounded w-3/4 animate-pulse" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="h-16 bg-slate-100 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] flex items-center p-4">
+                    <div className="w-6 h-6 bg-slate-300 rounded-full mr-4 animate-pulse" />
+                    <div className="h-4 bg-slate-300 rounded w-2/3 animate-pulse" />
+                  </div>
+                  <div className="h-16 bg-slate-100 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] flex items-center p-4">
+                    <div className="w-6 h-6 bg-slate-300 rounded-full mr-4 animate-pulse" />
+                    <div className="h-4 bg-slate-300 rounded w-2/3 animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="border-t-4 border-slate-900 pt-6 space-y-2">
+                  <div className="h-4 bg-slate-300 rounded w-1/4 animate-pulse" />
+                  <div className="h-4 bg-slate-200 rounded w-full animate-pulse" />
+                  <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse" />
+                </div>
+              </div>
+            </div>
+
+            {/* Ticket Tier skeleton */}
+            <div className="bg-white border-4 border-slate-900 p-8 shadow-[8px_8px_0_0_#000]">
+              <div className="h-6 bg-slate-300 rounded w-1/3 mb-6 animate-pulse" />
+              <div className="space-y-4">
+                <div className="border-4 border-slate-300 p-5 bg-white h-24 flex items-center justify-between">
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="w-6 h-6 rounded-full bg-slate-300 shrink-0 animate-pulse" />
+                    <div className="space-y-2 w-full">
+                      <div className="h-5 bg-slate-300 rounded w-1/3 animate-pulse" />
+                      <div className="h-3 bg-slate-200 rounded w-1/4 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-6 bg-slate-300 rounded w-24 shrink-0 animate-pulse" />
+                </div>
+                <div className="border-4 border-slate-300 p-5 bg-white h-24 flex items-center justify-between">
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="w-6 h-6 rounded-full bg-slate-300 shrink-0 animate-pulse" />
+                    <div className="space-y-2 w-full">
+                      <div className="h-5 bg-slate-300 rounded w-1/3 animate-pulse" />
+                      <div className="h-3 bg-slate-200 rounded w-1/4 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-6 bg-slate-300 rounded w-24 shrink-0 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="w-full lg:w-[450px]">
+            <div className="bg-white border-4 border-slate-900 p-8 shadow-[8px_8px_0_0_#000] flex flex-col sticky top-24">
+              {/* Expiry Timer skeleton */}
+              <div className="bg-slate-200 border-4 border-slate-900 p-4 mb-6 shadow-[4px_4px_0_0_#000] h-14 flex items-center justify-between">
+                <div className="h-4 bg-slate-300 rounded w-1/3 animate-pulse" />
+                <div className="w-20 h-8 bg-slate-300 rounded shadow-[2px_2px_0_0_#000] animate-pulse" />
+              </div>
+
+              {/* Summary title skeleton */}
+              <div className="h-8 bg-slate-300 rounded w-1/2 mb-8 border-b-4 border-slate-900 pb-4 animate-pulse" />
+
+              {/* Qty selector skeleton */}
+              <div className="h-20 bg-slate-50 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] p-4 flex items-center justify-between mb-8">
+                <div className="space-y-2">
+                  <div className="h-3 bg-slate-300 rounded w-16 animate-pulse" />
+                  <div className="h-3 bg-slate-200 rounded w-20 animate-pulse" />
+                </div>
+                <div className="w-28 h-10 bg-slate-200 border-2 border-slate-300 animate-pulse" />
+              </div>
+
+              {/* Billing table skeleton */}
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between">
+                  <div className="h-3 bg-slate-200 rounded w-1/3 animate-pulse" />
+                  <div className="h-3 bg-slate-200 rounded w-1/4 animate-pulse" />
+                </div>
+                <div className="flex justify-between">
+                  <div className="h-3 bg-slate-200 rounded w-1/4 animate-pulse" />
+                  <div className="h-3 bg-slate-200 rounded w-1/5 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Total billing skeleton */}
+              <div className="border-t-4 border-slate-900 pt-6 mb-8 space-y-2">
+                <div className="h-3 bg-slate-300 rounded w-1/4 animate-pulse" />
+                <div className="h-10 bg-slate-300 rounded w-1/2 animate-pulse" />
+              </div>
+
+              {/* Button skeleton */}
+              <div className="w-full bg-slate-200 border-4 border-slate-900 p-6 h-20 shadow-[4px_4px_0_0_#000] -skew-x-6 animate-pulse" />
+              
+              {/* Trust badge skeleton */}
+              <div className="h-4 bg-slate-100 rounded w-2/3 mx-auto mt-8 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const params = useParams();
@@ -71,7 +206,12 @@ export default function CheckoutPage() {
     let startTime = Date.now();
 
     if (savedStart) {
-      startTime = parseInt(savedStart, 10);
+      const parsedStart = parseInt(savedStart, 10);
+      if (Date.now() - parsedStart > 600 * 1000) {
+        sessionStorage.setItem(sessionKey, String(startTime));
+      } else {
+        startTime = parsedStart;
+      }
     } else {
       sessionStorage.setItem(sessionKey, String(startTime));
     }
@@ -93,26 +233,30 @@ export default function CheckoutPage() {
   }, [eventId, user]);
 
   useEffect(() => {
-    // Randomize initial viewers
-    setLiveViewers(Math.floor(Math.random() * 11) + 8);
-
-    const intervalViewers = setInterval(() => {
-      setLiveViewers((prev) => {
-        const change = Math.random() > 0.5 ? 1 : -1;
-        const next = prev + change;
-        return Math.max(8, Math.min(18, next));
+    if (!eventId) return;
+    const channel = supabase.channel(`checkout_presence_${eventId}`);
+    
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const userCount = Object.keys(state).length;
+        setLiveViewers(Math.max(1, userCount));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
       });
-    }, 4000);
 
     const intervalAlerts = setInterval(() => {
       setAlertIndex((prev) => (prev + 1) % 3);
     }, 5000);
 
     return () => {
-      clearInterval(intervalViewers);
+      channel.unsubscribe();
       clearInterval(intervalAlerts);
     };
-  }, []);
+  }, [eventId]);
 
   // Voucher states
   const [voucherCodeInput, setVoucherCodeInput] = useState("");
@@ -287,48 +431,20 @@ export default function CheckoutPage() {
     setAppliedVoucher(null);
 
     try {
-      const codeUpper = voucherCodeInput.trim().toUpperCase();
-      const { data, error } = await supabase
-        .from("vouchers")
-        .select("*")
-        .eq("code", codeUpper)
-        .single();
+      const res = await fetch("/api/payment/validate-voucher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucherCodeInput.trim(), event_id: event.id })
+      });
 
-      if (error || !data) {
-        setVoucherError("KODE VOUCHER TIDAK VALID!");
-        setIsVoucherChecking(false);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setVoucherError(data.error || "KODE VOUCHER TIDAK VALID!");
         return;
       }
 
-      const now = new Date();
-      const validFrom = new Date(data.valid_from);
-      const validTo = new Date(data.valid_to);
-
-      if (now < validFrom) {
-        setVoucherError("VOUCHER BELUM DAPAT DIGUNAKAN!");
-        setIsVoucherChecking(false);
-        return;
-      }
-
-      if (now > validTo) {
-        setVoucherError("VOUCHER SUDAH KEDALUWARSA!");
-        setIsVoucherChecking(false);
-        return;
-      }
-
-      if (data.max_uses !== null && data.uses_count >= data.max_uses) {
-        setVoucherError("KUOTA VOUCHER SUDAH HABIS!");
-        setIsVoucherChecking(false);
-        return;
-      }
-
-      if (data.event_id && data.event_id !== eventId) {
-        setVoucherError("VOUCHER TIDAK BERLAKU UNTUK EVENT INI!");
-        setIsVoucherChecking(false);
-        return;
-      }
-
-      setAppliedVoucher(data);
+      setAppliedVoucher(data.voucher);
       setVoucherError("");
     } catch (err) {
       console.error(err);
@@ -346,6 +462,12 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     if (!user || !event || !selectedCategory || qty <= 0 || isExpired) return;
+    
+    if (isSeatingEnabled && selectedSeats.length < qty) {
+      toast(`⚠️ Pilih ${qty} kursi terlebih dahulu! Baru ${selectedSeats.length} kursi terpilih.`, "warning");
+      return;
+    }
+
     setShowConfirmModal(true);
   };
 
@@ -456,60 +578,18 @@ export default function CheckoutPage() {
       window.snap.pay(data.token, {
         onSuccess: async function (result: any) {
           try {
-            try {
-              await fetch("/api/payment/status", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ order_id: orderId })
-              });
-            } catch (err) {
-              console.error("Gagal memanggil API status:", err);
-            }
-
-            await supabase.from("transaksi").update({ status_pembayaran: "paid" }).eq("id", txData.id);
-
-            const ticketsToInsert = Array.from({ length: qty }).map((_, idx) => ({
-              transaksi_id: txData.id,
-              event_id: event.id,
-              ticket_category_id: selectedCategory.id, 
-              ticket_code: `TKT-${orderId}-${idx}`, 
-              seat_info: isSeatingEnabled ? `${selectedCategory.name} - ${selectedSeats[idx]}` : selectedCategory.name, 
-              status_checkin: false
-            }));
-            await supabase.from("tiket").insert(ticketsToInsert);
-
-            const { error: stockError } = await supabase.rpc('decrement_ticket_stock', { 
-              cat_id: selectedCategory.id, 
-              qty: qty 
+            await fetch("/api/payment/status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order_id: orderId })
             });
-            if (stockError) console.error("Gagal potong stok:", stockError);
-
-            if (appliedVoucher) {
-              await supabase.from("vouchers")
-                .update({ uses_count: (appliedVoucher.uses_count || 0) + 1 })
-                .eq("id", appliedVoucher.id);
-            }
-
+            
             const earnedPoints = qty * 50;
-            const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single();
-            const newPoints = (profile?.points || 0) + earnedPoints;
-            await supabase.from("profiles").update({ points: newPoints }).eq("id", user.id);
-
-            // Kirim Notifikasi
-            await supabase.from("notifications").insert({
-              user_id: user.id,
-              title: "Tiket Berhasil Dibeli! 🎫",
-              message: `Pembelian ${qty} tiket untuk event ${event.title} sukses. Selamat menikmati!`,
-              type: "success",
-              is_read: false
-            });
-
             toast(`Pembayaran berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
             router.push("/explore/tickets"); 
-
-          } catch (dbError) {
-            console.error(dbError);
-            toast("Sistem gagal sinkron, cek Tiket Saya!", "warning");
+          } catch (err) {
+            console.error("Gagal sinkron status pembayaran:", err);
+            toast("Sistem sedang memproses tiket Anda, cek Tiket Saya secara berkala!", "warning");
             router.push("/explore/tickets");
           }
         },
@@ -536,7 +616,7 @@ export default function CheckoutPage() {
   const formatRupiah = (angka: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#FCFAF1]"><Loader2 className="animate-spin text-[#6D4AFF]" size={64} /></div>;
+  if (isLoading) return <CheckoutSkeleton />;
 
   return (
     <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise ${poppins.className}`}>
@@ -976,6 +1056,9 @@ export default function CheckoutPage() {
               
               <button
                 onClick={() => {
+                  if (user && eventId) {
+                    sessionStorage.removeItem(`checkout_start_${user.id}_${eventId}`);
+                  }
                   router.push("/explore");
                 }}
                 className="w-full bg-[#FF3B30] text-white border-4 border-black py-3 font-black text-sm uppercase tracking-wider shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-red-600"
