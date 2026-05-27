@@ -43,14 +43,14 @@ interface SpinHistoryItem {
   type: string;
 }
 
-const getTodayString = () => {
-  const d = new Date();
+const getTodayString = (offset: number = 0) => {
+  const d = new Date(Date.now() + offset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const getMsUntilMidnight = () => {
-  const now = new Date();
-  const midnight = new Date();
+const getMsUntilMidnight = (offset: number = 0) => {
+  const now = new Date(Date.now() + offset);
+  const midnight = new Date(Date.now() + offset);
   midnight.setHours(24, 0, 0, 0); // next midnight
   return midnight.getTime() - now.getTime();
 };
@@ -79,6 +79,7 @@ export default function LuckySpinPage() {
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
   
   // 🎡 Spin States
   const [isSpinning, setIsSpinning] = useState(false);
@@ -187,6 +188,18 @@ export default function LuckySpinPage() {
           setUserProfile(data);
           setPoints(data.points || 0);
 
+          // Fetch server time offset
+          try {
+            const timeRes = await fetch("/api/time");
+            if (timeRes.ok) {
+              const timeData = await timeRes.json();
+              const offset = timeData.timestamp - Date.now();
+              setServerTimeOffset(offset);
+            }
+          } catch (err) {
+            console.warn("Gagal mengambil waktu server:", err);
+          }
+
           // Load spin history
           const spinSaved = localStorage.getItem(`spin_history_${data.id}`);
           if (spinSaved) {
@@ -207,11 +220,11 @@ export default function LuckySpinPage() {
   useEffect(() => {
     if (!userProfile) return;
     const checkLock = () => {
-      const todayStr = getTodayString();
+      const todayStr = getTodayString(serverTimeOffset);
       const lastSpin = localStorage.getItem(`last_spin_date_${userProfile.id}`);
       
       if (lastSpin === todayStr) {
-        const ms = getMsUntilMidnight();
+        const ms = getMsUntilMidnight(serverTimeOffset);
         if (ms <= 0) {
           setTimeToNextSpin(null);
         } else {
@@ -225,7 +238,7 @@ export default function LuckySpinPage() {
     checkLock();
     const interval = setInterval(checkLock, 1000);
     return () => clearInterval(interval);
-  }, [userProfile]);
+  }, [userProfile, serverTimeOffset]);
 
   const handleSpin = async () => {
     if (isSpinning) return;
@@ -234,7 +247,7 @@ export default function LuckySpinPage() {
       return;
     }
 
-    const todayStr = getTodayString();
+    const todayStr = getTodayString(serverTimeOffset);
     const lastSpin = localStorage.getItem(`last_spin_date_${userProfile.id}`);
     if (lastSpin === todayStr) {
       toast("Anda sudah melakukan spin hari ini! Silakan kembali lagi besok. ⏰", "warning");

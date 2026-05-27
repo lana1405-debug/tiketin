@@ -371,7 +371,7 @@ function TiltEventCard({
         transformStyle: "preserve-3d",
         transition: tilt.hovered ? "none" : "all 0.5s cubic-bezier(0.25, 1, 0.5, 1)",
       }}
-      className="bg-card text-card-foreground border-4 border-slate-900 dark:border-zinc-800 rounded-3xl overflow-hidden flex flex-col group cursor-pointer relative"
+      className="bg-card text-card-foreground border-4 border-slate-900 dark:border-zinc-800 rounded-2xl overflow-hidden flex flex-col group cursor-pointer relative"
       onClick={() => openDetailModal(event)}
     >
       <div className="relative h-64 border-b-4 border-slate-900 dark:border-zinc-800 overflow-hidden bg-black">

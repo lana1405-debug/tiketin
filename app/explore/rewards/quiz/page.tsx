@@ -95,14 +95,14 @@ const DEFAULT_QUESTIONS: Record<string, Question[]> = {
   ]
 };
 
-const getTodayString = () => {
-  const d = new Date();
+const getTodayString = (offset: number = 0) => {
+  const d = new Date(Date.now() + offset);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const getMsUntilMidnight = () => {
-  const now = new Date();
-  const midnight = new Date();
+const getMsUntilMidnight = (offset: number = 0) => {
+  const now = new Date(Date.now() + offset);
+  const midnight = new Date(Date.now() + offset);
   midnight.setHours(24, 0, 0, 0); // next midnight
   return midnight.getTime() - now.getTime();
 };
@@ -127,6 +127,7 @@ export default function DailyQuizPage() {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [points, setPoints] = useState(0);
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
 
   // Quiz Configurations
   const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null);
@@ -176,10 +177,23 @@ export default function DailyQuizPage() {
         setUserProfile(profile);
         setPoints(profile.points || 0);
 
+        // Fetch server time to prevent local date manipulation
+        let fetchedTodayStr = getTodayString(0);
+        try {
+          const timeRes = await fetch("/api/time");
+          if (timeRes.ok) {
+            const timeData = await timeRes.json();
+            fetchedTodayStr = timeData.todayStr;
+            const offset = timeData.timestamp - Date.now();
+            setServerTimeOffset(offset);
+          }
+        } catch (err) {
+          console.warn("Gagal mengambil waktu server, menggunakan waktu perangkat:", err);
+        }
+
         // Check if played today
-        const todayStr = getTodayString();
         const lastPlay = localStorage.getItem(`last_quiz_date_${profile.id}`);
-        if (lastPlay === todayStr) {
+        if (lastPlay === fetchedTodayStr) {
           setQuizPlayedToday(true);
         }
       }
@@ -221,7 +235,7 @@ export default function DailyQuizPage() {
     if (!quizPlayedToday) return;
 
     const interval = setInterval(() => {
-      const ms = getMsUntilMidnight();
+      const ms = getMsUntilMidnight(serverTimeOffset);
       if (ms <= 0) {
         setQuizPlayedToday(false);
         setTimeToNextQuiz(null);
@@ -232,7 +246,7 @@ export default function DailyQuizPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [quizPlayedToday]);
+  }, [quizPlayedToday, serverTimeOffset]);
 
   // Gameplay Timer loop
   useEffect(() => {
@@ -320,7 +334,7 @@ export default function DailyQuizPage() {
     setGameState("finished");
     setQuizPlayedToday(true);
 
-    const todayStr = getTodayString();
+    const todayStr = getTodayString(serverTimeOffset);
     localStorage.setItem(`last_quiz_date_${userProfile.id}`, todayStr);
 
     const totalQuestions = quizConfig?.questions.length || 0;
