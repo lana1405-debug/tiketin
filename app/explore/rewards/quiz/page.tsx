@@ -326,8 +326,30 @@ export default function DailyQuizPage() {
     const finalScore = score;
     const perfectScore = finalScore === totalQuestions;
 
+    const rewardPointsVal = quizConfig?.rewardPoints ?? 2;
+    const pointsGained = perfectScore ? rewardPointsVal : 0;
+
+    // Save quiz to history in localStorage
+    try {
+      const quizSaved = localStorage.getItem(`quiz_history_${userProfile.id}`);
+      let quizHistory = [];
+      if (quizSaved) {
+        quizHistory = JSON.parse(quizSaved);
+      }
+      const newHistoryItem = {
+        date: new Date().toISOString(),
+        topic: quizConfig?.activeTopic || "TRIVIA",
+        score: finalScore,
+        totalQuestions: totalQuestions,
+        pointsGained: pointsGained,
+      };
+      quizHistory = [newHistoryItem, ...quizHistory];
+      localStorage.setItem(`quiz_history_${userProfile.id}`, JSON.stringify(quizHistory));
+    } catch (e) {
+      console.error("Gagal menyimpan riwayat kuis:", e);
+    }
+
     if (perfectScore) {
-      const rewardPointsVal = quizConfig?.rewardPoints ?? 2;
       const newPointsVal = points + rewardPointsVal;
       try {
         const { error: updateErr } = await supabase

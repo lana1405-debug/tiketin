@@ -122,7 +122,49 @@ export default function RewardsPage() {
         });
       });
 
-      // 3.5. Spin history dihapus dari mutasi poin utama (dipindah ke mutasi khusus Lucky Spin)
+      // 3.5. Ambil riwayat spin dari local storage
+      const spinSaved = localStorage.getItem(`spin_history_${userId}`);
+      if (spinSaved) {
+        try {
+          const spinHistory = JSON.parse(spinSaved);
+          spinHistory.forEach((spin: any, index: number) => {
+            // Hanya masukkan jika mendapatkan poin (value > 0)
+            if (spin.type === "points" && spin.value > 0) {
+              items.push({
+                id: `spin-${index}-${spin.date}`,
+                type: "in",
+                amount: spin.value,
+                description: `LUCKY SPIN: LANDED ON ${spin.prize.toUpperCase()}`,
+                date: spin.date,
+              });
+            }
+          });
+        } catch (e) {
+          console.error("Gagal memuat riwayat spin ke ledger:", e);
+        }
+      }
+
+      // 3.6. Ambil riwayat kuis dari local storage
+      const quizSaved = localStorage.getItem(`quiz_history_${userId}`);
+      if (quizSaved) {
+        try {
+          const quizHistory = JSON.parse(quizSaved);
+          quizHistory.forEach((quiz: any, index: number) => {
+            // Hanya masukkan jika mendapatkan poin (pointsGained > 0)
+            if (quiz.pointsGained > 0) {
+              items.push({
+                id: `quiz-${index}-${quiz.date}`,
+                type: "in",
+                amount: quiz.pointsGained,
+                description: `KUIS HARIAN: TOPIK ${quiz.topic.toUpperCase()} (${quiz.score}/${quiz.totalQuestions} BENAR)`,
+                date: quiz.date,
+              });
+            }
+          });
+        } catch (e) {
+          console.error("Gagal memuat riwayat kuis ke ledger:", e);
+        }
+      }
 
       // 4. Urutkan berdasarkan tanggal terbaru
       items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
