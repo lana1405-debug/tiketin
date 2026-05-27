@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { playClick, playTick, playWinPoints, playWinVoucher, playZonk } from "@/lib/soundEffects";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   ShieldCheck, Ticket, MessageSquare, Receipt, LogOut,
@@ -575,7 +576,7 @@ export default function LuckySpinPage() {
         </div>
 
         {/* SPIN WHEEL CARD CONTAINER */}
-        <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-6 sm:p-12 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] flex flex-col items-center relative overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-6 sm:p-12 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] hover:shadow-[16px_16px_0_0_#000] dark:hover:shadow-[16px_16px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex flex-col items-center relative overflow-hidden">
           
           <Sparkles className="absolute top-4 left-4 text-slate-200 dark:text-zinc-800 animate-spin" style={{ animationDuration: "12s" }} size={40} />
           <Gift className="absolute bottom-4 right-4 text-slate-200 dark:text-zinc-800 animate-bounce" size={40} />
@@ -756,89 +757,103 @@ export default function LuckySpinPage() {
       </div>
 
       {/* SPIN RESULT POP-UP MODAL */}
-      {showSpinResultModal && spinResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
-            setShowSpinResultModal(false);
-            setConfettiParticles([]);
-          }} />
-          <div className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 p-8 max-w-md w-full relative z-10 shadow-[10px_10px_0_0_#000] dark:shadow-[10px_10px_0_0_var(--primary-color)] -rotate-1 text-slate-900 dark:text-zinc-50 text-center">
-            
-            {(spinResult.value > 0 || spinResult.type === "voucher") ? (
-              <>
-                <div className="w-20 h-20 bg-amber-400 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
-                  <Trophy size={40} className="text-black" strokeWidth={3} />
-                </div>
-                <h3 className="text-4xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-emerald-500">
-                  MENANG BANYAK! 🎉
-                </h3>
-                <p className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-6">
-                  Selamat! Akun Anda mendapatkan tambahan reward sebesar:
-                </p>
-
-                {spinResult.type === "voucher" ? (
-                  <div className="space-y-4 mb-6">
-                    <div className="bg-pink-400 border-4 border-black p-4 font-mono text-2xl font-black tracking-widest uppercase select-all shadow-[4px_4px_0_0_#000] inline-block -rotate-1">
-                      {spinResult.voucherCode}
-                    </div>
-                    <p className="text-[10px] font-black uppercase text-pink-500">VOUCHER DISKON RP 25.000</p>
-                    <p className="text-[11px] font-medium text-slate-600 dark:text-zinc-300 normal-case">
-                      Salin kode di atas! Voucher ini otomatis terdaftar di tab &apos;Voucher Saya&apos; halaman Rewards Anda dan siap dipakai checkout!
-                    </p>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(spinResult.voucherCode);
-                        toast("Kode voucher berhasil disalin!", "success");
-                      }}
-                      className="bg-amber-400 border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-wider shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all block mx-auto text-black"
-                    >
-                      SALIN KODE VOUCHER
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="bg-amber-100 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 font-mono text-5xl font-black tracking-tighter uppercase mb-6 shadow-[4px_4px_0_0_#000] inline-block -rotate-3 text-slate-900 dark:text-amber-400">
-                      +{spinResult.value} POIN
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase mb-6">
-                      Poin otomatis masuk ke dompet Anda &amp; tercatat di buku mutasi.
-                    </p>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="w-20 h-20 bg-slate-300 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
-                  <HelpCircle size={40} className="text-slate-600" strokeWidth={3} />
-                </div>
-                <h3 className="text-4xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-slate-600 dark:text-zinc-400">
-                  APES DEH... 😢
-                </h3>
-                <p className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-500 mb-6">
-                  Yah ZONK! Hari ini Anda kurang beruntung.
-                </p>
-                <div className="bg-slate-100 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 font-mono text-3xl font-black tracking-tighter uppercase mb-6 shadow-[4px_4px_0_0_#000] inline-block rotate-3 text-slate-400 dark:text-zinc-500">
-                  ZONK 0 POIN
-                </div>
-                <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-500 uppercase mb-6">
-                  Silakan putar lagi roda keberuntungan Anda besok tengah malam!
-                </p>
-              </>
-            )}
-
-            <button
+      <AnimatePresence>
+        {showSpinResultModal && spinResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
               onClick={() => {
-                triggerSound(playClick);
                 setShowSpinResultModal(false);
                 setConfettiParticles([]);
-              }}
-              className="w-full bg-[#6D4AFF] text-white border-4 border-black py-3 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+              }} 
+            />
+            <motion.div 
+              initial={{ scale: 0.8, y: 50, opacity: 0, rotate: -3 }}
+              animate={{ scale: 1, y: 0, opacity: 1, rotate: -1 }}
+              exit={{ scale: 0.8, y: 50, opacity: 0, rotate: -3 }}
+              transition={{ type: "spring", damping: 15, stiffness: 200 }}
+              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 p-8 max-w-md w-full relative z-10 shadow-[10px_10px_0_0_#000] dark:shadow-[10px_10px_0_0_var(--primary-color)] text-slate-900 dark:text-zinc-50 text-center"
             >
-              MANTAP
-            </button>
+              
+              {(spinResult.value > 0 || spinResult.type === "voucher") ? (
+                <>
+                  <div className="w-20 h-20 bg-amber-400 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
+                    <Trophy size={40} className="text-black" strokeWidth={3} />
+                  </div>
+                  <h3 className="text-4xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-emerald-500">
+                    MENANG BANYAK! 🎉
+                  </h3>
+                  <p className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-6">
+                    Selamat! Akun Anda mendapatkan tambahan reward sebesar:
+                  </p>
+
+                  {spinResult.type === "voucher" ? (
+                    <div className="space-y-4 mb-6">
+                      <div className="bg-pink-400 border-4 border-black p-4 font-mono text-2xl font-black tracking-widest uppercase select-all shadow-[4px_4px_0_0_#000] inline-block -rotate-1">
+                        {spinResult.voucherCode}
+                      </div>
+                      <p className="text-[10px] font-black uppercase text-pink-500">VOUCHER DISKON RP 25.000</p>
+                      <p className="text-[11px] font-medium text-slate-600 dark:text-zinc-300 normal-case">
+                        Salin kode di atas! Voucher ini otomatis terdaftar di tab &apos;Voucher Saya&apos; halaman Rewards Anda dan siap dipakai checkout!
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(spinResult.voucherCode);
+                          toast("Kode voucher berhasil disalin!", "success");
+                        }}
+                        className="bg-amber-400 border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-wider shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all block mx-auto text-black"
+                      >
+                        SALIN KODE VOUCHER
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-amber-100 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 font-mono text-5xl font-black tracking-tighter uppercase mb-6 shadow-[4px_4px_0_0_#000] inline-block -rotate-3 text-slate-900 dark:text-amber-400">
+                        +{spinResult.value} POIN
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase mb-6">
+                        Poin otomatis masuk ke dompet Anda &amp; tercatat di buku mutasi.
+                      </p>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-20 h-20 bg-slate-300 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
+                    <HelpCircle size={40} className="text-slate-600" strokeWidth={3} />
+                  </div>
+                  <h3 className="text-4xl font-black italic -skew-x-6 uppercase tracking-tighter mb-2 text-slate-600 dark:text-zinc-400">
+                    APES DEH... 😢
+                  </h3>
+                  <p className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-500 mb-6">
+                    Yah ZONK! Hari ini Anda kurang beruntung.
+                  </p>
+                  <div className="bg-slate-100 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 font-mono text-3xl font-black tracking-tighter uppercase mb-6 shadow-[4px_4px_0_0_#000] inline-block rotate-3 text-slate-400 dark:text-zinc-500">
+                    ZONK 0 POIN
+                  </div>
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-500 uppercase mb-6">
+                    Silakan putar lagi roda keberuntungan Anda besok tengah malam!
+                  </p>
+                </>
+              )}
+
+              <button
+                onClick={() => {
+                  triggerSound(playClick);
+                  setShowSpinResultModal(false);
+                  setConfettiParticles([]);
+                }}
+                className="w-full bg-[#6D4AFF] text-white border-4 border-black py-3 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+              >
+                MANTAP
+              </button>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   Clock, CheckCircle2, XCircle, AlertCircle, HelpCircle,
@@ -394,6 +395,13 @@ export default function DailyQuizPage() {
   const activeQuestion = quizConfig?.questions[currentIdx];
   const totalQuestions = quizConfig?.questions.length || 0;
 
+  // Framer Motion variants for quiz transitions
+  const questionVariants = {
+    enter: { opacity: 0, x: 40 },
+    center: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -40 }
+  };
+
   return (
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 selection:bg-amber-400 selection:text-black ${poppins.className}`}>
       
@@ -571,54 +579,81 @@ export default function DailyQuizPage() {
               />
             </div>
 
-            {/* Question Text Box */}
-            <div className="bg-slate-50 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 shadow-[4px_4px_0_0_#000]">
-              <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">PERTANYAAN TRIVIA</label>
-              <h3 className="text-xl sm:text-2xl font-black italic uppercase -skew-x-2 tracking-tight leading-snug">
-                {activeQuestion.question}
-              </h3>
-            </div>
+            {/* Animated Question & Choices using AnimatePresence */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIdx}
+                variants={questionVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="space-y-6 w-full"
+              >
+                {/* Question Text Box */}
+                <div className="bg-slate-50 dark:bg-zinc-800 border-4 border-black dark:border-zinc-700 p-6 shadow-[4px_4px_0_0_#000]">
+                  <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">PERTANYAAN TRIVIA</label>
+                  <h3 className="text-xl sm:text-2xl font-black italic uppercase -skew-x-2 tracking-tight leading-snug">
+                    {activeQuestion.question}
+                  </h3>
+                </div>
 
-            {/* Multiple Choice Options Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {activeQuestion.options.map((option, oIdx) => {
-                const isSelected = selectedOpt === oIdx;
-                const isCorrect = activeQuestion.correctIndex === oIdx;
-                
-                let optClass = "border-4 border-black p-4 font-black uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-between text-left rounded-xl ";
-                
-                if (isAnswering) {
-                  if (isCorrect) {
-                    optClass += "bg-emerald-400 text-black border-black cursor-not-allowed";
-                  } else if (isSelected && !isCorrect) {
-                    optClass += "bg-red-500 text-white border-black cursor-not-allowed shadow-none translate-x-1 translate-y-1";
-                  } else {
-                    optClass += "bg-white dark:bg-zinc-900 text-slate-400 border-slate-300 dark:border-zinc-800 cursor-not-allowed shadow-none translate-x-1 translate-y-1";
-                  }
-                } else {
-                  optClass += "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 hover:bg-slate-50";
-                }
+                {/* Multiple Choice Options Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {activeQuestion.options.map((option, oIdx) => {
+                    const isSelected = selectedOpt === oIdx;
+                    const isCorrect = activeQuestion.correctIndex === oIdx;
+                    
+                    let optClass = "border-4 border-black p-4 font-black uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 active:translate-x-1 active:translate-y-1 active:shadow-none transition-all flex items-center justify-between text-left rounded-xl ";
+                    
+                    if (isAnswering) {
+                      if (isCorrect) {
+                        optClass += "bg-emerald-400 text-black border-black cursor-not-allowed";
+                      } else if (isSelected && !isCorrect) {
+                        optClass += "bg-red-500 text-white border-black cursor-not-allowed shadow-none translate-x-1 translate-y-1";
+                      } else {
+                        optClass += "bg-white dark:bg-zinc-900 text-slate-400 border-slate-300 dark:border-zinc-800 cursor-not-allowed shadow-none translate-x-1 translate-y-1";
+                      }
+                    } else {
+                      optClass += "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 hover:bg-slate-50";
+                    }
 
-                return (
-                  <button
-                    key={oIdx}
-                    disabled={isAnswering}
-                    onClick={() => handleSelectOption(oIdx)}
-                    className={optClass}
-                  >
-                    <span>{String.fromCharCode(65 + oIdx)}. {option}</span>
-                    {isAnswering && isCorrect && <CheckCircle2 size={16} strokeWidth={3} className="shrink-0 text-slate-950" />}
-                    {isAnswering && isSelected && !isCorrect && <XCircle size={16} strokeWidth={3} className="shrink-0 text-white" />}
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <motion.button
+                        key={oIdx}
+                        disabled={isAnswering}
+                        onClick={() => handleSelectOption(oIdx)}
+                        className={optClass}
+                        whileHover={!isAnswering ? { y: -2, x: -2, boxShadow: "6px 6px 0px 0px rgba(0,0,0,1)" } : {}}
+                        whileTap={!isAnswering ? { scale: 0.98 } : {}}
+                        animate={
+                          isAnswering && isSelected
+                            ? isCorrect
+                              ? { scale: [1, 1.05, 1], transition: { duration: 0.3 } }
+                              : { x: [0, -10, 10, -10, 10, 0], transition: { duration: 0.4 } }
+                            : {}
+                        }
+                      >
+                        <span>{String.fromCharCode(65 + oIdx)}. {option}</span>
+                        {isAnswering && isCorrect && <CheckCircle2 size={16} strokeWidth={3} className="shrink-0 text-slate-950" />}
+                        {isAnswering && isSelected && !isCorrect && <XCircle size={16} strokeWidth={3} className="shrink-0 text-white" />}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
         )}
 
         {/* 🎡 STAGE 4: FINISHED / SUMMARY SCREEN */}
         {gameState === "finished" && (
-          <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-8 shadow-[15px_15px_0_0_#000] text-center space-y-8">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-8 shadow-[15px_15px_0_0_#000] text-center space-y-8"
+          >
             
             {score === totalQuestions ? (
               <>
@@ -680,7 +715,7 @@ export default function DailyQuizPage() {
                 KEMBALI KE EXPLORE
               </Link>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

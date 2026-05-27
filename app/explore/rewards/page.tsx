@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
+import { motion } from "framer-motion";
 import { 
   Zap, Trophy, Loader2, ArrowLeft, 
   ShieldCheck, Ticket, MessageSquare, Receipt, LogOut,
@@ -389,6 +390,30 @@ export default function RewardsPage() {
     progressPercent = 100;
   }
 
+  // Framer Motion variants for staggered ledger items
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        type: "spring", 
+        stiffness: 120, 
+        damping: 14 
+      } 
+    },
+  };
+
   return (
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 selection:bg-amber-400 selection:text-black ${poppins.className}`}>
       {/* NAVBAR */}
@@ -572,7 +597,7 @@ export default function RewardsPage() {
               ].map((item, i) => {
                 const isRedeemingThis = isRedeeming === item.name;
                 return (
-                  <div key={i} className="bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_var(--primary-color)] flex justify-between items-center group text-slate-900 dark:text-zinc-50">
+                  <div key={i} className="bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_var(--primary-color)] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex justify-between items-center group text-slate-900 dark:text-zinc-50">
                     <div className="text-left">
                       <p className="text-2xl leading-none mb-1 font-black italic uppercase">{item.name}</p>
                       <p className="text-sm text-slate-400 dark:text-zinc-500 font-bold uppercase">{item.cost} POIN</p>
@@ -622,7 +647,7 @@ export default function RewardsPage() {
                     }
 
                     return (
-                      <div key={i} className={`bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] flex flex-col justify-between relative overflow-hidden text-slate-900 dark:text-zinc-50 transition-all ${isUsed ? "opacity-60 grayscale-[30%]" : ""}`}>
+                      <div key={i} className={`bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] ${isUsed ? "opacity-60 grayscale-[30%]" : "hover:shadow-[10px_10px_0_0_#000] dark:hover:shadow-[10px_10px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1"} flex flex-col justify-between relative overflow-hidden text-slate-900 dark:text-zinc-50 transition-all duration-200`}>
                         <div className={`absolute top-4 right-4 border-2 border-black dark:border-zinc-700 px-2 py-0.5 text-[9px] font-black uppercase shadow-[2px_2px_0_0_#000] ${badgeClass}`}>
                           {badgeText}
                         </div>
@@ -687,9 +712,18 @@ export default function RewardsPage() {
                 <p className="font-black italic uppercase text-xs text-slate-400 dark:text-zinc-500">MEMUAT BUKU BESAR POIN...</p>
               </div>
             ) : ledgerItems.length > 0 ? (
-              <div className="border-4 border-black dark:border-zinc-700 divide-y-4 divide-black dark:divide-zinc-700">
+              <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="border-4 border-black dark:border-zinc-700 divide-y-4 divide-black dark:divide-zinc-700"
+              >
                 {ledgerItems.map((item) => (
-                  <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors gap-2">
+                  <motion.div 
+                    variants={itemVariants}
+                    key={item.id} 
+                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors gap-2"
+                  >
                     <div className="text-left space-y-1">
                       <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
                         {new Date(item.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -705,9 +739,9 @@ export default function RewardsPage() {
                         {item.amount === 0 ? "VOUCHER 🎟️" : (item.type === "in" ? `+${item.amount} POIN` : `-${item.amount} POIN`)}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             ) : (
               <div className="border-4 border-dashed border-slate-300 dark:border-zinc-700 p-12 text-center">
                 <p className="font-black italic text-xl text-slate-300 dark:text-zinc-500 uppercase">BELUM ADA MUTASI POIN</p>
