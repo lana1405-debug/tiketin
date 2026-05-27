@@ -68,6 +68,24 @@ export default function RewardsPage() {
   // 🎟️ Voucher DB details to check USED/EXPIRED status
   const [dbVoucherDetails, setDbVoucherDetails] = useState<Record<string, { uses_count: number; max_uses: number | null; valid_to: string }>>({});
 
+  // ⚡ Animasi States
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const box = card.getBoundingClientRect();
+    const x = e.clientX - box.left - box.width / 2;
+    const y = e.clientY - box.top - box.height / 2;
+    const rotateX = -(y / (box.height / 2)) * 10;
+    const rotateY = (x / (box.width / 2)) * 10;
+    setTilt({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -494,10 +512,28 @@ export default function RewardsPage() {
           TIKETIN <span className="text-[#6D4AFF]">REWARDS.</span>
         </h1>
 
+        {/* CUSTOM SHIMMER STYLES */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes shimmer-move {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          .animate-shimmer-bar {
+            animation: shimmer-move 2.5s infinite linear;
+          }
+        `}} />
+
         {/* POIN CARD */}
-        <div className="bg-[#6D4AFF] border-8 border-black p-10 shadow-[15px_15px_0px_0px_#000] dark:shadow-[15px_15px_0px_0px_var(--primary-color)] flex flex-col sm:flex-row justify-between items-center overflow-hidden relative gap-6">
+        <motion.div 
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          animate={{ rotateX: tilt.x, rotateY: tilt.y }}
+          style={{ transformStyle: "preserve-3d", perspective: 1000 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="bg-[#6D4AFF] border-8 border-black p-10 shadow-[15px_15px_0px_0px_#000] dark:shadow-[15px_15px_0px_0px_var(--primary-color)] flex flex-col sm:flex-row justify-between items-center overflow-hidden relative gap-6 cursor-pointer"
+        >
           <Zap className="absolute -left-10 -bottom-10 text-white/10" size={250} />
-          <div className="relative z-10 text-center sm:text-left flex-1 w-full">
+          <div style={{ transform: "translateZ(20px)" }} className="relative z-10 text-center sm:text-left flex-1 w-full">
             <p className="text-white text-xl mb-2 font-black italic uppercase">POIN AKTIF ANDA:</p>
             <p className="text-7xl sm:text-9xl text-white drop-shadow-[6px_6px_0px_#000] leading-none font-black">{points.toLocaleString()}</p>
             
@@ -512,9 +548,12 @@ export default function RewardsPage() {
               <div className="w-full h-6 bg-slate-100 dark:bg-zinc-800 border-4 border-slate-900 dark:border-zinc-700 overflow-hidden relative">
                 {/* Inner Filled Bar */}
                 <div 
-                  className="h-full bg-amber-400 border-r-4 border-slate-900 transition-all duration-500 ease-out"
+                  className="h-full bg-amber-400 border-r-4 border-slate-900 transition-all duration-500 ease-out relative overflow-hidden"
                   style={{ width: `${progressPercent}%` }}
-                />
+                >
+                  {/* Shimmer Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent animate-shimmer-bar" />
+                </div>
               </div>
 
               <p className="text-[10px] sm:text-xs font-black uppercase tracking-wider mt-2.5 italic text-slate-700 dark:text-zinc-300">
@@ -528,10 +567,10 @@ export default function RewardsPage() {
               </p>
             </div>
           </div>
-          <div className="relative z-10 bg-amber-400 border-4 border-black p-4 rotate-12 shadow-[8px_8px_0px_0px_#000] shrink-0">
+          <div style={{ transform: "translateZ(40px)" }} className="relative z-10 bg-amber-400 border-4 border-black p-4 rotate-12 shadow-[8px_8px_0px_0px_#000] shrink-0">
             <Trophy size={60} strokeWidth={3} />
           </div>
-        </div>
+        </motion.div>
 
         {/* LUCKY SPIN BANNER */}
         <div className="bg-[#FF3B30] border-8 border-black p-6 sm:p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col md:flex-row justify-between items-center gap-6 -rotate-1">
@@ -660,17 +699,24 @@ export default function RewardsPage() {
                             <span className={`font-mono text-sm font-black bg-slate-100 dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 px-3 py-1 uppercase tracking-widest select-all ${isUsed ? "text-slate-500 bg-slate-50 line-through" : "text-slate-900 dark:text-zinc-100"}`}>
                               {v.code}
                             </span>
-                            <button
+                            <motion.button
                               disabled={isUsed}
                               onClick={() => {
                                 navigator.clipboard.writeText(v.code);
+                                setCopiedCode(v.code);
                                 toast("Kode disalin ke clipboard!", "success");
+                                setTimeout(() => setCopiedCode(null), 1500);
                               }}
-                              className={`bg-emerald-400 border-2 border-black dark:border-zinc-700 p-1 shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all text-slate-900 dark:text-zinc-100 ${isUsed ? "opacity-50 cursor-not-allowed shadow-none translate-x-0 translate-y-0" : ""}`}
+                              animate={copiedCode === v.code ? { scale: [1, 1.2, 1] } : {}}
+                              className={`${copiedCode === v.code ? "bg-emerald-300" : "bg-emerald-400"} border-2 border-black dark:border-zinc-700 p-1 shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all text-slate-900 dark:text-zinc-100 ${isUsed ? "opacity-50 cursor-not-allowed shadow-none translate-x-0 translate-y-0" : ""}`}
                               title="Salin Kode"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                            </button>
+                              {copiedCode === v.code ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check text-slate-950"><polyline points="20 6 9 17 4 12"/></svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                              )}
+                            </motion.button>
                           </div>
                         </div>
                         <p className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wide mt-4 pt-2 border-t-2 border-dashed border-slate-200 dark:border-zinc-700 text-left">

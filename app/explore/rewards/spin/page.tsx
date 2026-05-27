@@ -89,6 +89,10 @@ export default function LuckySpinPage() {
   const [spinHistory, setSpinHistory] = useState<SpinHistoryItem[]>([]);
   const [confettiParticles, setConfettiParticles] = useState<any[]>([]);
 
+  // ⚡ Animasi States
+  const [needleFicked, setNeedleFicked] = useState(false);
+  const [copiedSpinVoucher, setCopiedSpinVoucher] = useState(false);
+
   // 🔊 Audio states
   const [isMuted, setIsMuted] = useState(true);
   const isMutedRef = useRef(isMuted);
@@ -133,6 +137,10 @@ export default function LuckySpinPage() {
     if (!isMutedRef.current) {
       playTick();
     }
+
+    // Trigger physical needle flick
+    setNeedleFicked(true);
+    setTimeout(() => setNeedleFicked(false), 50);
 
     const progress = elapsed / 5000;
     const easeOut = progress * progress;
@@ -658,11 +666,11 @@ export default function LuckySpinPage() {
 
             {/* Static Pointer / Needle fixed at 12 o'clock */}
             <div
-              className={`absolute top-[-8px] left-[138px] w-6 h-10 z-20 pointer-events-none wiggle-pointer ${
-                isSpinning ? "animate-bounce" : ""
-              }`}
+              className="absolute top-[-8px] left-[138px] w-6 h-10 z-20 pointer-events-none"
               style={{
-                animation: isSpinning ? "spin-wiggle 0.15s infinite" : "none",
+                transformOrigin: "50% 10%",
+                transform: needleFicked ? "rotate(-18deg)" : "rotate(0deg)",
+                transition: needleFicked ? "none" : "transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
               }}
             >
               <svg viewBox="0 0 24 32" className="w-full h-full drop-shadow-[2px_2px_0px_#000]">
@@ -799,15 +807,18 @@ export default function LuckySpinPage() {
                       <p className="text-[11px] font-medium text-slate-600 dark:text-zinc-300 normal-case">
                         Salin kode di atas! Voucher ini otomatis terdaftar di tab &apos;Voucher Saya&apos; halaman Rewards Anda dan siap dipakai checkout!
                       </p>
-                      <button
+                      <motion.button
                         onClick={() => {
                           navigator.clipboard.writeText(spinResult.voucherCode);
+                          setCopiedSpinVoucher(true);
                           toast("Kode voucher berhasil disalin!", "success");
+                          setTimeout(() => setCopiedSpinVoucher(false), 1500);
                         }}
-                        className="bg-amber-400 border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-wider shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all block mx-auto text-black"
+                        animate={copiedSpinVoucher ? { scale: [1, 1.1, 1] } : {}}
+                        className={`${copiedSpinVoucher ? "bg-emerald-400" : "bg-amber-400"} border-2 border-black px-4 py-2 text-xs font-black uppercase tracking-wider shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all block mx-auto text-black`}
                       >
-                        SALIN KODE VOUCHER
-                      </button>
+                        {copiedSpinVoucher ? "BERHASIL DISALIN! ✓" : "SALIN KODE VOUCHER"}
+                      </motion.button>
                     </div>
                   ) : (
                     <>
