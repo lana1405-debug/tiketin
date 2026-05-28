@@ -5,6 +5,7 @@ import "./globals.css";
 // ⚡ 1. Import ThemeProvider yang baru saja kita buat
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/ui/toast-brutal";
+import { AccentColorInit } from "@/components/AccentColorInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ToastProvider>
+            <AccentColorInit />
             {children}
             <script
               dangerouslySetInnerHTML={{

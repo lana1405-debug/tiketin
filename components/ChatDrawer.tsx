@@ -83,74 +83,101 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
   }, [eventId, getLocalMessages]);
 
   // Load messages from Supabase or localStorage fallback
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (quiet = false) => {
     if (!eventId) return;
-    setIsLoading(true);
+    if (!quiet) setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("event_chats")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("created_at", { ascending: true });
+        .from("site_settings")
+        .select("value")
+        .eq("key", `chat_messages_${eventId}`)
+        .maybeSingle();
 
       if (error) {
-        // Table doesn't exist or RLS issues, fall back to mock
-        console.warn("Supabase event_chats error, switching to Mock Local Storage:", error.message);
-        setUseMock(true);
-        setMessages(getLocalMessages());
-      } else if (data) {
+        if (!quiet) {
+          console.warn("Supabase site_settings error, switching to Mock Local Storage:", error.message);
+          setUseMock(true);
+          setMessages(getLocalMessages());
+        }
+      } else if (data && data.value) {
         setUseMock(false);
-        setMessages(data as ChatMessage[]);
+        const newChats = data.value as ChatMessage[];
+        setMessages((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(newChats)) return prev;
+          // Smooth scroll to bottom on new messages
+          setTimeout(() => {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 50);
+          return newChats;
+        });
+      } else {
+        setUseMock(false);
+        setMessages([]);
       }
     } catch (err) {
-      console.warn("Failed to fetch from supabase, fallback to local storage:", err);
-      setUseMock(true);
-      setMessages(getLocalMessages());
+      if (!quiet) {
+        console.warn("Failed to fetch from supabase, fallback to local storage:", err);
+        setUseMock(true);
+        setMessages(getLocalMessages());
+      }
     } finally {
-      setIsLoading(false);
-      scrollToBottom();
+      if (!quiet) {
+        setIsLoading(false);
+        scrollToBottom();
+      }
     }
   }, [eventId, getLocalMessages]);
 
-  // Real-time subscription setup
+  // Real-time subscription & polling setup
   useEffect(() => {
-    if (!isOpen || !eventId || useMock) return;
+    if (!isOpen || !eventId) return;
 
     fetchMessages();
 
-    // Subscribe to new insert messages
-    const channel = supabase
-      .channel(`event_chats_${eventId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "event_chats",
-          filter: `event_id=eq.${eventId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as ChatMessage;
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
-          scrollToBottom();
-        }
-      )
-      .subscribe();
+    // 1. Subscribe to all changes (INSERT, UPDATE, DELETE) on site_settings
+    let channel: any = null;
+    if (!useMock) {
+      channel = supabase
+        .channel(`chat_messages_${eventId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "site_settings",
+            filter: `key=eq.chat_messages_${eventId}`,
+          },
+          (payload) => {
+            if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+              const newValue = payload.new?.value;
+              if (Array.isArray(newValue)) {
+                const newChats = newValue as ChatMessage[];
+                setMessages((prev) => {
+                  if (JSON.stringify(prev) === JSON.stringify(newChats)) return prev;
+                  return newChats;
+                });
+                scrollToBottom();
+              }
+            } else if (payload.eventType === "DELETE") {
+              setMessages([]);
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    // 2. Polling Fallback (Guaranteed sync every 2.5 seconds)
+    const pollInterval = setInterval(() => {
+      fetchMessages(true);
+    }, 2500);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      clearInterval(pollInterval);
     };
   }, [isOpen, eventId, useMock, fetchMessages]);
-
-  // Refresh messages on open
-  useEffect(() => {
-    if (isOpen) {
-      fetchMessages();
-    }
-  }, [isOpen, fetchMessages]);
 
 
 
@@ -162,40 +189,53 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
 
     setIsSending(true);
 
-    const messagePayload = {
+    const messagePayload: ChatMessage = {
+      id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       event_id: eventId,
       user_id: userProfile.id,
       user_name: userProfile.full_name,
       avatar_url: userProfile.avatar_url || "",
       message: rawContent,
       type: type,
+      created_at: new Date().toISOString(),
     };
 
     if (useMock) {
       // Local Storage Mock logic
-      const localMsg: ChatMessage = {
-        id: `mock-${Date.now()}-${Math.random()}`,
-        ...messagePayload,
-        created_at: new Date().toISOString(),
-      };
-      saveLocalMessage(localMsg);
+      saveLocalMessage(messagePayload);
       setInputValue("");
       setIsSending(false);
     } else {
       try {
-        const { error } = await supabase.from("event_chats").insert([messagePayload]);
-        if (error) {
-          // If insert fails due to missing table/policy, write to mock
-          console.warn("Supabase insert failed, logging to Local Storage instead:", error.message);
-          setUseMock(true);
-          const localMsg: ChatMessage = {
-            id: `mock-${Date.now()}-${Math.random()}`,
-            ...messagePayload,
-            created_at: new Date().toISOString(),
-          };
-          saveLocalMessage(localMsg);
+        // Fetch current array
+        const { data } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", `chat_messages_${eventId}`)
+          .maybeSingle();
+
+        const currentChats = data && Array.isArray(data.value) ? data.value : [];
+        const updatedChats = [...currentChats, messagePayload];
+
+        // Limit history to 150 messages
+        if (updatedChats.length > 150) {
+          updatedChats.shift();
         }
-        setInputValue("");
+
+        const { error } = await supabase
+          .from("site_settings")
+          .upsert({
+            key: `chat_messages_${eventId}`,
+            value: updatedChats,
+          });
+
+        if (error) {
+          console.warn("Supabase upsert failed, logging to Local Storage instead:", error.message);
+          setUseMock(true);
+          saveLocalMessage(messagePayload);
+        } else {
+          setInputValue("");
+        }
       } catch (err) {
         console.warn("Supabase error inserting message:", err);
       } finally {

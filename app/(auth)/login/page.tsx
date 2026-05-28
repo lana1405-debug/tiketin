@@ -7,6 +7,8 @@ import { Poppins } from "next/font/google";
 import { Mail, Lock, Eye, EyeOff, Ticket, Star, Loader2, ArrowRight, Ticket as TicketIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccentColorPicker, useAccentColor } from "@/components/AccentColorPicker";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -63,6 +65,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  useAccentColor();
 
   useEffect(() => {
     const tag = document.createElement("style");
@@ -90,7 +93,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 ${poppins.className} noise`}>
+    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 ${poppins.className} noise relative`}>
+      {/* 🌙 THEME & COLOR CONTROLS */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+        <AccentColorPicker />
+        <ThemeToggle />
+      </div>
       <div className="flex flex-col lg:flex-row min-h-screen w-full">
         
         {/* PANEL ILUSTRASI (Muncul di ATAS saat di HP) */}

@@ -9,6 +9,8 @@ import { Poppins } from "next/font/google";
 import { motion } from "framer-motion"; 
 import { Mail, Lock, User, Eye, EyeOff, Loader2, Sparkles, ArrowRight, Mic2, Ticket as TicketIcon, ShieldCheck, Send } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccentColorPicker, useAccentColor } from "@/components/AccentColorPicker";
 
 const poppins = Poppins({ 
   subsets: ["latin"], 
@@ -72,6 +74,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   const [isVerifying, setIsVerifying] = useState(false);
+  useAccentColor();
 
   useEffect(() => {
     const tag = document.createElement("style");
@@ -131,7 +134,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 flex ${poppins.className} noise overflow-hidden text-slate-900 dark:text-zinc-50`}>
+    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 flex ${poppins.className} noise overflow-hidden text-slate-900 dark:text-zinc-50 relative`}>
+      {/* 🌙 THEME & COLOR CONTROLS */}
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+        <AccentColorPicker />
+        <ThemeToggle />
+      </div>
       <div className="flex flex-col lg:flex-row-reverse w-full min-h-screen">
         
         <aside className="w-full lg:w-1/2 h-[240px] sm:h-[320px] lg:h-auto shrink-0">

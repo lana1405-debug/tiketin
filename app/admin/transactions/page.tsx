@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -18,6 +18,7 @@ const poppins = Poppins({
 export default function GlobalTransactionsPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [activeCategory, setActiveCategory] = useState<'all' | 'ticket_success' | 'ticket_pending' | 'ticket_cancel' | 'boosted'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -78,6 +79,31 @@ export default function GlobalTransactionsPage() {
     .reduce((acc, curr) => acc + (curr.total_qty || 0), 0);
   const ticketsPending = transactions.filter(t => getStatus(t) === 'pending').length;
   const ticketsExpired = transactions.filter(t => isExpired(getStatus(t))).length;
+
+  // Counts for each tab category
+  const countAll = transactions.length;
+  const countBoosted = transactions.filter(t => t.order_id?.startsWith('BOOST-')).length;
+  const countTicketSuccess = transactions.filter(t => !t.order_id?.startsWith('BOOST-') && getStatus(t) === 'paid').length;
+  const countTicketPending = transactions.filter(t => !t.order_id?.startsWith('BOOST-') && getStatus(t) === 'pending').length;
+  const countTicketCancel = transactions.filter(t => !t.order_id?.startsWith('BOOST-') && ['expired', 'failed', 'cancel', 'expire'].includes(getStatus(t))).length;
+
+  const filteredTransactions = transactions.filter((t) => {
+    const isBoost = t.order_id?.startsWith('BOOST-');
+    const status = getStatus(t);
+    
+    if (activeCategory === 'all') return true;
+    if (activeCategory === 'boosted') return isBoost;
+    
+    // Non-boosted ticket filters
+    if (isBoost) return false;
+    
+    if (activeCategory === 'ticket_success') return status === 'paid';
+    if (activeCategory === 'ticket_pending') return status === 'pending';
+    if (activeCategory === 'ticket_cancel') {
+      return ['expired', 'failed', 'cancel', 'expire'].includes(status);
+    }
+    return true;
+  });
 
   if (!mounted) return null;
 
@@ -155,6 +181,64 @@ export default function GlobalTransactionsPage() {
           </div>
         </div>
 
+        {/* CATEGORY FILTER TABS */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setActiveCategory("all")}
+            className={`px-4 py-2 border-4 border-black font-black uppercase italic text-xs shadow-[4px_4px_0_0_#000] hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-none transition-all flex items-center gap-2 ${
+              activeCategory === "all"
+                ? "bg-black text-white"
+                : "bg-white text-black hover:bg-slate-100"
+            }`}
+          >
+            📋 Semua ({countAll})
+          </button>
+          
+          <button
+            onClick={() => setActiveCategory("ticket_success")}
+            className={`px-4 py-2 border-4 border-black font-black uppercase italic text-xs shadow-[4px_4px_0_0_#000] hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-none transition-all flex items-center gap-2 ${
+              activeCategory === "ticket_success"
+                ? "bg-emerald-400 text-black"
+                : "bg-white text-black hover:bg-emerald-50"
+            }`}
+          >
+            ✅ Tiket Sukses ({countTicketSuccess})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory("ticket_pending")}
+            className={`px-4 py-2 border-4 border-black font-black uppercase italic text-xs shadow-[4px_4px_0_0_#000] hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-none transition-all flex items-center gap-2 ${
+              activeCategory === "ticket_pending"
+                ? "bg-amber-400 text-black"
+                : "bg-white text-black hover:bg-amber-50"
+            }`}
+          >
+            ⏳ Tiket Pending ({countTicketPending})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory("ticket_cancel")}
+            className={`px-4 py-2 border-4 border-black font-black uppercase italic text-xs shadow-[4px_4px_0_0_#000] hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-none transition-all flex items-center gap-2 ${
+              activeCategory === "ticket_cancel"
+                ? "bg-red-500 text-white"
+                : "bg-white text-black hover:bg-red-50"
+            }`}
+          >
+            ❌ Batal/Hangus ({countTicketCancel})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory("boosted")}
+            className={`px-4 py-2 border-4 border-black font-black uppercase italic text-xs shadow-[4px_4px_0_0_#000] hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-none transition-all flex items-center gap-2 ${
+              activeCategory === "boosted"
+                ? "bg-[#6D4AFF] text-white"
+                : "bg-white text-black hover:bg-purple-50"
+            }`}
+          >
+            ⚡ Boosted Event ({countBoosted})
+          </button>
+        </div>
+
         {/* TABEL TRANSAKSI */}
         <div className="bg-white border-8 border-black shadow-[15px_15px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
           <div className="bg-black p-6 flex justify-between items-center border-b-8 border-black">
@@ -177,10 +261,10 @@ export default function GlobalTransactionsPage() {
               <tbody className="divide-y-4 divide-black">
                 {isLoading ? (
                   <tr><td colSpan={4} className="p-24 text-center font-black italic text-2xl uppercase tracking-widest text-[#6D4AFF] animate-pulse">Scanning Ledgers...</td></tr>
-                ) : transactions.length === 0 ? (
-                  <tr><td colSpan={4} className="p-24 text-center text-slate-300 font-black uppercase italic">Belum Ada Transaksi Masuk Man.</td></tr>
+                ) : filteredTransactions.length === 0 ? (
+                  <tr><td colSpan={4} className="p-24 text-center text-slate-300 font-black uppercase italic">Belum Ada Transaksi Kategori Ini.</td></tr>
                 ) : (
-                  transactions.map((t) => {
+                  filteredTransactions.map((t) => {
                     const price = getPrice(t);
                     const status = getStatus(t);
                     const success = isSuccess(status);
@@ -193,8 +277,17 @@ export default function GlobalTransactionsPage() {
                               <CreditCard size={20} />
                             </div>
                             <div>
-                              <span className="font-black text-lg italic uppercase block leading-none">{t.profiles?.full_name || 'Guest User'}</span>
-                              <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase italic tracking-tighter">Event: {t.events?.title || 'Unknown Stage'}</span>
+                              <span className="font-black text-lg italic uppercase block leading-none">
+                                {t.profiles?.full_name || 'Guest User'}
+                                {t.order_id?.startsWith('BOOST-') && (
+                                  <span className="ml-2 bg-[#6D4AFF] text-white border border-black px-1.5 py-0.5 text-[8px] font-black uppercase italic shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                                    ⚡ BOOST
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase italic tracking-tighter">
+                                {t.order_id?.startsWith('BOOST-') ? `Layanan: Boost Event (${t.events?.title || 'Unknown Stage'})` : `Event: ${t.events?.title || 'Unknown Stage'}`}
+                              </span>
                             </div>
                           </div>
                         </td>

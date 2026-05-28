@@ -116,6 +116,12 @@ export default function EODashboard() {
   const [withdrawForm, setWithdrawForm] = useState({ bank_name: "", account_number: "", account_name: "" });
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   
+  // ⚡ STATE BOOST PROMO MODAL
+  const [isBoostModalOpen, setIsBoostModalOpen] = useState(false);
+  const [boostEvent, setBoostEvent] = useState<any>(null);
+  const [activeBoostSlotsCount, setActiveBoostSlotsCount] = useState(0);
+  const [isSubmittingBoost, setIsSubmittingBoost] = useState(false);
+  
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -186,6 +192,20 @@ export default function EODashboard() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Termasuk hari H
     return diffDays;
   };
+
+  useEffect(() => {
+    const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
+    const script = document.createElement("script");
+    script.src = snapScript;
+    script.setAttribute("data-client-key", clientKey);
+    script.async = true;
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -307,6 +327,141 @@ export default function EODashboard() {
     }
   };
 
+  const openBoostModal = async (event: any) => {
+    if (event.date < today) {
+      toast("⚠️ Event yang sudah selesai tidak dapat di-boost!", "warning");
+      return;
+    }
+    setBoostEvent(event);
+    setIsBoostModalOpen(true);
+    try {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "boosted_events")
+        .single();
+      if (data && Array.isArray(data.value)) {
+        const activeCount = data.value.filter((b: any) => new Date(b.boosted_until) >= new Date()).length;
+        setActiveBoostSlotsCount(activeCount);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil count slot boost:", err);
+    }
+  };
+
+  const handleBoostSubmit = async () => {
+    if (!boostEvent) return;
+    setIsSubmittingBoost(true);
+    try {
+      // 1. Cek slot boost aktif terlebih dahulu
+      const { data: currentSetting } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "boosted_events")
+        .single();
+
+      let currentList = [];
+      if (currentSetting && Array.isArray(currentSetting.value)) {
+        currentList = currentSetting.value.filter((b: any) => new Date(b.boosted_until) >= new Date());
+      }
+
+      if (currentList.length >= 10) {
+        toast("⚠️ Maaf, slot boost penuh! Maksimal 10 event dalam 3 hari. Coba lagi nanti!", "warning");
+        setIsBoostModalOpen(false);
+        return;
+      }
+
+      if (currentList.some((b: any) => b.event_id === boostEvent.id)) {
+        toast("🔥 Event ini sudah dalam masa boost aktif!", "warning");
+        setIsBoostModalOpen(false);
+        return;
+      }
+
+      // 2. Ambil data sesi pengguna untuk email EO
+      const { data: { session } } = await supabase.auth.getSession();
+      const email = session?.user?.email || "organizer@tiketin.com";
+
+      // 3. Buat order_id unik untuk boost
+      const orderId = `BOOST-INV-${Date.now().toString().slice(-6)}`;
+
+      // 4. Panggil API backend untuk buat transaksi Midtrans
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          gross_amount: 1000000, // Rp 1.000.000 flat
+          first_name: eoName || "Organizer",
+          email: email,
+          item_name: `Boost Event: ${boostEvent.title}`,
+          item_id: boostEvent.id,
+          quantity: 1
+        })
+      });
+
+      const data = await response.json();
+      if (!data.token) throw new Error(data.error || "Gagal mendapatkan token pembayaran dari Midtrans!");
+
+      // 5. Simpan transaksi pending ke database
+      const { error: txError } = await supabase
+        .from("transaksi")
+        .insert({
+          user_id: eoId,
+          order_id: orderId,
+          total_qty: 1,
+          total_bayar: 1000000,
+          status_pembayaran: "pending",
+          snap_token: data.token,
+          event_id: boostEvent.id,
+          category_id: null // category_id null mengindikasikan transaksi boost
+        });
+
+      if (txError) throw txError;
+
+      // 6. Jalankan Midtrans Snap Payment
+      // @ts-ignore
+      if (typeof window !== "undefined" && window.snap) {
+        // @ts-ignore
+        window.snap.pay(data.token, {
+          onSuccess: async function (result: any) {
+            try {
+              await fetch("/api/payment/status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ order_id: orderId })
+              });
+              toast("Pembayaran boost berhasil! Event Anda sekarang aktif di slider depan. 🔥", "success", 4000);
+              setIsBoostModalOpen(false);
+              if (eoId) fetchMyEvents(eoId);
+            } catch (err) {
+              console.error("Gagal sinkron status pembayaran:", err);
+              toast("Sistem sedang memproses aktivasi boost Anda, cek secara berkala!", "warning");
+              setIsBoostModalOpen(false);
+              if (eoId) fetchMyEvents(eoId);
+            }
+          },
+          onPending: () => {
+            toast("Pembayaran tertunda — silakan selesaikan pembayaran Anda!", "warning");
+            setIsBoostModalOpen(false);
+          },
+          onError: () => {
+            toast("Pembayaran gagal! Silakan coba lagi.", "error");
+            setIsSubmittingBoost(false);
+          },
+          onClose: () => {
+            setIsSubmittingBoost(false);
+          }
+        });
+      } else {
+        throw new Error("Midtrans SDK tidak termuat dengan benar!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast("Gagal memproses pembayaran boost: " + err.message, "error");
+      setIsSubmittingBoost(false);
+    }
+  };
+
   const fetchSalesAnalytics = async (eventIds: string[]) => {
     if (eventIds.length === 0) {
       setAnalyticsDaily([]);
@@ -357,6 +512,21 @@ export default function EODashboard() {
 
   const fetchMyEvents = async (id: string) => {
     setIsLoading(true);
+
+    let boostedEventIds: string[] = [];
+    try {
+      const { data: boostedSetting } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "boosted_events")
+        .single();
+      if (boostedSetting && Array.isArray(boostedSetting.value)) {
+        boostedEventIds = boostedSetting.value.filter((b: any) => new Date(b.boosted_until) >= new Date()).map((b: any) => b.event_id);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil boosted_events:", err);
+    }
+
     const { data: eventData } = await supabase.from("events").select("*").eq("organizer_id", id).order("created_at", { ascending: false });
     const { data: withdrawData } = await supabase.from("withdrawals").select("event_id, status, net_amount, receipt_url").eq("organizer_id", id);
     
@@ -392,7 +562,11 @@ export default function EODashboard() {
         setTotalRevenue(totalRev);
         setTierStats(Object.values(tStats));
       }
-      setEvents(eventData.map(e => ({ ...e, revenue: eventRevenues[e.id] || 0 })));
+      setEvents(eventData.map(e => ({
+        ...e,
+        revenue: eventRevenues[e.id] || 0,
+        isBoosted: boostedEventIds.includes(e.id)
+      })));
       
       // Fetch vouchers, reviews, and analytics
       fetchVouchers(eventIds);
@@ -1049,18 +1223,22 @@ export default function EODashboard() {
                     <tbody className="divide-y-4 divide-black">
                       {isLoading ? <tr><td colSpan={3} className="p-24 text-center font-black italic text-2xl uppercase tracking-widest text-[#6D4AFF] animate-pulse">Syncing Database...</td></tr> : events.map((event) => {
                         const wStatus = withdrawals[event.id];
+                        const isFinished = event.date < today;
                         return (
                           <tr key={event.id} className="hover:bg-amber-50 transition-colors">
                             <td className="p-6 border-r-4 border-black text-left">
                               <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 bg-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] overflow-hidden shrink-0">
-                                   {event.image_url ? <img src={event.image_url} className="w-full h-full object-cover" alt="Poster" /> : <ImageIcon size={20} className="m-auto mt-5 text-slate-300" />}
+                                     {event.image_url ? <img src={event.image_url} className="w-full h-full object-cover" alt="Poster" /> : <ImageIcon size={20} className="m-auto mt-5 text-slate-300" />}
                                 </div>
                                 <div>
                                   <span className="font-black text-lg uppercase italic -skew-x-3 block leading-none mb-1 line-clamp-1">{event.title}</span>
                                   <div className="flex flex-wrap gap-2 mt-2">
                                     <span className={`text-[8px] font-black px-2 py-0.5 border border-black uppercase italic ${event.status === 'approved' ? 'bg-emerald-400' : 'bg-amber-400'}`}>{event.status}</span>
                                     <span className="text-[8px] font-black px-2 py-0.5 border border-black uppercase italic bg-black text-white">{event.category || 'EVENT'}</span>
+                                    {isFinished && (
+                                      <span className="text-[8px] font-black px-2 py-0.5 border border-black uppercase italic bg-slate-500 text-white shadow-[2px_2px_0_0_#000]">SELESAI</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1097,16 +1275,33 @@ export default function EODashboard() {
                                 {event.revenue > 0 && !wStatus?.status && (
                                   <button onClick={() => openWithdrawModal(event)} className="w-full bg-emerald-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><HandCoins size={14} /> Cairkan Cuan</button>
                                 )}
-                                {event.status === 'approved' && (
-                                  <div className="flex flex-col gap-2 w-full">
-                                    <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
+                                {isFinished ? (
+                                  event.status === 'approved' && (
                                     <button onClick={() => window.open(`/eo/dashboard/gate-analytics/${event.id}`, '_blank')} className="w-full bg-cyan-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><Activity size={14} /> Gate Live</button>
-                                  </div>
+                                  )
+                                ) : (
+                                  <>
+                                    {event.status === 'approved' && (
+                                      <div className="flex flex-col gap-2 w-full">
+                                        <button onClick={() => window.open(`/gate/${event.id}`, '_blank')} className="w-full bg-amber-400 border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><QrCode size={14} /> Scanner</button>
+                                        <button onClick={() => window.open(`/eo/dashboard/gate-analytics/${event.id}`, '_blank')} className="w-full bg-cyan-400 text-black border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2"><Activity size={14} /> Gate Live</button>
+                                        {event.isBoosted ? (
+                                          <span className="w-full bg-red-500 text-white border-2 border-black p-2 font-black italic uppercase text-[8px] shadow-[2px_2px_0_0_#000] flex items-center justify-center gap-1.5 animate-pulse">
+                                            <Zap size={10} fill="currentColor" className="text-amber-300" /> BOOST AKTIF ⚡
+                                          </span>
+                                        ) : (
+                                          <button onClick={() => openBoostModal(event)} className="w-full bg-red-500 text-white border-2 border-black p-2 font-black italic uppercase text-[9px] shadow-[2px_2px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                                            <Zap size={14} fill="currentColor" className="text-amber-300 animate-pulse" /> Boost Promo
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="flex gap-2 text-black w-full">
+                                      <button onClick={() => openEditModal(event)} className="flex-1 bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Edit2 size={14} strokeWidth={3} /></button>
+                                      <button onClick={() => { if(confirm("Hapus?")) supabase.from("events").delete().eq("id", event.id).then(() => fetchMyEvents(eoId!)) }} className="flex-1 bg-white border-2 border-black p-2 text-red-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Trash2 size={14} strokeWidth={3} /></button>
+                                    </div>
+                                  </>
                                 )}
-                                <div className="flex gap-2 text-black w-full">
-                                  <button onClick={() => openEditModal(event)} className="flex-1 bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Edit2 size={14} strokeWidth={3} /></button>
-                                  <button onClick={() => { if(confirm("Hapus?")) supabase.from("events").delete().eq("id", event.id).then(() => fetchMyEvents(eoId!)) }} className="flex-1 bg-white border-2 border-black p-2 text-red-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all flex justify-center"><Trash2 size={14} strokeWidth={3} /></button>
-                                </div>
                               </div>
                             </td>
                           </tr>
@@ -1727,6 +1922,81 @@ export default function EODashboard() {
               </div>
               <div className="flex flex-col sm:flex-row gap-6 pt-4"><button type="button" onClick={closeModal} className="flex-1 py-5 bg-white border-4 border-black font-black uppercase italic text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:bg-slate-50 transition-all">Batal</button><button type="submit" disabled={isSubmitting} className="flex-[2] py-5 bg-[#6D4AFF] text-white border-4 border-black font-black uppercase italic text-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-2 transition-all flex items-center justify-center">{isSubmitting ? <><Loader2 className="animate-spin mr-2"/> SENDING...</> : (editingEventId ? "SIMPAN PERUBAHAN" : "KIRIM PENGAJUAN EVENT")}</button></div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ⚡ MODAL BOOST PROMO */}
+      {isBoostModalOpen && boostEvent && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] text-black">
+          <div className="bg-white border-8 border-black p-8 md:p-12 w-full max-w-xl shadow-[20px_20px_0px_0px_#EF4444] relative max-h-[95vh] overflow-y-auto text-left">
+            <button onClick={() => setIsBoostModalOpen(false)} className="absolute top-6 right-6 p-2 border-4 border-black hover:bg-red-500 bg-white"><X size={24} strokeWidth={4} /></button>
+            <div className="flex items-center gap-4 mb-8 text-left">
+              <div className="bg-red-500 text-white p-3 border-4 border-black shadow-[4px_4px_0_0_#000]">
+                <Zap size={32} fill="currentColor" className="text-amber-300" />
+              </div>
+              <div>
+                <h2 className="text-4xl font-black italic uppercase -skew-x-6 tracking-tighter leading-none">
+                  BOOST <span className="text-red-500">PROMO.</span>
+                </h2>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  Event: {boostEvent.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 border-4 border-black p-6 bg-slate-100 mb-6">
+              <div className="flex justify-between items-center text-xs font-black uppercase italic">
+                <span>DURASI TAMPIL</span>
+                <span className="text-red-500 bg-red-100 px-2 py-0.5 border border-red-500">3 HARI (72 JAM)</span>
+              </div>
+              <div className="flex justify-between items-center text-xs font-black uppercase italic">
+                <span>SLOT CAROUSEL</span>
+                <span className="bg-amber-100 text-amber-600 px-2 py-0.5 border border-amber-500">
+                  {activeBoostSlotsCount} / 10 SLOT TERISI
+                </span>
+              </div>
+              <div className="border-t-2 border-dashed border-slate-300 pt-3 flex justify-between items-center">
+                <span className="font-black text-sm uppercase italic">BIAYA BOOST</span>
+                <span className="text-2xl font-black italic tracking-tighter text-[#6D4AFF]">Rp 1.000.000</span>
+              </div>
+            </div>
+
+            <div className="bg-amber-100 border-4 border-black p-4 text-xs font-bold text-slate-700 italic space-y-2 mb-8">
+              <p>⚠️ SYARAT & KETENTUAN:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>Event Anda akan diprioritaskan tampil di slider Hero Carousel halaman depan Explore.</li>
+                <li>Maksimal 10 event yang di-boost secara bersamaan untuk menjaga keadilan promosi.</li>
+                <li>Masa promo aktif terhitung langsung sejak pembayaran berhasil dikonfirmasi.</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setIsBoostModalOpen(false)}
+                className="px-6 py-4 bg-white border-4 border-black font-black uppercase italic shadow-[4px_4px_0_0_#000] hover:bg-slate-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleBoostSubmit}
+                disabled={isSubmittingBoost || activeBoostSlotsCount >= 10}
+                className="flex-1 py-4 bg-red-500 text-white border-4 border-black font-black uppercase italic shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:border-slate-400"
+              >
+                {isSubmittingBoost ? (
+                  "MEMPROSES..."
+                ) : activeBoostSlotsCount >= 10 ? (
+                  "SLOT PENUH (10/10)"
+                ) : (
+                  <>
+                    <Zap size={14} fill="currentColor" className="text-amber-300 animate-pulse" />
+                    BAYAR & AKTIFKAN ⚡
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

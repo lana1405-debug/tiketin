@@ -52,6 +52,7 @@ export async function POST(request: Request) {
         id,
         order_id,
         total_qty,
+        total_bayar,
         event_id,
         category_id,
         status_pembayaran,
@@ -71,6 +72,79 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: true, 
         message: 'Transaksi sudah diproses sebelumnya' 
+      });
+    }
+
+    // ⚡ DETEKSI TRANSAKSI BOOST EVENT
+    const isBoostPayment = order_id.startsWith('BOOST-') || txData.category_id === null;
+
+    if (isBoostPayment) {
+      // 1. Update status transaksi menjadi paid
+      const { error: updateTxError } = await supabase
+        .from('transaksi')
+        .update({ status_pembayaran: 'paid' })
+        .eq('id', txData.id);
+
+      if (updateTxError) {
+        console.error('Webhook: Gagal memperbarui status transaksi boost:', updateTxError);
+        throw new Error('Gagal memperbarui status transaksi boost');
+      }
+
+      // 2. Logika Aktivasi Boost di site_settings
+      try {
+        const boostedAt = new Date();
+        const boostedUntil = new Date(boostedAt.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 hari aktif
+
+        const { data: currentSetting } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "boosted_events")
+          .single();
+
+        let currentList = [];
+        if (currentSetting && Array.isArray(currentSetting.value)) {
+          currentList = currentSetting.value.filter((b: any) => new Date(b.boosted_until) >= new Date());
+        }
+
+        if (!currentList.some((b: any) => b.event_id === txData.event_id)) {
+          const newBoost = {
+            event_id: txData.event_id,
+            boosted_at: boostedAt.toISOString(),
+            boosted_until: boostedUntil.toISOString(),
+            price_paid: txData.total_bayar
+          };
+          const updatedList = [...currentList, newBoost];
+
+          const { error: upsertError } = await supabase
+            .from("site_settings")
+            .upsert({ key: "boosted_events", value: updatedList });
+            
+          if (upsertError) throw upsertError;
+        }
+
+        // 3. Kirim Notifikasi ke EO
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('title')
+          .eq('id', txData.event_id)
+          .single();
+        const eventTitle = eventData?.title || 'Event Anda';
+
+        await supabase.from("notifications").insert({
+          user_id: txData.user_id,
+          title: "Event Boost Aktif! ⚡",
+          message: `Pembayaran Rp ${Number(txData.total_bayar).toLocaleString('id-ID')} berhasil. Event "${eventTitle}" berhasil di-boost selama 3 hari.`,
+          type: "success",
+          is_read: false
+        });
+
+      } catch (boostError) {
+        console.error('Webhook: Gagal mengaktifkan boost event:', boostError);
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Pembayaran Boost berhasil diproses' 
       });
     }
 

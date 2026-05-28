@@ -58,6 +58,7 @@ interface Event {
   avgRating?: number;
   totalReviews?: number;
   hasVoucher?: boolean;
+  isBoosted?: boolean;
   profiles?: {
     full_name: string;
     eo_name: string | null;
@@ -404,6 +405,11 @@ function TiltEventCard({
         })()}
         <div className="absolute top-4 left-4 z-30 flex flex-col gap-2 items-start">
           <CategoryBadge category={event.category} />
+          {event.isBoosted && (
+            <span className="bg-red-500 text-white border-2 border-slate-900 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] flex items-center gap-1 animate-pulse">
+              <Zap size={10} fill="white" strokeWidth={3} /> SPONSORED
+            </span>
+          )}
           {event.hasVoucher && (
             <span className="bg-[#FF6B6B] text-white border-2 border-slate-900 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] animate-pulse flex items-center gap-1">
               <Zap size={10} fill="white" strokeWidth={3} /> PROMO VOUCHER
@@ -584,6 +590,8 @@ export default function ExplorePage() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [sortBy, setSortBy] = useState("NEWEST");
   const [visibleCount, setVisibleCount] = useState(6);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [visiblePastCount, setVisiblePastCount] = useState(6);
 
   const [selectedEventDetails, setSelectedEventDetails] = useState<Event | null>(null);
   const [eventTiers, setEventTiers] = useState<any[]>([]);
@@ -741,6 +749,23 @@ export default function ExplorePage() {
       console.warn("Gagal mengambil daftar tiket user:", err);
     }
 
+    let boostedEventIds: string[] = [];
+    try {
+      const { data: boostedSetting } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "boosted_events")
+        .single();
+      if (boostedSetting && Array.isArray(boostedSetting.value)) {
+        const activeBoosts = boostedSetting.value.filter((b: any) => {
+          return new Date(b.boosted_until) >= new Date();
+        });
+        boostedEventIds = activeBoosts.map((b: any) => b.event_id);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil boosted_events:", err);
+    }
+
     const { data: eventData } = await supabase
       .from("events")
       .select("*, ticket_categories(stock), reviews(rating), vouchers(*), profiles:organizer_id(full_name, eo_name, verification_status)")
@@ -761,16 +786,21 @@ export default function ExplorePage() {
           return isValidTo && hasRemainingUses;
         }) || [];
         const hasVoucher = activeVouchers.length > 0;
+        const isBoosted = boostedEventIds.includes(ev.id);
         return {
           ...ev,
           totalRemainingStock,
           avgRating,
           totalReviews,
-          hasVoucher
+          hasVoucher,
+          isBoosted
         };
       });
       setEvents(formattedEvents);
-      setHeroEvents(formattedEvents.slice(0, 3));
+
+      // Set heroEvents to contain ONLY boosted events
+      const boostedList = formattedEvents.filter((ev: any) => ev.isBoosted);
+      setHeroEvents(boostedList);
     }
 
     try {
@@ -870,6 +900,40 @@ export default function ExplorePage() {
   };
 
   let processedEvents = events.filter((event) => {
+    // ⚡ Disappear from main page after 2 days of completion
+    const eventDateVal = event.end_date || event.date;
+    let endedMoreThan2DaysAgo = false;
+    if (eventDateVal) {
+      const eventDate = new Date(eventDateVal);
+      eventDate.setHours(0, 0, 0, 0);
+      const limitDate = new Date(eventDate.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const todayDate = new Date(today);
+      todayDate.setHours(0, 0, 0, 0);
+      endedMoreThan2DaysAgo = todayDate > limitDate;
+    }
+
+    if (endedMoreThan2DaysAgo) {
+      return false;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = (
+      event.title?.toLowerCase().includes(query) ||
+      event.location?.toLowerCase().includes(query) ||
+      event.description?.toLowerCase().includes(query)
+    );
+    const matchesCategory =
+      selectedCategory === "ALL" ||
+      (selectedCategory === "FAVORIT"
+        ? likedEvents.has(event.id)
+        : event.category?.toUpperCase() === selectedCategory);
+    return matchesSearch && matchesCategory;
+  });
+
+  const pastEvents = events.filter((event) => {
+    const isEnded = event.end_date ? event.end_date < today : event.date < today;
+    if (!isEnded) return false;
+
     const query = searchQuery.toLowerCase();
     const matchesSearch = (
       event.title?.toLowerCase().includes(query) ||
@@ -979,7 +1043,7 @@ export default function ExplorePage() {
                 <DropdownMenuItem onClick={() => router.push("/explore/rewards")} className="focus:bg-purple-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Trophy className="mr-2 h-4 w-4" /> Tukar Poin
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/explore/articles")} className="focus:bg-[#6D4AFF] focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
+                <DropdownMenuItem onClick={() => router.push("/explore/articles")} className="focus:bg-[var(--primary-color)] focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <BookOpen className="mr-2 h-4 w-4" /> Baca & Tulis Artikel
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
@@ -1062,7 +1126,14 @@ export default function ExplorePage() {
                 transition={{ duration: 0.5 }}
                 className="space-y-3"
               >
-                <div className="inline-flex items-center gap-2 bg-purple-500/10 dark:bg-purple-500/20 text-[#6D4AFF] px-3.5 py-1.5 rounded-full border border-purple-500/20 font-black uppercase text-[10px] tracking-widest italic">
+                 <div 
+                  style={{ 
+                    color: "var(--primary-color)", 
+                    borderColor: "color-mix(in srgb, var(--primary-color) 20%, transparent)", 
+                    backgroundColor: "color-mix(in srgb, var(--primary-color) 10%, transparent)" 
+                  }}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border font-black uppercase text-[10px] tracking-widest italic"
+                >
                   <Sparkles size={12} className="animate-pulse" /> EXPLORE SHOWS
                 </div>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-black -skew-x-12 italic uppercase leading-[0.9] tracking-tighter drop-shadow-[3px_3px_0_var(--primary-color)]">
@@ -1091,7 +1162,7 @@ export default function ExplorePage() {
                     setSearchQuery(e.target.value);
                     setVisibleCount(6);
                   }}
-                  className="h-16 w-full pl-12 pr-12 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 font-black text-sm md:text-base uppercase outline-none -skew-x-2 focus:bg-amber-50/50 dark:focus:bg-zinc-800 transition-all rounded-2xl shadow-[4px_4px_0_0_var(--primary-color),8px_8px_0_0_#000] focus:shadow-[0_0_30px_-5px_rgba(109,74,255,0.4)]"
+                  className="h-16 w-full pl-12 pr-12 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 font-black text-sm md:text-base uppercase outline-none -skew-x-2 focus:bg-amber-50/50 dark:focus:bg-zinc-800 transition-all rounded-2xl shadow-[4px_4px_0_0_var(--primary-color),8px_8px_0_0_#000] focus:shadow-[0_0_30px_-5px_var(--primary-color)]"
                 />
                 {searchQuery && (
                   <button
@@ -1129,12 +1200,13 @@ export default function ExplorePage() {
 
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {[
-                  { icon: <Music size={20} strokeWidth={3} className="text-[#6D4AFF]" />, label: "TOTAL EVENT", value: events.length || 500, suffix: "+" },
+                  { icon: <Music size={20} strokeWidth={3} style={{ color: "var(--primary-color)" }} />, label: "TOTAL EVENT", value: events.length || 500, suffix: "+" },
                   { icon: <Users size={20} strokeWidth={3} className="text-emerald-500" />, label: "HAPPY FANS", value: totalFans, suffix: "+" },
                 ].map((stat, i) => (
                   <div
                     key={i}
-                    className="p-5 bg-white dark:bg-zinc-900 border-3 border-slate-900 dark:border-zinc-800 shadow-[4px_4px_0_0_var(--primary-color)] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] rounded-2xl relative overflow-hidden flex items-center gap-4 hover:translate-y-[-2px] transition-transform duration-300"
+                    style={{ boxShadow: "4px 4px 0px 0px var(--primary-color)" }}
+                    className="p-5 bg-white dark:bg-zinc-900 border-3 border-slate-900 dark:border-zinc-800 rounded-2xl relative overflow-hidden flex items-center gap-4 hover:translate-y-[-2px] transition-transform duration-300"
                   >
                     <DotGrid className="opacity-15" />
                     <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 shrink-0">
@@ -1154,7 +1226,7 @@ export default function ExplorePage() {
             {/* Right Column: Hero Carousel Recommended Showcase */}
             <div className="lg:col-span-5 relative w-full h-[400px] md:h-[450px]">
               {isLoading ? (
-                <div className="w-full h-full border-8 border-slate-900 dark:border-zinc-800 rounded-3xl overflow-hidden bg-slate-900 animate-pulse flex flex-col justify-end p-8 gap-4 shadow-[8px_8px_0_0_#6D4AFF,16px_16px_0_0_#000]">
+                <div className="w-full h-full border-8 border-slate-900 dark:border-zinc-800 rounded-3xl overflow-hidden bg-slate-900 animate-pulse flex flex-col justify-end p-8 gap-4 shadow-[8px_8px_0_0_var(--primary-color,#6D4AFF),16px_16px_0_0_#000]">
                   <div className="h-6 w-24 bg-slate-770 rounded" />
                   <div className="h-12 w-3/4 bg-slate-700 rounded" />
                   <div className="h-10 w-32 bg-slate-700 rounded" />
@@ -1166,8 +1238,8 @@ export default function ExplorePage() {
                   style={{
                     transform: `perspective(1000px) rotateX(${heroTilt.rotateX}deg) rotateY(${heroTilt.rotateY}deg) scale3d(${heroTilt.hovered ? 1.015 : 1}, ${heroTilt.hovered ? 1.015 : 1}, 1)`,
                     boxShadow: heroTilt.hovered
-                      ? `0 25px 50px -12px rgba(109, 74, 255, 0.35), ${8 + heroTilt.shadowX}px ${8 + heroTilt.shadowY}px 0px 0px #6D4AFF, ${16 + heroTilt.shadowX * 1.2}px ${16 + heroTilt.shadowY * 1.2}px 0px 0px #000`
-                      : "8px 8px 0px 0px #6D4AFF, 16px 16px 0px 0px #000",
+                      ? `0 25px 50px -12px rgba(109, 74, 255, 0.35), ${8 + heroTilt.shadowX}px ${8 + heroTilt.shadowY}px 0px 0px var(--primary-color, #6D4AFF), ${16 + heroTilt.shadowX * 1.2}px ${16 + heroTilt.shadowY * 1.2}px 0px 0px #000`
+                      : "8px 8px 0px 0px var(--primary-color, #6D4AFF), 16px 16px 0px 0px #000",
                     transformStyle: "preserve-3d",
                     transition: heroTilt.hovered ? "none" : "all 0.5s cubic-bezier(0.25, 1, 0.5, 1)",
                   }}
@@ -1214,19 +1286,21 @@ export default function ExplorePage() {
                       className="absolute inset-0 p-8 flex flex-col justify-end items-start text-left z-20"
                       style={{ transformStyle: "preserve-3d" }}
                     >
-                      {/* RECOMMENDED EVENT BADGE */}
-                      <motion.div
-                        variants={{
-                          hidden: { opacity: 0, y: 15 },
-                          visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
-                          exit: { opacity: 0, y: -10 }
-                        }}
-                        style={{ transform: "translateZ(30px)", transformStyle: "preserve-3d" }}
-                        whileHover={{ scale: 1.05, rotate: 2 }}
-                        className="bg-amber-400 border-3 border-slate-900 px-3.5 py-1.5 font-black uppercase text-[9px] shadow-[3px_3px_0_0_rgba(0,0,0,1)] -rotate-2 mb-4 italic inline-flex items-center gap-2 cursor-default select-none rounded-lg"
-                      >
-                        <Sparkles size={12} className="animate-spin-slow text-slate-900" /> RECOMMENDED EVENT
-                      </motion.div>
+                      {/* RECOMMENDED EVENT BADGE (ONLY FOR BOOSTED EVENTS) */}
+                      {heroEvents[currentHeroIndex]?.isBoosted && (
+                        <motion.div
+                          variants={{
+                            hidden: { opacity: 0, y: 15 },
+                            visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
+                            exit: { opacity: 0, y: -10 }
+                          }}
+                          style={{ transform: "translateZ(30px)", transformStyle: "preserve-3d" }}
+                          whileHover={{ scale: 1.05, rotate: -2 }}
+                          className="bg-amber-400 text-black border-3 border-slate-900 px-3.5 py-1.5 font-black uppercase text-[9px] shadow-[3px_3px_0_0_rgba(0,0,0,1)] rotate-2 mb-4 italic inline-flex items-center gap-2 cursor-default select-none rounded-lg"
+                        >
+                          <Sparkles size={12} className="animate-spin-slow text-slate-900" /> RECOMMENDED EVENT ★
+                        </motion.div>
+                      )}
 
                       {/* TITLE */}
                       <motion.h2
@@ -1268,7 +1342,7 @@ export default function ExplorePage() {
                           className="mb-5 flex items-center gap-3"
                         >
                           <span className="text-slate-300 font-black uppercase text-[8px] tracking-wider">Mulai</span>
-                          <span className="bg-[#6D4AFF] border-2 border-white px-3.5 py-1.5 font-black text-white text-sm italic -skew-x-6 shadow-[3px_3px_0_0_rgba(0,0,0,0.4)] rounded-lg">
+                          <span style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }} className="border-2 border-white px-3.5 py-1.5 font-black text-white text-sm italic -skew-x-6 shadow-[3px_3px_0_0_rgba(0,0,0,0.4)] rounded-lg">
                             {formatRupiah(heroEvents[currentHeroIndex].price)}
                           </span>
                         </motion.div>
@@ -1590,16 +1664,14 @@ export default function ExplorePage() {
                   />
                 ))}
               </div>
-              {visibleCount < processedEvents.length && (
-                <div className="flex justify-center mb-24">
-                  <button
-                    onClick={() => setVisibleCount(prev => prev + 6)}
-                    className="bg-white border-4 border-slate-900 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3"
-                  >
-                    <PlusCircle size={20} /> MUAT LEBIH BANYAK
-                  </button>
-                </div>
-              )}
+              <div className="flex justify-center mb-24">
+                <button
+                  onClick={() => router.push("/explore/live-shows")}
+                  className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border-4 border-slate-900 dark:border-zinc-700 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3 cursor-pointer"
+                >
+                  <PlusCircle size={20} /> LIHAT LEBIH BANYAK EVENT
+                </button>
+              </div>
             </>
           ) : (
             <div className="py-24 text-center border-8 border-black shadow-[8px_8px_0_0_#000] bg-white mb-24 relative overflow-hidden -rotate-1 flex flex-col items-center justify-center gap-6">
@@ -1620,6 +1692,61 @@ export default function ExplorePage() {
             </div>
           )}
         </div>
+        
+        {/* ── STAGE SELESAI / PAST EVENTS SECTION ── */}
+        {pastEvents.length > 0 && (
+          <div className="w-full max-w-7xl mx-auto mb-24 mt-16 text-left border-t-8 border-dashed border-slate-900/10 dark:border-zinc-800/30 pt-16 flex flex-col items-start">
+            <button
+              onClick={() => setShowPastEvents(!showPastEvents)}
+              className="group flex items-center gap-3 mb-8 bg-slate-900 dark:bg-zinc-800 text-white border-4 border-slate-900 dark:border-zinc-700 p-4 font-black italic uppercase text-xs md:text-sm shadow-[4px_4px_0_0_#FBBF24] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all rounded-xl cursor-pointer"
+            >
+              <Calendar className="text-amber-400 group-hover:rotate-12 transition-transform" size={20} strokeWidth={3} />
+              <span>
+                {showPastEvents 
+                  ? `SEMBUNYIKAN STAGE YANG SELESAI (${pastEvents.length}) 🙈` 
+                  : `TAMPILKAN STAGE YANG SELESAI (${pastEvents.length}) 👁️`
+                }
+              </span>
+            </button>
+            
+            <AnimatePresence>
+              {showPastEvents && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  className="w-full overflow-hidden"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 pt-4">
+                    {pastEvents.slice(0, visiblePastCount).map((event, idx) => (
+                      <TiltEventCard
+                        key={`past-${event.id}`}
+                        event={event}
+                        idx={idx}
+                        today={today}
+                        likedEvents={likedEvents}
+                        toggleLike={toggleLike}
+                        openDetailModal={openDetailModal}
+                        formatRupiah={formatRupiah}
+                        handleShareEvent={handleShareEvent}
+                        handleOpenQuickPurchase={handleOpenQuickPurchase}
+                      />
+                    ))}
+                  </div>
+                    <div className="flex justify-center mt-12 mb-6">
+                      <button
+                        onClick={() => router.push("/explore/past-shows")}
+                        className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border-4 border-slate-900 dark:border-zinc-700 px-8 py-4 font-black italic uppercase text-xs shadow-[6px_6px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3 cursor-pointer"
+                      >
+                        <PlusCircle size={16} /> LIHAT LEBIH BANYAK STAGE SELESAI
+                      </button>
+                    </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* SCROLL REVEAL: CTA EO */}
         {!searchQuery && (
@@ -1628,7 +1755,8 @@ export default function ExplorePage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            className="bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-8 border-slate-900 p-8 md:p-20 text-white shadow-[8px_8px_0_0_#000] md:shadow-[12px_12px_0_0_#6D4AFF,24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left"
+            style={{ background: "linear-gradient(135deg, var(--primary-color, #6D4AFF) 0%, #553C9A 100%)" }}
+            className="border-8 border-slate-900 p-8 md:p-20 text-white shadow-[8px_8px_0_0_#000] md:shadow-[12px_12px_0_0_var(--primary-color,#6D4AFF),24px_24px_0_0_#000,36px_36px_0_0_#FBBF24] relative overflow-hidden mb-20 text-left"
           >
             <DotGrid className="opacity-10" />
             <div className="relative z-10 space-y-8 max-w-xl">
@@ -1649,7 +1777,8 @@ export default function ExplorePage() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="bg-[#6D4AFF] text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left relative z-20"
+        style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+        className="text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left relative z-20"
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 mb-16">
@@ -1715,23 +1844,30 @@ export default function ExplorePage() {
                   setSelectedEventDetails(null);
                 }
               }}
-              className="bg-[#FCFAF1] dark:bg-zinc-950 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row my-4 md:my-8 max-h-[calc(100vh-3rem)] md:max-h-none text-slate-900 dark:text-zinc-50"
+              className="bg-[#FCFAF1] dark:bg-zinc-950 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-5xl relative z-10 overflow-hidden flex flex-col md:flex-row my-4 md:my-8 max-h-[calc(100vh-2rem)] text-slate-900 dark:text-zinc-50 rounded-3xl"
             >
-              <div className="w-full md:w-1/2 relative h-48 md:h-auto md:min-h-[450px] shrink-0 border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-black">
-                <img
-                  src={selectedEventDetails.image_url}
-                  alt={selectedEventDetails.title}
-                  className="w-full h-full object-contain opacity-90"
-                />
-                <div className="absolute top-4 left-4 z-20">
+              <div className="w-full md:w-[38%] relative h-64 md:h-auto md:min-h-[500px] shrink-0 border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 p-6 flex items-center justify-center">
+                {/* Poster Frame and tape decoration */}
+                <div className="relative w-full h-full border-4 border-slate-900 dark:border-zinc-700 bg-zinc-950 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] flex items-center justify-center overflow-hidden group/poster rounded-2xl">
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 -rotate-3 bg-amber-400 text-black border-2 border-slate-900 px-3.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest z-30 shadow-[2px_2px_0_0_#000] select-none pointer-events-none italic">
+                    ★ LIVE STAGE ★
+                  </div>
+                  <img
+                    src={selectedEventDetails.image_url}
+                    alt={selectedEventDetails.title}
+                    className="w-full h-full object-contain group-hover/poster:scale-105 transition-transform duration-700 opacity-95"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+                </div>
+                <div className="absolute top-10 left-10 z-20">
                   <CategoryBadge category={selectedEventDetails.category} />
                 </div>
                 {(() => {
                   const isEnded = selectedEventDetails.end_date ? selectedEventDetails.end_date < today : selectedEventDetails.date < today;
                   if (isEnded) {
                     return (
-                      <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-[2px] z-10">
-                        <div className="bg-slate-900 text-amber-400 border-4 border-amber-400 px-6 py-2 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(251,191,36,1)]">
+                      <div className="absolute inset-6 bg-black/75 flex items-center justify-center backdrop-blur-[2px] z-10 rounded-2xl">
+                        <div className="bg-slate-950 text-amber-400 border-4 border-amber-400 px-6 py-2.5 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(251,191,36,1)] rounded-xl">
                           STAGE SELESAI
                         </div>
                       </div>
@@ -1739,8 +1875,8 @@ export default function ExplorePage() {
                   }
                   if (selectedEventDetails.totalRemainingStock === 0) {
                     return (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] z-10">
-                        <div className="bg-slate-900 text-red-500 border-4 border-red-500 px-6 py-2 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)]">
+                      <div className="absolute inset-6 bg-black/60 flex items-center justify-center backdrop-blur-[2px] z-10 rounded-2xl">
+                        <div className="bg-slate-950 text-red-500 border-4 border-red-500 px-6 py-2.5 font-black text-2xl md:text-3xl italic uppercase -rotate-12 shadow-[4px_4px_0_0_rgba(239,68,68,1)] rounded-xl">
                           SOLD OUT
                         </div>
                       </div>
@@ -1750,47 +1886,82 @@ export default function ExplorePage() {
                 })()}
               </div>
 
-              <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between overflow-y-auto flex-1 md:max-h-[600px] text-left relative bg-white dark:bg-zinc-900">
+              <div className="w-full md:w-[62%] p-8 md:p-10 flex flex-col justify-between overflow-y-auto flex-1 md:max-h-[680px] text-left relative bg-white dark:bg-zinc-900 brutal-scroll">
                 <button
                   onClick={() => setSelectedEventDetails(null)}
-                  className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-900 hover:bg-red-500 hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90"
+                  className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-900 hover:bg-red-500 hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90 rounded-lg"
                 >
                   <X size={20} strokeWidth={3} className="text-slate-900 dark:text-zinc-50" />
                 </button>
                 <div className="space-y-6">
-                  <h2 className="text-2xl md:text-3xl font-black italic uppercase -skew-x-6 tracking-tighter leading-snug break-words mt-4 pr-10">
+                  <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter leading-tight break-words mt-4 pr-10">
                     {selectedEventDetails.title}
                   </h2>
-                  <div className="space-y-3 border-y-4 border-slate-900 dark:border-zinc-750 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-zinc-300">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={18} className="text-red-500 shrink-0" />
-                      <span>
-                        Mulai: {selectedEventDetails.date}
-                        {selectedEventDetails.end_date && ` s/d ${selectedEventDetails.end_date}`}
-                      </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* CARD 1: TANGGAL */}
+                    <div className="bg-[#FCFAF1] dark:bg-zinc-800 border-3 border-slate-900 dark:border-zinc-700 p-4 shadow-[4px_4px_0_0_#FF3B30] text-left rounded-xl flex items-start gap-3">
+                      <div className="p-2 bg-red-100 dark:bg-red-950/50 rounded-lg text-red-500 shrink-0">
+                        <Calendar size={18} strokeWidth={3} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-wider">TANGGAL</p>
+                        <p className="text-[10px] font-black uppercase text-slate-900 dark:text-zinc-100 mt-1 leading-snug">
+                          {selectedEventDetails.date}
+                          {selectedEventDetails.end_date && <><br /><span className="text-[8px] text-slate-400 font-bold lowercase">s/d</span><br />{selectedEventDetails.end_date}</>}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <MapPin size={18} className="text-[#6D4AFF] shrink-0" />
-                      <span>{selectedEventDetails.location}</span>
+                    
+                    {/* CARD 2: LOKASI */}
+                    <div className="bg-[#FCFAF1] dark:bg-zinc-800 border-3 border-slate-900 dark:border-zinc-700 p-4 shadow-[4px_4px_0_0_var(--primary-color)] text-left rounded-xl flex items-start gap-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-950/50 rounded-lg text-[var(--primary-color)] shrink-0">
+                        <MapPin size={18} strokeWidth={3} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-wider">LOKASI</p>
+                        <p className="text-[10px] font-black uppercase text-slate-900 dark:text-zinc-100 mt-1 leading-snug line-clamp-3">
+                          {selectedEventDetails.location}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between gap-3 border-t-2 border-slate-200 dark:border-zinc-800 pt-3">
-                      <div className="flex items-center gap-3">
-                        <User size={18} className="text-amber-500 shrink-0" />
-                        <span>
-                          Organizer: {selectedEventDetails.profiles ? (selectedEventDetails.profiles.eo_name || selectedEventDetails.profiles.full_name) : "Organizer"}
-                        </span>
+
+                    {/* CARD 3: ORGANIZER */}
+                    <div className="bg-[#FCFAF1] dark:bg-zinc-800 border-3 border-slate-900 dark:border-zinc-700 p-4 shadow-[4px_4px_0_0_#FBBF24] text-left rounded-xl flex flex-col justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-950/50 rounded-lg text-amber-500 shrink-0">
+                          <User size={18} strokeWidth={3} />
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-wider">ORGANIZER</p>
+                          <p className="text-[10px] font-black uppercase text-slate-900 dark:text-zinc-100 mt-1 leading-snug line-clamp-2">
+                            {selectedEventDetails.profiles ? (selectedEventDetails.profiles.eo_name || selectedEventDetails.profiles.full_name) : "Organizer"}
+                          </p>
+                        </div>
                       </div>
                       {selectedEventDetails.profiles?.verification_status === 'approved' && (
-                        <span className="bg-emerald-400 text-black border-2 border-slate-900 dark:border-white px-2 py-0.5 text-[8px] font-black uppercase italic shadow-[2px_2px_0px_0px_#000] rotate-[-2deg] shrink-0">
+                        <div className="bg-emerald-400 text-black border-2 border-slate-900 px-2 py-0.5 text-[7px] font-black uppercase italic shadow-[1.5px_1.5px_0px_0px_#000] rotate-[-1deg] text-center self-start">
                           ✓ VERIFIED EO
-                        </span>
+                        </div>
                       )}
                     </div>
                   </div>
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deskripsi Event</p>
-                    <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 font-medium text-xs sm:text-sm text-slate-700 dark:text-zinc-300 max-h-[150px] overflow-y-auto brutal-scroll">
-                      {selectedEventDetails.description ? selectedEventDetails.description.replace(/--seating-enabled:\d+x\d+--/g, "").trim() : "Tidak ada deskripsi untuk event ini."}
+                    <div className="border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] rounded-xl overflow-hidden bg-white dark:bg-zinc-850">
+                      {/* macOS console header bar */}
+                      <div className="bg-slate-100 dark:bg-zinc-800 border-b-3 border-slate-900 dark:border-zinc-700 px-4 py-2 flex items-center justify-between">
+                        <div className="flex gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#FF3B30] border border-slate-900" />
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#FFCC00] border border-slate-900" />
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#4CD964] border border-slate-900" />
+                        </div>
+                        <span className="text-[7.5px] font-black uppercase tracking-widest text-slate-400 dark:text-zinc-500">show_description.txt</span>
+                      </div>
+                      
+                      {/* Description Text Content */}
+                      <div className="p-4 font-semibold text-xs sm:text-sm text-slate-700 dark:text-zinc-300 max-h-[120px] overflow-y-auto brutal-scroll leading-relaxed whitespace-pre-line text-left bg-slate-50/50 dark:bg-zinc-900/50">
+                        {selectedEventDetails.description ? selectedEventDetails.description.replace(/--seating-enabled:\d+x\d+--/g, "").trim() : "Tidak ada deskripsi untuk event ini."}
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -1801,21 +1972,28 @@ export default function ExplorePage() {
                         MENGAMBIL TIER TIKET...
                       </div>
                     ) : eventTiers.length > 0 ? (
-                      <div className="space-y-2 max-h-[180px] overflow-y-auto brutal-scroll pr-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[220px] overflow-y-auto brutal-scroll pr-1">
                         {eventTiers.map((tier) => (
                           <div
                             key={tier.id}
-                            className="bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 p-3 flex justify-between items-center shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] gap-2"
+                            className="bg-[#FCFAF1] dark:bg-zinc-800 border-3 border-slate-900 dark:border-zinc-700 p-4 flex flex-col justify-between shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all relative overflow-hidden rounded-xl group/tier"
                           >
-                            <div className="text-left">
-                              <p className="font-black text-xs md:text-sm uppercase italic text-slate-900 dark:text-zinc-50">{tier.name}</p>
+                            {/* Decorative ticket notches on sides */}
+                            <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-6 rounded-r-full bg-white dark:bg-zinc-900 border-r-3 border-y-3 border-slate-900 dark:border-zinc-700 z-10" />
+                            <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-6 rounded-l-full bg-white dark:bg-zinc-900 border-l-3 border-y-3 border-slate-900 dark:border-zinc-700 z-10" />
+
+                            <div className="text-left space-y-1 relative z-20">
+                              <p className="font-black text-sm uppercase italic text-slate-900 dark:text-zinc-50 tracking-wide group-hover/tier:text-[var(--primary-color)] transition-colors">{tier.name}</p>
                               {tier.description && (
-                                <p className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold uppercase">{tier.description}</p>
+                                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase">{tier.description}</p>
                               )}
-                              <p className="text-[9px] text-red-500 font-bold uppercase mt-0.5">Sisa: {tier.stock} Tiket</p>
+                              <p className="text-[10px] text-red-500 font-black uppercase bg-red-500/10 dark:bg-red-500/20 px-2 py-0.5 inline-block border border-red-500/20 rounded">
+                                Sisa: {tier.stock} Tiket
+                              </p>
                             </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-black text-xs md:text-sm text-[#6D4AFF] italic">{formatRupiah(tier.price)}</p>
+                            <div className="text-left border-t-2 border-dashed border-slate-300 dark:border-zinc-700 pt-3 mt-3 shrink-0 flex items-center justify-between relative z-20">
+                              <p className="font-black text-base text-[#6D4AFF] dark:text-white italic tracking-tight">{formatRupiah(tier.price)}</p>
+                              <span className="text-[8px] font-black uppercase text-amber-500 dark:text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded italic -rotate-6">TICKET STUB</span>
                             </div>
                           </div>
                         ))}
@@ -2150,7 +2328,8 @@ export default function ExplorePage() {
         >
           <Link
             href="/explore/tickets"
-            className="flex items-center gap-3 bg-[#6D4AFF] text-white border-4 border-slate-900 px-4 py-3 shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all -skew-x-6 rounded-2xl relative group"
+            style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+            className="flex items-center gap-3 text-white border-4 border-slate-900 px-4 py-3 shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all -skew-x-6 rounded-2xl relative group"
           >
             <span className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-emerald-400 border-2 border-slate-900 rounded-full animate-ping" />
             <span className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-emerald-400 border-2 border-slate-900 rounded-full" />

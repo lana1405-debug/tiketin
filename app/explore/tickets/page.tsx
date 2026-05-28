@@ -1232,7 +1232,7 @@ export default function MyTicketsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="bg-[#6D4AFF] text-white p-2 border-2 border-slate-900 dark:border-zinc-700 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3} /></div>
+                            <div style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }} className="text-white p-2 border-2 border-slate-900 dark:border-zinc-700 shadow-[2px_2px_0_0_#000]"><MapPin size={16} strokeWidth={3} /></div>
                             <div>
                               <p className="text-[9px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest">LOKASI</p>
                               <p className="text-sm font-black uppercase text-slate-900 dark:text-zinc-100 line-clamp-1">{ticket.location}</p>
@@ -1287,7 +1287,8 @@ export default function MyTicketsPage() {
                             <button 
                                onClick={() => handlePayPending(ticket)} 
                                disabled={isProcessingPay !== null || isOffline}
-                               className={`w-full bg-[#6D4AFF] text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
+                               style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+                               className={`w-full text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               {isProcessingPay === ticket.transaksi_id ? (
                                 <Loader2 className="animate-spin" size={14} />
@@ -1332,7 +1333,8 @@ export default function MyTicketsPage() {
                                   return next;
                                 });
                               }}
-                              className="absolute inset-0 bg-gradient-to-br from-[#6D4AFF] to-[#553C9A] border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col items-center justify-between shadow-[4px_4px_0_0_#000] cursor-pointer text-white rounded-2xl"
+                              style={{ background: "linear-gradient(135deg, var(--primary-color, #6D4AFF) 0%, #553C9A 100%)" }}
+                              className="absolute inset-0 border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col items-center justify-between shadow-[4px_4px_0_0_#000] cursor-pointer text-white rounded-2xl"
                             >
                               <div className="w-full text-center">
                                 <p className="text-[10px] font-black uppercase text-purple-200 tracking-widest mb-1">TIKET AKTIF</p>
@@ -1567,7 +1569,8 @@ export default function MyTicketsPage() {
                     type="button"
                     disabled={isSubmittingReview}
                     onClick={handleSubmitReview}
-                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
+                    style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
                   >
                     {isSubmittingReview ? (
                       <>
@@ -1676,7 +1679,8 @@ export default function MyTicketsPage() {
                       handleDownloadTicket(stickerModal.ticket, selectedSticker);
                       setStickerModal({ isOpen: false, ticket: null });
                     }}
-                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
+                    style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+                    className="px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 text-white hover:bg-slate-900 dark:hover:bg-zinc-800 font-black italic uppercase text-xs shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all flex items-center gap-2"
                   >
                     <Download size={14} /> DOWNLOAD E-TICKET
                   </button>
@@ -1728,7 +1732,7 @@ export default function MyTicketsPage() {
 
               <button
                 onClick={() => setScannedTicketNotification(null)}
-                className="w-full bg-slate-900 dark:bg-zinc-800 hover:bg-[#6D4AFF] text-white font-black italic uppercase text-sm py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#FBBF24] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+                className="w-full bg-slate-900 dark:bg-zinc-800 hover:bg-[var(--primary-color,#6D4AFF)] text-white font-black italic uppercase text-sm py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#FBBF24] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
               >
                 MANTAP, MASUK KONSER! 🎸
               </button>
