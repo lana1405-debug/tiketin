@@ -95,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const SidebarContent = () => (
     <>
       {/* LOGO BOX */}
-      <div className="p-6 lg:p-8 border-b-8 border-black dark:border-zinc-750 bg-[#6D4AFF] text-white">
+      <div className="p-6 lg:p-8 border-b-8 border-black dark:border-zinc-700 bg-[#6D4AFF] text-white">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-3">
             <div className="bg-white dark:bg-zinc-900 p-2 border-4 border-black dark:border-zinc-700 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -141,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* LOGOUT AREA */}
-      <div className="p-4 lg:p-6 border-t-8 border-black dark:border-zinc-750 bg-white dark:bg-zinc-900">
+      <div className="p-4 lg:p-6 border-t-8 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900">
         <button 
           onClick={handleLogout}
           className="flex items-center justify-center gap-4 w-full px-6 py-5 bg-red-500 text-white border-4 border-black dark:border-zinc-700 font-black uppercase italic text-xs tracking-widest shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.15)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
@@ -157,7 +157,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className={`flex min-h-screen bg-white dark:bg-zinc-950 ${poppins.className} text-black dark:text-zinc-50 admin-layout`}>
       
       {/* ── DESKTOP SIDEBAR (hidden on mobile/tablet) ── */}
-      <aside className="hidden lg:flex w-80 bg-white dark:bg-zinc-900 border-r-8 border-black dark:border-zinc-750 flex-col sticky top-0 h-screen z-50">
+      <aside className="hidden lg:flex w-80 bg-white dark:bg-zinc-900 border-r-8 border-black dark:border-zinc-700 flex-col sticky top-0 h-screen z-50">
         <SidebarContent />
       </aside>
 
@@ -170,7 +170,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={() => setIsSidebarOpen(false)}
           />
           {/* Drawer */}
-          <aside className="absolute left-0 top-0 h-full w-72 sm:w-80 bg-white dark:bg-zinc-900 border-r-8 border-black dark:border-zinc-750 flex flex-col z-10 overflow-y-auto">
+          <aside className="absolute left-0 top-0 h-full w-72 sm:w-80 bg-white dark:bg-zinc-900 border-r-8 border-black dark:border-zinc-700 flex flex-col z-10 overflow-y-auto">
             <SidebarContent />
           </aside>
         </div>
@@ -180,7 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* ── MOBILE TOPBAR (hidden on desktop) ── */}
-        <header className="lg:hidden sticky top-0 z-50 bg-[#6D4AFF] border-b-4 border-black dark:border-zinc-750 h-16 flex items-center justify-between px-4 shrink-0">
+        <header className="lg:hidden sticky top-0 z-50 bg-[#6D4AFF] border-b-4 border-black dark:border-zinc-700 h-16 flex items-center justify-between px-4 shrink-0">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="p-2 bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"

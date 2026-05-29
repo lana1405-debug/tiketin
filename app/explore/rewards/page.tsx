@@ -59,11 +59,25 @@ export default function RewardsPage() {
   const [claimedVouchers, setClaimedVouchers] = useState<ClaimedVoucher[]>([]);
   const [isRedeeming, setIsRedeeming] = useState<string | null>(null);
   const [successVoucher, setSuccessVoucher] = useState<{ code: string; name: string } | null>(null);
+  const [activeBadgeId, setActiveBadgeId] = useState<string | null>(null);
+  
+  const handleSelectBadge = (badgeId: string, badgeName: string, badgeIcon: string) => {
+    if (!userProfile) return;
+    const badgeObj = { id: badgeId, name: badgeName, icon: badgeIcon };
+    localStorage.setItem(`tiketin_active_badge_${userProfile.id}`, JSON.stringify(badgeObj));
+    setActiveBadgeId(badgeId);
+    toast(`Lencana "${badgeName}" berhasil dipasang! 🛡️`, "success");
+  };
   
   // ⚡ Tabs & Ledger States
-  const [activeTab, setActiveTab] = useState("HADIAH"); // "HADIAH" | "RIWAYAT"
+  const [activeTab, setActiveTab] = useState("HADIAH"); // "HADIAH" | "RIWAYAT" | "LEADERBOARD"
   const [ledgerItems, setLedgerItems] = useState<LedgerItem[]>([]);
   const [loadingLedger, setLoadingLedger] = useState(false);
+
+  const [musicTicketsCount, setMusicTicketsCount] = useState(0);
+  const [theaterTicketsCount, setTheaterTicketsCount] = useState(0);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   // 🎟️ Voucher DB details to check USED/EXPIRED status
   const [dbVoucherDetails, setDbVoucherDetails] = useState<Record<string, { uses_count: number; max_uses: number | null; valid_to: string }>>({});
@@ -105,6 +119,9 @@ export default function RewardsPage() {
 
       const items: LedgerItem[] = [];
 
+      let musicCount = 0;
+      let theaterCount = 0;
+
       // 2. Map transaksi paid ke ledger item
       if (txData && txData.length > 0) {
         await Promise.all(
@@ -113,10 +130,18 @@ export default function RewardsPage() {
             if (tx.event_id) {
               const { data: e } = await supabase
                 .from("events")
-                .select("title")
+                .select("title, category")
                 .eq("id", tx.event_id)
                 .single();
-              if (e) eventTitle = e.title;
+              if (e) {
+                eventTitle = e.title;
+                const cat = e.category?.toUpperCase() || "";
+                if (cat === "MUSIK") {
+                  musicCount += tx.total_qty;
+                } else if (cat === "TEATER") {
+                  theaterCount += tx.total_qty;
+                }
+              }
             }
 
             items.push({
@@ -129,6 +154,9 @@ export default function RewardsPage() {
           })
         );
       }
+
+      setMusicTicketsCount(musicCount);
+      setTheaterTicketsCount(theaterCount);
 
       // 3. Map claimed vouchers ke ledger item
       currentClaimed.forEach((v, index) => {
@@ -246,6 +274,35 @@ export default function RewardsPage() {
 
           // Load ledger items
           fetchPointsLedger(session.user.id, currentVouchers);
+
+          // Load active badge
+          const activeBadgeSaved = localStorage.getItem(`tiketin_active_badge_${data.id}`);
+          if (activeBadgeSaved) {
+            try {
+              const parsedBadge = JSON.parse(activeBadgeSaved);
+              setActiveBadgeId(parsedBadge.id || null);
+            } catch (e) {
+              console.error("Gagal memuat lencana aktif:", e);
+            }
+          }
+        }
+
+        // Fetch leaderboard
+        setLoadingLeaderboard(true);
+        try {
+          const { data: lb, error: lbErr } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, points")
+            .eq("role", "customer")
+            .order("points", { ascending: false })
+            .limit(10);
+          if (!lbErr && lb) {
+            setLeaderboard(lb);
+          }
+        } catch (err) {
+          console.error("Gagal mengambil leaderboard:", err);
+        } finally {
+          setLoadingLeaderboard(false);
         }
       }
       setLoading(false);
@@ -425,7 +482,7 @@ export default function RewardsPage() {
       opacity: 1, 
       y: 0, 
       transition: { 
-        type: "spring", 
+        type: "spring" as const, 
         stiffness: 120, 
         damping: 14 
       } 
@@ -601,18 +658,30 @@ export default function RewardsPage() {
         </div>
 
         {/* TAB BUTTONS */}
-        <div className="flex flex-col sm:flex-row border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)]">
+        <div className="flex flex-col md:flex-row border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)]">
           <button
             onClick={() => {
               setActiveTab("HADIAH");
             }}
-            className={`flex-1 py-4 font-black italic uppercase text-[11px] sm:text-xs tracking-wider transition-all border-b-4 sm:border-b-0 sm:border-r-4 border-black dark:border-zinc-700 ${
+            className={`flex-1 py-4 font-black italic uppercase text-[11px] sm:text-xs tracking-wider transition-all border-b-4 md:border-b-0 md:border-r-4 border-slate-900 dark:border-zinc-700 ${
               activeTab === "HADIAH"
                 ? "bg-amber-400 text-black -skew-x-2"
                 : "bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
             }`}
           >
-            🎁 KATALOG & VOUCHER SAYA
+            🎁 HADIAH & VOUCHER
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("LEADERBOARD");
+            }}
+            className={`flex-1 py-4 font-black italic uppercase text-[11px] sm:text-xs tracking-wider transition-all border-b-4 md:border-b-0 md:border-r-4 border-slate-900 dark:border-zinc-700 ${
+              activeTab === "LEADERBOARD"
+                ? "bg-amber-400 text-black -skew-x-2"
+                : "bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            🏆 LEADERBOARD & LENCANA
           </button>
           <button
             onClick={() => {
@@ -624,7 +693,7 @@ export default function RewardsPage() {
                 : "bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 hover:text-[#6D4AFF]"
             }`}
           >
-            🪙 BUKU RIWAYAT MUTASI POIN
+            🪙 BUKU RIWAYAT POIN
           </button>
         </div>
 
@@ -747,6 +816,186 @@ export default function RewardsPage() {
         )}
 
 
+
+        {/* LEADERBOARD & BADGES TAB CONTENT */}
+        {activeTab === "LEADERBOARD" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+            {/* LEFT: LEADERBOARD LIST */}
+            <div className="lg:col-span-5 bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col">
+              <h3 className="text-2xl font-black italic uppercase -skew-x-3 tracking-tight mb-6 text-slate-900 dark:text-zinc-50 border-b-4 border-slate-900 dark:border-zinc-700 pb-3 flex items-center gap-2">
+                <span>🏆 KLASEMEN KOLEKTOR</span>
+              </h3>
+              
+              {loadingLeaderboard ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="animate-spin text-[#6D4AFF]" size={36} strokeWidth={3} />
+                  <p className="font-black italic uppercase text-xs text-slate-400 dark:text-zinc-500">MEMUAT KLASEMEN...</p>
+                </div>
+              ) : leaderboard.length > 0 ? (
+                <div className="space-y-3">
+                  {leaderboard.map((profile, idx) => {
+                    const isCurrentUser = profile.id === userProfile?.id;
+                    let rankIcon: React.ReactNode = <span>{idx + 1}</span>;
+                    if (idx === 0) rankIcon = <span className="text-xl">🥇</span>;
+                    else if (idx === 1) rankIcon = <span className="text-xl">🥈</span>;
+                    else if (idx === 2) rankIcon = <span className="text-xl">🥉</span>;
+
+                    return (
+                      <div 
+                        key={profile.id} 
+                        className={`flex items-center justify-between p-3 border-2 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] ${
+                          isCurrentUser 
+                            ? "bg-[var(--primary-color)]/10 border-[var(--primary-color)]" 
+                            : "bg-slate-50 dark:bg-zinc-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-none border-2 border-slate-900 dark:border-zinc-700 flex items-center justify-center font-black bg-white dark:bg-zinc-900 shrink-0 shadow-[1px_1px_0_0_rgba(0,0,0,1)]">
+                            {rankIcon}
+                          </div>
+                          <Avatar className="h-8 w-8 border-2 border-slate-900 dark:border-zinc-700 rounded-none shrink-0 shadow-[1px_1px_0_0_rgba(0,0,0,1)]">
+                            <AvatarImage src={profile.avatar_url} />
+                            <AvatarFallback className="bg-[#6D4AFF] text-white font-black text-xs">
+                              {profile.full_name?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-black text-xs sm:text-sm text-slate-900 dark:text-zinc-100 uppercase truncate max-w-[100px] sm:max-w-[180px]">
+                              {profile.full_name || "User"}
+                              {isCurrentUser && <span className="ml-1.5 text-[8px] font-black uppercase text-amber-500 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded italic inline-block">KAMU</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 ml-2">
+                          <span className="font-mono font-black text-xs px-2 py-0.5 border border-slate-900 dark:border-zinc-700 bg-amber-400 text-black shadow-[1.5px_1.5px_0_0_#000] whitespace-nowrap">
+                            {profile.points || 0} PTS
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs font-bold text-slate-400 italic py-6 text-center">Belum ada papan peringkat.</p>
+              )}
+            </div>
+
+            {/* RIGHT: BADGES GRID */}
+            <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
+              <h3 className="text-2xl font-black italic uppercase -skew-x-3 tracking-tight mb-2 text-slate-900 dark:text-zinc-50 border-b-4 border-slate-900 dark:border-zinc-700 pb-3 flex items-center gap-2">
+                <span>🛡️ LENCANA KOLEKSI SAYA</span>
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-6">
+                Mutasi tiket: <span className="text-[var(--primary-color)]">{musicTicketsCount} Musik</span> | <span className="text-cyan-500">{theaterTicketsCount} Teater</span>
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  {
+                    id: "newbie",
+                    name: "Newbie Collector",
+                    description: "Telah memulai petualangan mengoleksi tiket di Tiketin.",
+                    icon: "🎫",
+                    req: "Selalu Terbuka",
+                    unlocked: true
+                  },
+                  {
+                    id: "silver",
+                    name: "Silver Collector",
+                    description: "Mencapai minimal 200 Poin Tiketin aktif.",
+                    icon: "🥈",
+                    req: "Butuh 200+ Poin",
+                    unlocked: points >= 200
+                  },
+                  {
+                    id: "gold",
+                    name: "Gold Collector",
+                    description: "Mencapai minimal 500 Poin Tiketin aktif.",
+                    icon: "🥇",
+                    req: "Butuh 500+ Poin",
+                    unlocked: points >= 500
+                  },
+                  {
+                    id: "legend",
+                    name: "Legend of Tiketin",
+                    description: "Kolektor legendaris dengan minimal 1000 Poin aktif.",
+                    icon: "👑",
+                    req: "Butuh 1000+ Poin",
+                    unlocked: points >= 1000
+                  },
+                  {
+                    id: "festival",
+                    name: "Festival Goer",
+                    description: "Membeli minimal 3 tiket event berkategori Musik.",
+                    icon: "🎸",
+                    req: "Beli 3+ Tiket Musik",
+                    unlocked: musicTicketsCount >= 3
+                  },
+                  {
+                    id: "critic",
+                    name: "Art Critic",
+                    description: "Membeli minimal 3 tiket event berkategori Teater.",
+                    icon: "🎭",
+                    req: "Beli 3+ Tiket Teater",
+                    unlocked: theaterTicketsCount >= 3
+                  }
+                ].map((badge) => (
+                  <div 
+                    key={badge.id} 
+                    className={`border-3 p-4 shadow-[4px_4px_0_0_#000] flex items-start gap-3 transition-all relative ${
+                      badge.unlocked 
+                        ? "bg-white dark:bg-zinc-800 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_var(--primary-color)]" 
+                        : "bg-slate-50 dark:bg-zinc-900/40 border-slate-200 dark:border-zinc-800 shadow-[4px_4px_0_0_rgba(0,0,0,0.15)]"
+                    }`}
+                  >
+                    <div className={`w-12 h-12 border-2 flex items-center justify-center text-2xl shadow-[2px_2px_0_0_#000] shrink-0 ${
+                      badge.unlocked 
+                        ? "bg-amber-300 border-slate-900 dark:border-zinc-700 animate-pulse" 
+                        : "bg-slate-200 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 text-slate-400 dark:text-zinc-500"
+                    }`}>
+                      {badge.unlocked ? badge.icon : "🔒"}
+                    </div>
+                    <div className="space-y-1">
+                      <p className={`font-black text-xs sm:text-sm uppercase leading-none italic ${
+                        badge.unlocked ? "text-slate-900 dark:text-zinc-50" : "text-slate-400 dark:text-zinc-500"
+                      }`}>
+                        {badge.name}
+                      </p>
+                      <p className={`text-[9px] font-medium normal-case leading-relaxed pr-10 ${
+                        badge.unlocked ? "text-slate-500 dark:text-zinc-300" : "text-slate-400 dark:text-zinc-500"
+                      }`}>
+                        {badge.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 border rounded-sm inline-block ${
+                          badge.unlocked 
+                            ? "bg-emerald-400/10 border-emerald-400/30 text-emerald-500" 
+                            : "bg-red-400/10 border-red-400/30 text-red-500"
+                        }`}>
+                          {badge.unlocked ? "✓ UNLOCKED" : `🔒 LOCKED (${badge.req})`}
+                        </span>
+                        {badge.unlocked && (
+                          activeBadgeId === badge.id ? (
+                            <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 border border-amber-400 bg-amber-400 text-black rounded-sm inline-block shadow-[1px_1px_0_0_#000] rotate-[-2deg]">
+                              ⚡ DIPAKAI
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSelectBadge(badge.id, badge.name, badge.icon)}
+                              className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border-2 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 hover:bg-[#6D4AFF] hover:text-white dark:hover:bg-[#6D4AFF] dark:hover:text-white transition-all shadow-[1.5px_1.5px_0_0_#000] dark:shadow-[1.5px_1.5px_0_0_var(--primary-color)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none rounded-sm cursor-pointer"
+                            >
+                              PAKAI LENCANA
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* LEDGER TAB CONTENT */}
         {activeTab === "RIWAYAT" && (

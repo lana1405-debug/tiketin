@@ -58,7 +58,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, x: -30 },
-  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+  show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } }
 };
 
 export default function HistoryPage() {
@@ -274,7 +274,7 @@ export default function HistoryPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
                 </DropdownMenuItem>
@@ -293,7 +293,7 @@ export default function HistoryPage() {
                 <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
@@ -471,7 +471,7 @@ export default function HistoryPage() {
                   type="button"
                   disabled={isCancelling}
                   onClick={() => setTxToCancel(null)}
-                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
                 >
                   TIDAK, KEMBALI
                 </button>

@@ -29,9 +29,65 @@ interface ChatMessage {
   message: string;
   type: "text" | "ride";
   created_at: string;
+  badge?: {
+    id: string;
+    name: string;
+    icon: string;
+  };
 }
 
 
+
+const getBadgePillStyles = (badgeId: string) => {
+  switch (badgeId) {
+    case "legend":
+      return "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-900 border-yellow-600 font-extrabold shadow-[1px_1px_0_0_#000] rotate-[-1deg]";
+    case "gold":
+      return "bg-yellow-400 text-black border-yellow-600 shadow-[1px_1px_0_0_#000]";
+    case "silver":
+      return "bg-slate-200 text-slate-800 border-slate-400 dark:bg-zinc-700 dark:text-zinc-200 dark:border-zinc-600 shadow-[1px_1px_0_0_#000]";
+    case "newbie":
+      return "bg-[#6D4AFF]/10 dark:bg-[#6D4AFF]/20 text-[#6D4AFF] dark:text-[#a58dff] border-[#6D4AFF]/30";
+    case "festival":
+      return "bg-rose-500 text-white border-rose-700 shadow-[1.5px_1.5px_0_0_#000] rotate-[1deg]";
+    case "critic":
+      return "bg-cyan-500 text-white border-cyan-700 shadow-[1.5px_1.5px_0_0_#000] rotate-[-1deg]";
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-300 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700";
+  }
+};
+
+const getBubbleStyles = (isMe: boolean, badgeId?: string) => {
+  if (isMe) {
+    if (badgeId === "legend") {
+      return "bg-[#6D4AFF] text-white border-amber-400 dark:border-amber-400 shadow-[4px_4px_0_0_#FBBF24] rounded-br-none";
+    }
+    if (badgeId === "gold") {
+      return "bg-[#6D4AFF] text-white border-yellow-500 shadow-[3.5px_3.5px_0_0_#EAB308] rounded-br-none";
+    }
+    if (badgeId === "festival") {
+      return "bg-[#FF5E3A] text-white border-slate-900 shadow-[3.5px_3.5px_0_0_#FCD34D] rounded-br-none";
+    }
+    if (badgeId === "critic") {
+      return "bg-[#06B6D4] text-white border-slate-900 shadow-[3.5px_3.5px_0_0_#0891B2] rounded-br-none";
+    }
+    return "bg-[#6D4AFF] text-white border-slate-900 shadow-[2.5px_2.5px_0_0_#000] rounded-br-none";
+  } else {
+    if (badgeId === "legend") {
+      return "bg-slate-900 text-white dark:bg-zinc-900 border-amber-400 shadow-[4px_4px_0_0_#FBBF24] rounded-bl-none";
+    }
+    if (badgeId === "gold") {
+      return "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 border-yellow-500 shadow-[3.5px_3.5px_0_0_#EAB308] rounded-bl-none";
+    }
+    if (badgeId === "festival") {
+      return "bg-[#FFF5F2] dark:bg-zinc-900/90 text-slate-900 dark:text-zinc-100 border-[#FF5E3A] shadow-[3.5px_3.5px_0_0_#FF5E3A] rounded-bl-none";
+    }
+    if (badgeId === "critic") {
+      return "bg-cyan-50 dark:bg-zinc-900/90 text-slate-900 dark:text-zinc-100 border-[#06B6D4] shadow-[3.5px_3.5px_0_0_#06B6D4] rounded-bl-none";
+    }
+    return "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 border-slate-900 dark:border-zinc-800 shadow-[2.5px_2.5px_0_0_#000] rounded-bl-none";
+  }
+};
 
 export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userProfile }: ChatDrawerProps) {
   const [activeTab, setActiveTab] = useState<"ALL" | "RIDE">("ALL");
@@ -189,6 +245,16 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
 
     setIsSending(true);
 
+    let badgeObj = undefined;
+    const activeBadgeSaved = localStorage.getItem(`tiketin_active_badge_${userProfile.id}`);
+    if (activeBadgeSaved) {
+      try {
+        badgeObj = JSON.parse(activeBadgeSaved);
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const messagePayload: ChatMessage = {
       id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       event_id: eventId,
@@ -198,6 +264,7 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
       message: rawContent,
       type: type,
       created_at: new Date().toISOString(),
+      badge: badgeObj,
     };
 
     if (useMock) {
@@ -308,7 +375,7 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
             className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-950 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-hidden"
           >
             {/* Header */}
-            <div className="p-6 border-b-4 border-slate-900 dark:border-zinc-850 bg-white dark:bg-zinc-900 flex justify-between items-center">
+            <div className="p-6 border-b-4 border-slate-900 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
               <div className="text-left">
                 <h3 className="text-lg font-black italic uppercase -skew-x-6 text-slate-900 dark:text-white leading-none">
                   CHAT KOMUNITAS
@@ -334,7 +401,7 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
             )}
 
             {/* Tabs & Buttons */}
-            <div className="p-4 border-b-4 border-slate-900 dark:border-zinc-850 flex items-center justify-between gap-3 bg-slate-50 dark:bg-zinc-900/50">
+            <div className="p-4 border-b-4 border-slate-900 dark:border-zinc-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-zinc-900/50">
               <div className="flex border-3 border-slate-900 dark:border-zinc-700 rounded-xl overflow-hidden shadow-[2px_2px_0_0_#000]">
                 <button
                   onClick={() => { setActiveTab("ALL"); setShowRideForm(false); }}
@@ -475,8 +542,14 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
 
                           <div className={`max-w-[75%] space-y-1`}>
                             {/* User name & Time */}
-                            <div className={`flex items-center gap-1.5 text-[8.5px] font-black uppercase text-slate-400 ${isMe ? "justify-end" : "justify-start"}`}>
+                            <div className={`flex items-center gap-1.5 text-[8.5px] font-black uppercase text-slate-400 ${isMe ? "justify-end" : "justify-start"} flex-wrap`}>
                               <span>{isMe ? "SAYA" : msg.user_name}</span>
+                              {msg.badge && (
+                                <span className={`text-[7px] font-black uppercase tracking-wider px-1 py-0.5 border rounded-sm flex items-center gap-0.5 ${getBadgePillStyles(msg.badge.id)}`}>
+                                  <span>{msg.badge.icon}</span>
+                                  <span className="text-[6.5px]">{msg.badge.name}</span>
+                                </span>
+                              )}
                               <span>•</span>
                               <span className="flex items-center gap-0.5">
                                 <Clock size={8} />
@@ -519,11 +592,7 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
                             ) : (
                               /* Text Message bubble */
                               <div
-                                className={`p-3.5 border-3 border-slate-900 rounded-2xl shadow-[2.5px_2.5px_0_0_#000] text-xs font-semibold leading-relaxed break-words ${
-                                  isMe
-                                    ? "bg-[#6D4AFF] text-white rounded-br-none"
-                                    : "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 rounded-bl-none"
-                                }`}
+                                className={`p-3.5 border-3 text-xs font-semibold leading-relaxed break-words transition-all ${getBubbleStyles(isMe, msg.badge?.id)}`}
                               >
                                 {msg.message}
                               </div>
@@ -551,7 +620,7 @@ export default function ChatDrawer({ isOpen, onClose, eventId, eventTitle, userP
 
             {/* Input Footer Area */}
             {!showRideForm && (
-              <div className="p-4 bg-white dark:bg-zinc-900 border-t-4 border-slate-900 dark:border-zinc-850">
+              <div className="p-4 bg-white dark:bg-zinc-900 border-t-4 border-slate-900 dark:border-zinc-800">
                 <form onSubmit={handleSendMessage} className="flex gap-2.5 items-center">
                   <input
                     disabled={!userProfile || isSending}

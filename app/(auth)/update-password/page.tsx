@@ -184,7 +184,7 @@ export default function UpdatePasswordPage() {
               required 
               value={password}
               placeholder="PASSWORD BARU..."
-              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-700 transition-colors"
               onChange={(e) => setPassword(e.target.value)}
             />
             <input 
@@ -192,7 +192,7 @@ export default function UpdatePasswordPage() {
               required 
               value={confirmPassword}
               placeholder="ULANGI PASSWORD..."
-              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
+              className="w-full p-3 sm:p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-sm sm:text-base outline-none focus:bg-amber-100 dark:focus:bg-zinc-700 transition-colors"
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>

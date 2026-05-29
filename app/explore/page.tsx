@@ -514,8 +514,8 @@ function TiltEventCard({
                     e.stopPropagation();
                     handleOpenQuickPurchase(event);
                   }}
-                  className={`w-full py-3 border-4 border-slate-900 dark:border-zinc-750 font-black italic uppercase text-[10px] tracking-wider shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all text-center rounded-xl ${(event.totalRemainingStock === 0 || isEventEnded)
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border-slate-300 dark:border-zinc-850 dark:bg-zinc-850'
+                  className={`w-full py-3 border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase text-[10px] tracking-wider shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all text-center rounded-xl ${(event.totalRemainingStock === 0 || isEventEnded)
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border-slate-300 dark:border-zinc-800 dark:bg-zinc-800'
                       : 'bg-[var(--primary-color)] text-white hover:bg-slate-900 dark:hover:bg-white dark:hover:text-black'
                     }`}
                 >
@@ -599,6 +599,10 @@ export default function ExplorePage() {
 
   const [eventReviews, setEventReviews] = useState<any[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
+  // ─── Q&A STATES ───
+  const [qaList, setQaList] = useState<any[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
 
   const [totalFans, setTotalFans] = useState(0);
   const [marqueeItems, setMarqueeItems] = useState<string[]>([]);
@@ -858,6 +862,32 @@ export default function ExplorePage() {
     setEventTiers([]);
     setIsLoadingReviews(true);
     setEventReviews([]);
+
+    // Load Q&A from localStorage
+    const savedQa = localStorage.getItem(`tiketin_qa_${event.id}`);
+    if (savedQa) {
+      setQaList(JSON.parse(savedQa));
+    } else {
+      const defaultQa = [
+        {
+          id: "q1",
+          question: "Apakah event ini ramah kursi roda?",
+          answer: "Halo! Ya, kami menyediakan ramp khusus dan area khusus ramah kursi roda di dekat Front of House (FOH).",
+          createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+          userName: "Ahmad"
+        },
+        {
+          id: "q2",
+          question: "Jam berapa open gate hari H?",
+          answer: "Open gate akan dibuka mulai pukul 15:00 WIB, sedangkan show utama baru dimulai jam 19:30 WIB.",
+          createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+          userName: "Clara"
+        }
+      ];
+      setQaList(defaultQa);
+      localStorage.setItem(`tiketin_qa_${event.id}`, JSON.stringify(defaultQa));
+    }
+
     try {
       const { data, error } = await supabase
         .from("ticket_categories")
@@ -897,6 +927,55 @@ export default function ExplorePage() {
     } finally {
       setIsLoadingReviews(false);
     }
+  };
+
+  const handleSendQuestion = () => {
+    if (!newQuestion.trim()) return;
+    if (!selectedEventDetails) return;
+
+    const newQaItem = {
+      id: `q-${Date.now()}`,
+      question: newQuestion.trim(),
+      answer: null,
+      createdAt: new Date().toISOString(),
+      userName: userProfile?.full_name?.split(" ")[0] || "Kamu"
+    };
+
+    const updated = [...qaList, newQaItem];
+    setQaList(updated);
+    localStorage.setItem(`tiketin_qa_${selectedEventDetails.id}`, JSON.stringify(updated));
+    setNewQuestion("");
+
+    // Trigger simulated response after 2 seconds
+    setTimeout(() => {
+      const lowerQ = newQaItem.question.toLowerCase();
+      let answer = "Halo! Pertanyaan Anda telah kami terima. Tim promotor kami akan segera memverifikasinya. Stay tuned!";
+      
+      if (lowerQ.includes("kursi roda") || lowerQ.includes("difabel") || lowerQ.includes("wheelchair")) {
+        answer = "Halo! Ya, event ini ramah kursi roda. Kami menyediakan jalur ramp khusus di gate masuk serta tribun/area khusus penonton disabilitas di section Festival B.";
+      } else if (lowerQ.includes("pintu") || lowerQ.includes("gate") || lowerQ.includes("jam") || lowerQ.includes("buka")) {
+        answer = "Halo! Pintu gerbang utama (open gate) akan dibuka mulai pukul 15.00 WIB. Kami menyarankan untuk datang lebih awal untuk menghindari antrean panjang.";
+      } else if (lowerQ.includes("refund") || lowerQ.includes("batal") || lowerQ.includes("kembali")) {
+        answer = "Halo! Tiket yang sudah dibeli bersifat final dan tidak dapat direfund atau dibatalkan. Namun, e-ticket dapat dipindahtangankan secara aman dengan menyerahkan surat kuasa.";
+      } else if (lowerQ.includes("makan") || lowerQ.includes("minum") || lowerQ.includes("f&b")) {
+        answer = "Halo! Penonton dilarang membawa makanan dan minuman dari luar venue. Namun, jangan khawatir karena kami menyediakan puluhan booth kuliner resmi di dalam area konser.";
+      } else if (lowerQ.includes("kamera") || lowerQ.includes("foto") || lowerQ.includes("sler") || lowerQ.includes("dslr")) {
+        answer = "Halo! Kamera profesional seperti DSLR, Mirrorless, atau Go-Pro tidak diperkenankan masuk tanpa kartu pers resmi. Kamera handphone diperbolehkan.";
+      }
+
+      setQaList((prevList) => {
+        const listCopy = prevList.map((item) => {
+          if (item.id === newQaItem.id) {
+            return { ...item, answer };
+          }
+          return item;
+        });
+        localStorage.setItem(`tiketin_qa_${selectedEventDetails.id}`, JSON.stringify(listCopy));
+        return listCopy;
+      });
+      
+      toast("Promotor membalas pertanyaanmu! 💬", "success");
+    }, 2000);
   };
 
   let processedEvents = events.filter((event) => {
@@ -1026,7 +1105,7 @@ export default function ExplorePage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
                 </DropdownMenuItem>
@@ -1049,7 +1128,7 @@ export default function ExplorePage() {
                 <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
@@ -1947,7 +2026,7 @@ export default function ExplorePage() {
                   </div>
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deskripsi Event</p>
-                    <div className="border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] rounded-xl overflow-hidden bg-white dark:bg-zinc-850">
+                    <div className="border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                       {/* macOS console header bar */}
                       <div className="bg-slate-100 dark:bg-zinc-800 border-b-3 border-slate-900 dark:border-zinc-700 px-4 py-2 flex items-center justify-between">
                         <div className="flex gap-1.5">
@@ -2002,6 +2081,60 @@ export default function ExplorePage() {
                       <p className="text-xs font-bold text-red-500 italic py-2">KATEGORI TIKET BELUM DIATUR EO!</p>
                     )}
                   </div>
+
+                  {/* ─── TANYA PROMOTOR / Q&A BOX ─── */}
+                  <div className="space-y-4 border-t-4 border-slate-900 dark:border-zinc-700 pt-5">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Tanya Promotor / Q&A Box</p>
+                    
+                    {/* Q&A Feed */}
+                    <div className="space-y-3 max-h-[220px] overflow-y-auto brutal-scroll pr-1">
+                      {qaList.length > 0 ? (
+                        qaList.map((qa) => (
+                          <div key={qa.id} className="bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 p-3 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] space-y-2 text-xs">
+                            <div className="flex justify-between items-center text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+                              <span>Tanya: {qa.userName || "User"}</span>
+                              <span>{new Date(qa.createdAt).toLocaleDateString("id-ID")}</span>
+                            </div>
+                            <p className="font-bold text-slate-900 dark:text-zinc-50">Q: {qa.question}</p>
+                            {qa.answer ? (
+                              <div className="bg-slate-50 dark:bg-zinc-800 border border-dashed border-[var(--primary-color)] p-2 text-slate-700 dark:text-zinc-300 rounded mt-1 relative pl-6">
+                                <div className="absolute left-2.5 top-3.5 w-1.5 h-1.5 rounded-full bg-[var(--primary-color)] animate-pulse" />
+                                <p className="text-[8px] font-black text-[var(--primary-color)] uppercase tracking-widest mb-1">PROMOTOR REPLY:</p>
+                                <p className="font-semibold text-[11px]">{qa.answer}</p>
+                              </div>
+                            ) : (
+                              <div className="text-[9px] italic text-amber-500 font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                ⏳ Menunggu balasan promotor...
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs font-bold text-slate-400 italic py-2">Belum ada pertanyaan. Tanyakan sesuatu ke promotor!</p>
+                      )}
+                    </div>
+
+                    {/* Question Input Form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ada pertanyaan untuk EO? (misal: open gate, kursi roda...)"
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSendQuestion();
+                        }}
+                        className="flex-grow h-11 px-3 border-3 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 text-xs font-bold outline-none rounded-xl"
+                      />
+                      <button
+                        onClick={handleSendQuestion}
+                        className="bg-[var(--primary-color)] text-slate-900 border-3 border-slate-900 dark:border-zinc-700 px-4 h-11 text-xs font-black uppercase shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_#fff] hover:translate-y-0.5 hover:shadow-none transition-all rounded-xl shrink-0 cursor-pointer"
+                      >
+                        KIRIM
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="space-y-3 border-t-4 border-slate-900 dark:border-zinc-700 pt-4">
                     <div className="flex justify-between items-center">
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Ulasan Pembeli</p>
@@ -2117,7 +2250,7 @@ export default function ExplorePage() {
                           setSelectedEventDetails(null);
                           handleOpenEventChat(selectedEventDetails.id, selectedEventDetails.title);
                         }}
-                        className="py-4 px-6 border-4 border-slate-900 dark:border-zinc-750 bg-[#6D4AFF] text-white hover:bg-amber-400 hover:text-slate-900 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 rounded-xl"
+                        className="py-4 px-6 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white hover:bg-amber-400 hover:text-slate-900 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 rounded-xl"
                       >
                         <MessageSquare size={16} strokeWidth={3} className="shrink-0" />
                         GRUP CHAT
@@ -2132,7 +2265,7 @@ export default function ExplorePage() {
                             setSelectedEventDetails(null);
                             handleOpenQuickPurchase(selectedEventDetails);
                           }}
-                          className={`py-4 px-8 border-4 border-slate-900 dark:border-zinc-750 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 rounded-xl ${selectedEventDetails.totalRemainingStock === 0 || isEnded
+                          className={`py-4 px-8 border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#6D4AFF] dark:shadow-[6px_6px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 rounded-xl ${selectedEventDetails.totalRemainingStock === 0 || isEnded
                               ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border-slate-300 dark:border-zinc-800"
                               : "bg-amber-400 dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 hover:bg-[#6D4AFF] hover:text-white"
                             }`}
@@ -2174,9 +2307,9 @@ export default function ExplorePage() {
                   setQuickPurchaseEvent(null);
                 }
               }}
-              className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-950 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-y-auto brutal-scroll p-6 md:p-8"
+              className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-900 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-y-auto brutal-scroll p-6 md:p-8"
             >
-              <div className="flex justify-between items-center border-b-4 border-slate-900 dark:border-zinc-850 pb-4 mb-6">
+              <div className="flex justify-between items-center border-b-4 border-slate-900 dark:border-zinc-800 pb-4 mb-6">
                 <div>
                   <h3 className="text-xl font-black italic uppercase -skew-x-6 text-slate-900 dark:text-white">
                     PILIH TIKET
@@ -2225,7 +2358,7 @@ export default function ExplorePage() {
                         key={tier.id}
                         onClick={() => !isSoldOut && setSelectedDrawerTierId(tier.id)}
                         className={`border-4 p-4 rounded-2xl flex justify-between items-center transition-all relative overflow-hidden select-none cursor-pointer ${isSoldOut
-                            ? "bg-slate-100 dark:bg-zinc-900/50 border-slate-300 dark:border-zinc-850 opacity-60 cursor-not-allowed"
+                            ? "bg-slate-100 dark:bg-zinc-900/50 border-slate-300 dark:border-zinc-800 opacity-60 cursor-not-allowed"
                             : isSelected
                               ? "bg-amber-50 dark:bg-zinc-900/80 border-[#6D4AFF] shadow-[4px_4px_0_0_#6D4AFF]"
                               : "bg-white dark:bg-zinc-900 border-slate-900 dark:border-zinc-800 shadow-[3px_3px_0_0_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
@@ -2266,7 +2399,7 @@ export default function ExplorePage() {
                   const maxQty = Math.min(4, selectedTier.stock);
                   const totalPrice = selectedTier.price * drawerQty;
                   return (
-                    <div className="border-t-4 border-slate-900 dark:border-zinc-850 pt-5 mt-6 space-y-4">
+                    <div className="border-t-4 border-slate-900 dark:border-zinc-800 pt-5 mt-6 space-y-4">
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="text-[9px] font-black uppercase text-slate-400 dark:text-zinc-500">Jumlah Tiket</p>
@@ -2292,7 +2425,7 @@ export default function ExplorePage() {
                           </button>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center bg-slate-100 dark:bg-zinc-900 border-3 border-slate-900 dark:border-zinc-850 p-4 rounded-xl shadow-[3px_3px_0_0_#000]">
+                      <div className="flex justify-between items-center bg-slate-100 dark:bg-zinc-900 border-3 border-slate-900 dark:border-zinc-800 p-4 rounded-xl shadow-[3px_3px_0_0_#000]">
                         <div>
                           <p className="text-[8px] font-black uppercase text-slate-400">Total Pembayaran</p>
                           <p className="text-[10px] font-black uppercase text-[#6D4AFF]">{drawerQty}x {selectedTier.name}</p>

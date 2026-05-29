@@ -94,21 +94,21 @@ export default function AjukanEventPage() {
   };
 
   return (
-    <main className={`min-h-screen bg-[#FCFAF1] p-6 md:p-12 ${poppins.className} text-left`}>
+    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 p-6 md:p-12 ${poppins.className} text-left text-slate-900 dark:text-zinc-50 brutal-grid noise`}>
       <div className="max-w-4xl mx-auto">
         
         <header className="mb-12">
-          <div className="bg-[#6D4AFF] border-4 border-black p-4 inline-block -rotate-2 shadow-[6px_6px_0_0_#000] mb-8">
-            <TicketIcon className="text-amber-400" size={40} strokeWidth={3} />
+          <div className="bg-[var(--primary-color)] border-4 border-black dark:border-zinc-700 p-4 inline-block -rotate-2 shadow-[6px_6px_0_0_#000] mb-8">
+            <TicketIcon className="text-black" size={40} strokeWidth={3} />
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase -skew-x-6 tracking-tighter leading-[0.8] mb-4">
-            VERIFIKASI <span className="text-[#6D4AFF]">PROMOTOR.</span>
+            VERIFIKASI <span className="text-[var(--primary-color)]">PROMOTOR.</span>
           </h1>
           <p className="font-black text-slate-400 uppercase tracking-[0.3em] text-[10px] italic">Tiketin Revolution • Know Your Business (KYB)</p>
         </header>
 
         {/* WARNING NOTE POTONGAN 15% */}
-        <div className="bg-amber-400 border-4 border-slate-900 p-6 shadow-[6px_6px_0px_0px_#000] -rotate-1 mb-12 text-slate-900">
+        <div className="bg-amber-400 border-4 border-slate-900 dark:border-zinc-700 p-6 shadow-[6px_6px_0px_0px_#000] -rotate-1 mb-12 text-slate-900">
           <div className="flex gap-4 items-start">
             <Info className="shrink-0 text-slate-900 mt-1" size={24} strokeWidth={3} />
             <div>
@@ -124,33 +124,33 @@ export default function AjukanEventPage() {
           
           {/* SECTION 01: IDENTITAS */}
           <section className="relative">
-            <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white border-4 border-black p-6 md:p-10">
-              <div className="bg-black text-white px-4 py-1 inline-block -skew-x-12 mb-8">
+            <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+              <div className="bg-black dark:bg-zinc-800 text-white px-4 py-1 inline-block -skew-x-12 mb-8">
                 <h3 className="font-black italic uppercase text-lg">01. IDENTITAS ORGANISASI</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2 md:col-span-2">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">Nama Resmi Promotor / Event Organizer</label>
-                  <div className="relative flex items-center bg-white border-4 border-black">
-                    <div className="px-4 border-r-4 border-black h-14 flex items-center bg-amber-400"><Briefcase size={20} strokeWidth={3} /></div>
-                    <input type="text" placeholder="MISAL: BUMI SILIWANGI ENTERTAINMENT" className="w-full h-14 px-4 font-black uppercase outline-none focus:bg-amber-50" onChange={(e) => setOrgName(e.target.value)} required />
+                  <div className="relative flex items-center bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700">
+                    <div className="px-4 border-r-4 border-black dark:border-zinc-700 h-14 flex items-center bg-amber-400 text-slate-900"><Briefcase size={20} strokeWidth={3} /></div>
+                    <input type="text" placeholder="MISAL: BUMI SILIWANGI ENTERTAINMENT" className="w-full h-14 px-4 font-black uppercase outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setOrgName(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">WhatsApp Bisnis</label>
-                  <div className="relative flex items-center bg-white border-4 border-black">
-                    <div className="px-4 border-r-4 border-black h-14 flex items-center bg-emerald-400"><Phone size={20} strokeWidth={3} /></div>
-                    <input type="tel" placeholder="08123456789" className="w-full h-14 px-4 font-black outline-none" onChange={(e) => setWhatsapp(e.target.value)} required />
+                  <div className="relative flex items-center bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700">
+                    <div className="px-4 border-r-4 border-black dark:border-zinc-700 h-14 flex items-center bg-emerald-400 text-slate-900"><Phone size={20} strokeWidth={3} /></div>
+                    <input type="tel" placeholder="08123456789" className="w-full h-14 px-4 font-black outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setWhatsapp(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">Tipe Organisasi</label>
-                  <select className="w-full h-14 px-4 border-4 border-black font-black uppercase outline-none bg-white" onChange={(e) => setOrgType(e.target.value)}>
-                    <option>PROMOTOR MUSIK</option>
-                    <option>KOMUNITAS SENI</option>
-                    <option>EVENT ORGANIZER</option>
+                  <select className="w-full h-14 px-4 border-4 border-black dark:border-zinc-700 font-black uppercase outline-none bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50" onChange={(e) => setOrgType(e.target.value)}>
+                    <option className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50">PROMOTOR MUSIK</option>
+                    <option className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50">KOMUNITAS SENI</option>
+                    <option className="bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50">EVENT ORGANIZER</option>
                   </select>
                 </div>
               </div>
@@ -159,19 +159,19 @@ export default function AjukanEventPage() {
 
           {/* SECTION 02: UPLOAD DOKUMEN */}
           <section className="relative">
-            <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white border-4 border-black p-6 md:p-10">
-              <div className="bg-[#6D4AFF] text-white px-4 py-1 inline-block -skew-x-12 mb-8">
+            <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+              <div className="bg-[var(--primary-color)] text-black border-2 border-black dark:border-zinc-700 px-4 py-1 inline-block -skew-x-12 mb-8">
                 <h3 className="font-black italic uppercase text-lg">02. BERKAS PENDUKUNG (PDF)</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">Portofolio (PDF)</label>
-                  <div className="relative border-4 border-dashed border-black p-6 text-center group hover:bg-amber-50 transition-all">
+                  <div className="relative border-4 border-dashed border-black dark:border-zinc-700 p-6 text-center group hover:bg-amber-50 dark:hover:bg-zinc-800/30 transition-all">
                     <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => setPortfolioFile(e.target.files?.[0] || null)} required />
                     <div className="flex flex-col items-center gap-2">
-                      <UploadCloud size={32} className={portfolioFile ? "text-emerald-500" : "text-slate-300"} />
+                      <UploadCloud size={32} className={portfolioFile ? "text-emerald-500" : "text-slate-400 dark:text-zinc-500"} />
                       <p className="font-black text-[10px] uppercase truncate max-w-[200px] italic">
                         {portfolioFile ? portfolioFile.name : "KLIK BUAT UPLOAD PORTOFOLIO"}
                       </p>
@@ -181,10 +181,10 @@ export default function AjukanEventPage() {
 
                 <div className="space-y-3">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">Berkas PT / Akta (PDF)</label>
-                  <div className="relative border-4 border-dashed border-black p-6 text-center group hover:bg-emerald-50 transition-all">
+                  <div className="relative border-4 border-dashed border-black dark:border-zinc-700 p-6 text-center group hover:bg-emerald-50 dark:hover:bg-zinc-800/30 transition-all">
                     <input type="file" accept=".pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => setLegalFile(e.target.files?.[0] || null)} required />
                     <div className="flex flex-col items-center gap-2">
-                      <FileText size={32} className={legalFile ? "text-[#6D4AFF]" : "text-slate-300"} />
+                      <FileText size={32} className={legalFile ? "text-[var(--primary-color)]" : "text-slate-400 dark:text-zinc-500"} />
                       <p className="font-black text-[10px] uppercase truncate max-w-[200px] italic">
                         {legalFile ? legalFile.name : "KLIK BUAT UPLOAD BERKAS PT"}
                       </p>
@@ -197,16 +197,16 @@ export default function AjukanEventPage() {
 
           {/* SECTION 03: VISI */}
           <section className="relative">
-            <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white border-4 border-black p-6 md:p-10">
-              <div className="bg-amber-400 border-2 border-black text-black px-4 py-1 inline-block -skew-x-12 mb-8 shadow-[3px_3px_0_0_#000]">
+            <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+              <div className="bg-[var(--primary-color)] border-2 border-black dark:border-zinc-700 text-black px-4 py-1 inline-block -skew-x-12 mb-8 shadow-[3px_3px_0_0_#000]">
                 <h3 className="font-black italic uppercase text-lg">03. RENCANA EVENT</h3>
               </div>
-              <textarea placeholder="JELASKAN EVENT APA YANG INGIN ANDA JUAL DI TIKETIN..." className="w-full p-6 h-40 border-4 border-black font-bold outline-none resize-none bg-white focus:bg-blue-50" onChange={(e) => setReason(e.target.value)} required />
+              <textarea placeholder="JELASKAN EVENT APA YANG INGIN ANDA JUAL DI TIKETIN..." className="w-full p-6 h-40 border-4 border-black dark:border-zinc-700 font-bold outline-none resize-none bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 focus:bg-blue-50 dark:focus:bg-zinc-800/30" onChange={(e) => setReason(e.target.value)} required />
             </div>
           </section>
 
-          <button type="submit" disabled={loading} className="w-full h-24 bg-black text-white border-4 border-black font-black italic uppercase text-2xl shadow-[10px_10px_0_0_#6D4AFF] hover:bg-[#6D4AFF] hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center gap-4 disabled:opacity-50">
+          <button type="submit" disabled={loading} className="w-full h-24 bg-black dark:bg-zinc-900 text-white border-4 border-black dark:border-zinc-700 font-black italic uppercase text-2xl shadow-[10px_10px_0_0_var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-black hover:translate-x-2 hover:translate-y-2 hover:shadow-none transition-all flex items-center justify-center gap-4 disabled:opacity-50">
             {loading ? "LAGI UPLOAD..." : <>KIRIM DATA & BERKAS <Send size={32} strokeWidth={3} /></>}
           </button>
         </form>

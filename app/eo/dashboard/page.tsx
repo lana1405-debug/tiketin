@@ -85,6 +85,105 @@ export default function EODashboard() {
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState<string | null>(null);
 
+  // ⚡ STATE Q&AS
+  const [allQaList, setAllQaList] = useState<any[]>([]);
+  const [activeQaReplyId, setActiveQaReplyId] = useState<string | null>(null);
+  const [qaReplyText, setQaReplyText] = useState("");
+  const [qaFilterMode, setQaFilterMode] = useState<"my-events" | "all-events">("all-events");
+  const [eventsMap, setEventsMap] = useState<Record<string, string>>({});
+
+  const loadEoQAs = async () => {
+    const list: any[] = [];
+    if (typeof window !== "undefined") {
+      let titleMap: Record<string, string> = {};
+      try {
+        const { data } = await supabase.from("events").select("id, title");
+        if (data) {
+          data.forEach((e: any) => {
+            titleMap[e.id] = e.title;
+          });
+          setEventsMap(titleMap);
+        }
+      } catch (err) {
+        console.error("Gagal memuat event titles:", err);
+      }
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("tiketin_qa_")) {
+          const eventId = key.replace("tiketin_qa_", "");
+          try {
+            const items = JSON.parse(localStorage.getItem(key) || "[]");
+            if (Array.isArray(items)) {
+              items.forEach((item: any) => {
+                list.push({ ...item, eventId });
+              });
+            }
+          } catch (e) {
+            console.error("Gagal memuat Q&A:", e);
+          }
+        }
+      }
+    }
+    setAllQaList(list);
+  };
+
+  const handleQaReplySubmit = (qaId: string, eventId: string) => {
+    if (!qaReplyText.trim()) {
+      toast("Balasan tidak boleh kosong!", "warning");
+      return;
+    }
+    try {
+      const key = `tiketin_qa_${eventId}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const items = JSON.parse(saved);
+        const updated = items.map((item: any) => {
+          if (item.id === qaId) {
+            return { ...item, answer: qaReplyText.trim(), answeredAt: new Date().toISOString() };
+          }
+          return item;
+        });
+        localStorage.setItem(key, JSON.stringify(updated));
+        toast("Balasan Q&A berhasil dikirim! 💬", "success");
+        loadEoQAs();
+        setActiveQaReplyId(null);
+        setQaReplyText("");
+      }
+    } catch (e: any) {
+      toast("Gagal membalas: " + e.message, "error");
+    }
+  };
+
+  const handleQaReplyDelete = (qaId: string, eventId: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus balasan ini?")) return;
+    try {
+      const key = `tiketin_qa_${eventId}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const items = JSON.parse(saved);
+        const updated = items.map((item: any) => {
+          if (item.id === qaId) {
+            const { answer, answeredAt, ...rest } = item;
+            return rest;
+          }
+          return item;
+        });
+        localStorage.setItem(key, JSON.stringify(updated));
+        toast("Balasan Q&A dihapus.", "success");
+        loadEoQAs();
+      }
+    } catch (e: any) {
+      toast("Gagal menghapus: " + e.message, "error");
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "feedback") {
+      loadEoQAs();
+    }
+  }, [activeTab]);
+
   // ⚡ STATE EO NAME SETTING
   const [newEoNameInput, setNewEoNameInput] = useState("");
   const [isSavingEoName, setIsSavingEoName] = useState(false);
@@ -1181,7 +1280,7 @@ export default function EODashboard() {
                 activeTab === "feedback" ? "bg-emerald-400 text-black" : "bg-white text-black"
               }`}
             >
-              <span className="flex items-center gap-2"><Star size={14}/> Feedback Ulasan</span>
+              <span className="flex items-center gap-2"><Star size={14}/> Ulasan & Tanya Promotor (Q&A)</span>
             </button>
           </div>
 
@@ -1548,167 +1647,322 @@ export default function EODashboard() {
               : "0.0";
 
             return (
-              <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
-                <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
-                  <h3 className="text-3xl font-black italic uppercase tracking-tighter">Feedback & Ulasan</h3>
-                  <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{totalReviewsCount} Reviews</span>
-                </div>
-                
-                {totalReviewsCount > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border-b-8 border-black bg-slate-50">
-                    <div className="flex flex-col items-center justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] text-center">
-                      <p className="text-[10px] font-black uppercase text-slate-400">RATA-RATA RATING</p>
-                      <p className="text-6xl font-black italic -skew-x-6 text-[#6D4AFF] mt-2">{averageRating}</p>
-                      <div className="flex gap-1 mt-3">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            size={16}
-                            className={i < Math.round(Number(averageRating)) ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{totalReviewsCount} Ulasan Total</p>
-                    </div>
-                    
-                    <div className="md:col-span-2 flex flex-col justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] space-y-2">
-                      {[5, 4, 3, 2, 1].map((star) => {
-                        const count = starCounts[star];
-                        const pct = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
-                        return (
-                          <div key={star} className="flex items-center gap-3 text-xs font-black uppercase">
-                            <span className="w-20 text-left">{star} Bintang</span>
-                            <div className="flex-grow h-4 bg-slate-100 border-2 border-black relative overflow-hidden">
-                              <div 
-                                className="h-full bg-amber-400 border-r-2 border-black" 
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <span className="w-16 text-right">{count} ({Math.round(pct)}%)</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+              <div className="space-y-12">
+                <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
+                  <div className="bg-[#6D4AFF] text-white p-6 border-b-8 border-black flex justify-between items-center">
+                    <h3 className="text-3xl font-black italic uppercase tracking-tighter">Feedback & Ulasan</h3>
+                    <span className="bg-black px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">{totalReviewsCount} Reviews</span>
                   </div>
-                )}
-
-                <div className="p-8 space-y-6">
-                  {totalReviewsCount === 0 ? (
-                    <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
-                      Belum ada ulasan dari pembeli.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {reviewsList.map((rev) => (
-                        <div key={rev.id} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] flex flex-col justify-between transition-all">
-                          <div>
-                            <div className="flex justify-between items-start mb-4">
-                              <div>
-                                <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">{rev.profiles?.full_name || "Customer"}</h4>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {rev.events?.title}</p>
-                              </div>
-                              <div className="flex items-center gap-1 bg-black text-amber-400 px-2 py-1 border-2 border-black font-black text-xs">
-                                <Star className="fill-amber-400 text-amber-400" size={14} />
-                                {rev.rating}
-                              </div>
-                            </div>
-                            <p className="text-slate-700 italic font-medium text-sm">"{rev.comment}"</p>
-                            <div className="mt-2 text-[9px] text-slate-400 font-bold uppercase text-right">
-                              {new Date(rev.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}
-                            </div>
-
-                            {/* Nested EO Response Card */}
-                            {rev.reply_comment && (
-                              <div className="mt-4 p-4 bg-white border-2 border-dashed border-[#6D4AFF] relative text-left">
-                                <div className="absolute top-2 right-2 flex gap-1.5">
-                                  <button
-                                    onClick={() => {
-                                      setActiveReplyId(rev.id);
-                                      setReplyText(rev.reply_comment);
-                                    }}
-                                    className="text-[9px] font-black uppercase text-blue-500 hover:underline cursor-pointer"
-                                  >
-                                    Edit
-                                  </button>
-                                  <span className="text-[9px] text-slate-300">|</span>
-                                  <button
-                                    onClick={() => handleDeleteReply(rev.id)}
-                                    className="text-[9px] font-black uppercase text-red-500 hover:underline cursor-pointer"
-                                    disabled={isSubmittingReply === rev.id}
-                                  >
-                                    Hapus
-                                  </button>
-                                </div>
-                                <p className="text-[9px] font-black uppercase text-[#6D4AFF] tracking-widest mb-1 flex items-center gap-1">
-                                  <span>💬 TANGGAPAN RESMI EO</span>
-                                </p>
-                                <p className="text-xs text-slate-700 italic">"{rev.reply_comment}"</p>
-                                {rev.replied_at && (
-                                  <p className="text-[8px] text-slate-400 uppercase mt-2 text-right">
-                                    Dibalas pada: {new Date(rev.replied_at).toLocaleDateString("id-ID")}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Inline Reply Form */}
-                            {activeReplyId === rev.id && (
-                              <div className="mt-4 p-4 border-2 border-black bg-white space-y-3">
-                                <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Tulis Tanggapan Resmi</p>
-                                <textarea
-                                  rows={3}
-                                  value={replyText}
-                                  onChange={(e) => setReplyText(e.target.value)}
-                                  placeholder="Tulis balasan resmi dari panitia..."
-                                  className="w-full p-2 border-2 border-black text-xs font-medium outline-none focus:bg-amber-50"
-                                />
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => {
-                                      setActiveReplyId(null);
-                                      setReplyText("");
-                                    }}
-                                    className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-white hover:bg-slate-100 cursor-pointer"
-                                  >
-                                    Batal
-                                  </button>
-                                  <button
-                                    onClick={() => handleSubmitReply(rev.id)}
-                                    disabled={isSubmittingReply === rev.id}
-                                    className="px-3 py-1.5 bg-[#6D4AFF] text-white border border-[#6D4AFF] text-[10px] font-black uppercase hover:bg-slate-900 flex items-center gap-1 cursor-pointer"
-                                  >
-                                    {isSubmittingReply === rev.id ? (
-                                      <>
-                                        <Loader2 className="animate-spin" size={10} />
-                                        Proses...
-                                      </>
-                                    ) : (
-                                      "Kirim"
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Reply Action Button (if not already showing reply form and has no reply yet) */}
-                          {!rev.reply_comment && activeReplyId !== rev.id && (
-                            <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex justify-end">
-                              <button
-                                onClick={() => {
-                                  setActiveReplyId(rev.id);
-                                  setReplyText("");
-                                }}
-                                className="bg-white border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center gap-1 cursor-pointer"
-                              >
-                                💬 TANGGAPI
-                              </button>
-                            </div>
-                          )}
+                  
+                  {totalReviewsCount > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 border-b-8 border-black bg-slate-50">
+                      <div className="flex flex-col items-center justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] text-center">
+                        <p className="text-[10px] font-black uppercase text-slate-400">RATA-RATA RATING</p>
+                        <p className="text-6xl font-black italic -skew-x-6 text-[#6D4AFF] mt-2">{averageRating}</p>
+                        <div className="flex gap-1 mt-3">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              size={16}
+                              className={i < Math.round(Number(averageRating)) ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                            />
+                          ))}
                         </div>
-                      ))}
+                        <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{totalReviewsCount} Ulasan Total</p>
+                      </div>
+                      
+                      <div className="md:col-span-2 flex flex-col justify-center border-4 border-black p-6 bg-white shadow-[4px_4px_0_0_#000] space-y-2">
+                        {[5, 4, 3, 2, 1].map((star) => {
+                          const count = starCounts[star];
+                          const pct = totalReviewsCount > 0 ? (count / totalReviewsCount) * 100 : 0;
+                          return (
+                            <div key={star} className="flex items-center gap-3 text-xs font-black uppercase">
+                              <span className="w-20 text-left">{star} Bintang</span>
+                              <div className="flex-grow h-4 bg-slate-100 border-2 border-black relative overflow-hidden">
+                                <div 
+                                  className="h-full bg-amber-400 border-r-2 border-black" 
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="w-16 text-right">{count} ({Math.round(pct)}%)</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
+
+                  <div className="p-8 space-y-6">
+                    {totalReviewsCount === 0 ? (
+                      <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
+                        Belum ada ulasan dari pembeli.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {reviewsList.map((rev) => (
+                          <div key={rev.id} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] flex flex-col justify-between transition-all">
+                            <div>
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">{rev.profiles?.full_name || "Customer"}</h4>
+                                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {rev.events?.title}</p>
+                                </div>
+                                <div className="flex items-center gap-1 bg-black text-amber-400 px-2 py-1 border-2 border-black font-black text-xs">
+                                  <Star className="fill-amber-400 text-amber-400" size={14} />
+                                  {rev.rating}
+                                </div>
+                              </div>
+                              <p className="text-slate-700 italic font-medium text-sm">"{rev.comment}"</p>
+                              <div className="mt-2 text-[9px] text-slate-400 font-bold uppercase text-right">
+                                {new Date(rev.created_at).toLocaleDateString("id-ID", { dateStyle: "long" })}
+                              </div>
+
+                              {/* Nested EO Response Card */}
+                              {rev.reply_comment && (
+                                <div className="mt-4 p-4 bg-white border-2 border-dashed border-[#6D4AFF] relative text-left">
+                                  <div className="absolute top-2 right-2 flex gap-1.5">
+                                    <button
+                                      onClick={() => {
+                                        setActiveReplyId(rev.id);
+                                        setReplyText(rev.reply_comment);
+                                      }}
+                                      className="text-[9px] font-black uppercase text-blue-500 hover:underline cursor-pointer"
+                                    >
+                                      Edit
+                                    </button>
+                                    <span className="text-[9px] text-slate-300">|</span>
+                                    <button
+                                      onClick={() => handleDeleteReply(rev.id)}
+                                      className="text-[9px] font-black uppercase text-red-500 hover:underline cursor-pointer"
+                                      disabled={isSubmittingReply === rev.id}
+                                    >
+                                      Hapus
+                                    </button>
+                                  </div>
+                                  <p className="text-[9px] font-black uppercase text-[#6D4AFF] tracking-widest mb-1 flex items-center gap-1">
+                                    <span>💬 TANGGAPAN RESMI EO</span>
+                                  </p>
+                                  <p className="text-xs text-slate-700 italic">"{rev.reply_comment}"</p>
+                                  {rev.replied_at && (
+                                    <p className="text-[8px] text-slate-400 uppercase mt-2 text-right">
+                                      Dibalas pada: {new Date(rev.replied_at).toLocaleDateString("id-ID")}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Inline Reply Form */}
+                              {activeReplyId === rev.id && (
+                                <div className="mt-4 p-4 border-2 border-black bg-white space-y-3">
+                                  <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Tulis Tanggapan Resmi</p>
+                                  <textarea
+                                    rows={3}
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder="Tulis balasan resmi dari panitia..."
+                                    className="w-full p-2 border-2 border-black text-xs font-medium outline-none focus:bg-amber-50"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => {
+                                        setActiveReplyId(null);
+                                        setReplyText("");
+                                      }}
+                                      className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-white hover:bg-slate-100 cursor-pointer"
+                                    >
+                                      Batal
+                                    </button>
+                                    <button
+                                      onClick={() => handleSubmitReply(rev.id)}
+                                      disabled={isSubmittingReply === rev.id}
+                                      className="px-3 py-1.5 bg-[#6D4AFF] text-white border border-[#6D4AFF] text-[10px] font-black uppercase hover:bg-slate-900 flex items-center gap-1 cursor-pointer"
+                                    >
+                                      {isSubmittingReply === rev.id ? (
+                                        <>
+                                          <Loader2 className="animate-spin" size={10} />
+                                          Proses...
+                                        </>
+                                      ) : (
+                                        "Kirim"
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Reply Action Button (if not already showing reply form and has no reply yet) */}
+                            {!rev.reply_comment && activeReplyId !== rev.id && (
+                              <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex justify-end">
+                                <button
+                                  onClick={() => {
+                                    setActiveReplyId(rev.id);
+                                    setReplyText("");
+                                  }}
+                                  className="bg-white border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                  💬 TANGGAPI
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ─── KELOLA PERTANYAAN (Q&A BOX) ─── */}
+                <div className="bg-white border-8 border-black shadow-[12px_12px_0_0_#000] overflow-hidden flex flex-col text-left">
+                  <div className="bg-amber-400 text-black p-6 border-b-8 border-black flex justify-between items-center">
+                    <h3 className="text-3xl font-black italic uppercase tracking-tighter">Tanya Promotor / Q&A Box Manager</h3>
+                    <span className="bg-black text-white px-3 py-1 border-2 border-white text-[9px] font-black uppercase italic tracking-widest">
+                      {qaFilterMode === "my-events" 
+                        ? allQaList.filter(qa => events.some(e => e.id === qa.eventId)).length 
+                        : allQaList.length} Pertanyaan
+                    </span>
+                  </div>
+
+                  {/* Filter Toggle */}
+                  <div className="bg-slate-100 border-b-4 border-black p-4 flex flex-wrap gap-3">
+                    <button
+                      onClick={() => setQaFilterMode("my-events")}
+                      className={`px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] tracking-wider transition-all shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer ${
+                        qaFilterMode === "my-events" ? "bg-black text-white" : "bg-white text-black"
+                      }`}
+                    >
+                      Event Saya ({allQaList.filter(qa => events.some(e => e.id === qa.eventId)).length})
+                    </button>
+                    <button
+                      onClick={() => setQaFilterMode("all-events")}
+                      className={`px-4 py-2 border-2 border-black font-black uppercase italic text-[10px] tracking-wider transition-all shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer ${
+                        qaFilterMode === "all-events" ? "bg-amber-400 text-black" : "bg-white text-black"
+                      }`}
+                    >
+                      Semua Event / Mode Demo ({allQaList.length})
+                    </button>
+                    <div className="text-[9px] font-bold text-slate-500 flex items-center italic">
+                      💡 Mode Demo memungkinkan Anda membalas pertanyaan dari event mana saja.
+                    </div>
+                  </div>
+                  
+                  <div className="p-8 space-y-6">
+                    {(() => {
+                      const myEventIds = events.map(e => e.id);
+                      const displayQAs = qaFilterMode === "my-events"
+                        ? allQaList.filter(qa => myEventIds.includes(qa.eventId))
+                        : allQaList;
+                      
+                      if (displayQAs.length === 0) {
+                        return (
+                          <div className="p-12 text-center font-black italic text-xl uppercase tracking-widest text-[#6D4AFF] border-4 border-dashed border-slate-300 bg-slate-50">
+                            Belum ada pertanyaan dari calon pembeli.
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {displayQAs.map((qa) => {
+                            const eventTitle = eventsMap[qa.eventId] || events.find(e => e.id === qa.eventId)?.title || "Event";
+                            const isReplying = activeQaReplyId === qa.id;
+                            
+                            return (
+                              <div key={`${qa.eventId}-${qa.id}`} className="bg-[#FCFAF1] border-4 border-black p-6 shadow-[6px_6px_0_0_#000] flex flex-col justify-between transition-all">
+                                <div>
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                      <h4 className="font-black text-lg uppercase italic -skew-x-2 leading-none line-clamp-1">Tanya: {qa.userName || "Customer"}</h4>
+                                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Event: {eventTitle}</p>
+                                    </div>
+                                    <div className="text-[9px] text-slate-400 font-bold uppercase">
+                                      {new Date(qa.createdAt).toLocaleDateString("id-ID", { dateStyle: "short" })}
+                                    </div>
+                                  </div>
+                                  
+                                  <p className="text-slate-900 font-bold text-sm bg-white p-3 border-2 border-black shadow-[2px_2px_0_0_#000] mb-4">
+                                    Q: {qa.question}
+                                  </p>
+                                  
+                                  {qa.answer && (
+                                    <div className="p-4 bg-slate-55 dark:bg-zinc-800 border-2 border-dashed border-[#6D4AFF] relative text-left">
+                                      <div className="absolute top-2 right-2 flex gap-1.5 bg-slate-50 dark:bg-zinc-800 px-1">
+                                        <button
+                                          onClick={() => {
+                                            setActiveQaReplyId(qa.id);
+                                            setQaReplyText(qa.answer);
+                                          }}
+                                          className="text-[9px] font-black uppercase text-blue-500 hover:underline cursor-pointer"
+                                        >
+                                          Edit
+                                        </button>
+                                        <span className="text-[9px] text-slate-300">|</span>
+                                        <button
+                                          onClick={() => handleQaReplyDelete(qa.id, qa.eventId)}
+                                          className="text-[9px] font-black uppercase text-red-500 hover:underline cursor-pointer"
+                                        >
+                                          Hapus
+                                        </button>
+                                      </div>
+                                      <p className="text-[9px] font-black uppercase text-[#6D4AFF] tracking-widest mb-1">
+                                        💬 BALASAN ORGANIZER:
+                                      </p>
+                                      <p className="text-xs text-slate-700 italic">"{qa.answer}"</p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* QA Reply Form */}
+                                  {isReplying && (
+                                    <div className="mt-4 p-4 border-2 border-black bg-white space-y-3">
+                                      <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Jawab Pertanyaan</p>
+                                      <textarea
+                                        rows={3}
+                                        value={qaReplyText}
+                                        onChange={(e) => setQaReplyText(e.target.value)}
+                                        placeholder="Ketik jawaban resmi Anda sebagai promotor..."
+                                        className="w-full p-2 border-2 border-black text-xs font-medium outline-none focus:bg-amber-50"
+                                      />
+                                      <div className="flex justify-end gap-2">
+                                        <button
+                                          onClick={() => {
+                                            setActiveQaReplyId(null);
+                                            setQaReplyText("");
+                                          }}
+                                          className="px-3 py-1.5 border border-black text-[10px] font-black uppercase bg-white hover:bg-slate-100 cursor-pointer"
+                                        >
+                                          Batal
+                                        </button>
+                                        <button
+                                          onClick={() => handleQaReplySubmit(qa.id, qa.eventId)}
+                                          className="px-3 py-1.5 bg-[#6D4AFF] text-white border border-[#6D4AFF] text-[10px] font-black uppercase hover:bg-slate-900 cursor-pointer"
+                                        >
+                                          Kirim
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {!qa.answer && !isReplying && (
+                                  <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-200 flex justify-end">
+                                    <button
+                                      onClick={() => {
+                                        setActiveQaReplyId(qa.id);
+                                        setQaReplyText("");
+                                      }}
+                                      className="bg-white border-2 border-black px-3 py-1.5 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-[#6D4AFF] hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+                                    >
+                                      💬 JAWAB
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             );

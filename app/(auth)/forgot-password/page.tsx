@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
                   placeholder="EMAIL@GMAIL.COM" 
                   required
                   value={email}
-                  className="w-full p-4 sm:p-5 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-base sm:text-lg outline-none focus:bg-amber-100 dark:focus:bg-zinc-750 transition-colors"
+                  className="w-full p-4 sm:p-5 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-black uppercase text-base sm:text-lg outline-none focus:bg-amber-100 dark:focus:bg-zinc-700 transition-colors"
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 {errorMsg && (

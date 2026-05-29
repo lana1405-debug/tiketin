@@ -25,7 +25,7 @@ const GLOBAL_STYLES = `
 `;
 
 const LoginIllustration = () => (
-  <div className="relative w-full h-full bg-[#6D4AFF] flex items-center justify-center overflow-hidden border-b-8 lg:border-b-0 lg:border-l-[12px] border-black dark:border-zinc-750 py-12 lg:py-0">
+  <div className="relative w-full h-full bg-[#6D4AFF] flex items-center justify-center overflow-hidden border-b-8 lg:border-b-0 lg:border-l-[12px] border-black dark:border-zinc-700 py-12 lg:py-0">
     <div className="absolute inset-0 opacity-20" 
       style={{ backgroundImage: 'repeating-linear-gradient(-45deg, #000, #000 10px, transparent 10px, transparent 20px)' }} 
     />
@@ -47,7 +47,7 @@ const LoginIllustration = () => (
       </div>
     </div>
 
-    <div className="absolute bottom-0 w-full bg-black border-t-4 lg:border-t-8 border-black dark:border-zinc-750 py-2 lg:py-4 overflow-hidden">
+    <div className="absolute bottom-0 w-full bg-black border-t-4 lg:border-t-8 border-black dark:border-zinc-700 py-2 lg:py-4 overflow-hidden">
         <div className="marquee-track">
             {[...Array(6)].map((_, i) => (
                 <span key={i} className="text-sm lg:text-2xl font-black italic uppercase text-amber-400 mx-4">

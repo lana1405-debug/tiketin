@@ -836,10 +836,15 @@ export default function MyTicketsPage() {
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas context not available");
 
-      ctx.fillStyle = "#0f172a";
+      // Resolve the active primary color dynamically
+      const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || "#6D4AFF";
+
+      // Dark theme background
+      ctx.fillStyle = "#0B0813";
       ctx.fillRect(0, 0, W, H);
 
-      ctx.strokeStyle = "rgba(109, 74, 255, 0.15)";
+      // Neon diagonal grid lines
+      ctx.strokeStyle = primaryColor + "22"; // 13% opacity grid
       ctx.lineWidth = 6;
       for (let i = 0; i < W + H; i += 90) {
         ctx.beginPath();
@@ -848,38 +853,71 @@ export default function MyTicketsPage() {
         ctx.stroke();
       }
 
-      const cardX = 90, cardY = 250, cardW = 900, cardH = 1420;
+      // Giant Skewed Headline: "I'M GOING! ⚡"
+      ctx.save();
+      ctx.translate(W / 2, 210);
+      ctx.rotate(-6 * Math.PI / 180);
+      
+      // Black Shadow
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(-480, -75, 960, 150);
+
+      // Neon Background Block
+      ctx.fillStyle = primaryColor;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 6;
+      ctx.fillRect(-486, -81, 960, 150);
+      ctx.strokeRect(-486, -81, 960, 150);
+
+      // Headline Text
+      ctx.fillStyle = "#000000";
+      ctx.font = "black italic 84px Impact, Arial Black, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("I'M GOING! ⚡", 0, 5);
+      ctx.restore();
+
+      // Card Coordinates & Dimensions
+      const cardX = 90, cardY = 360, cardW = 900, cardH = 1380;
+
+      // Card Dual Shadow
       ctx.fillStyle = "#000000";
       ctx.fillRect(cardX + 24, cardY + 24, cardW, cardH);
-      ctx.fillStyle = "#FFEA00";
+      ctx.fillStyle = primaryColor + "44";
       ctx.fillRect(cardX + 12, cardY + 12, cardW, cardH);
-      ctx.fillStyle = "#6D4AFF";
+
+      // Card Background (Sleek dark ticket)
+      ctx.fillStyle = "#121217";
       ctx.fillRect(cardX, cardY, cardW, cardH);
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 10;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 8;
       ctx.strokeRect(cardX, cardY, cardW, cardH);
 
-      ctx.fillStyle = "#FFEA00";
-      ctx.font = "bold italic 48px Arial";
-      ctx.fillText("★ TIKETIN ARENA PASS ★", cardX + 60, cardY + 110);
+      // Card header
+      ctx.fillStyle = primaryColor;
+      ctx.font = "bold italic 36px Arial";
+      ctx.fillText("★ TIKETIN PASS ★", cardX + 60, cardY + 90);
 
+      // Event title
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold italic 56px Arial";
+      ctx.font = "bold italic 52px Arial";
       const title = ticket.title?.toUpperCase() || "";
       let truncated = title;
       if (title.length > 25) {
         truncated = title.slice(0, 22) + "...";
       }
-      ctx.fillText(truncated, cardX + 60, cardY + 210);
+      ctx.fillText(truncated, cardX + 60, cardY + 180);
 
+      // Category badge
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(cardX + 60, cardY + 220, 320, 54);
       ctx.fillStyle = "#000000";
-      ctx.fillRect(cardX + 60, cardY + 250, 320, 60);
-      ctx.fillStyle = "#FFEA00";
-      ctx.font = "bold 24px Arial";
+      ctx.font = "bold 22px Arial";
       ctx.textAlign = "center";
-      ctx.fillText(ticket.category?.toUpperCase() || "EVENT PASS", cardX + 220, cardY + 290);
+      ctx.fillText(ticket.category?.toUpperCase() || "EVENT PASS", cardX + 220, cardY + 254);
       ctx.textAlign = "left";
 
+      // Draw QR Code
       const svgEl = (qrEl.tagName && qrEl.tagName.toLowerCase() === "svg") ? qrEl : (qrEl.querySelector("svg") || qrEl);
       if (svgEl) {
         const svgData = new XMLSerializer().serializeToString(svgEl);
@@ -889,13 +927,13 @@ export default function MyTicketsPage() {
           const img = new Image();
           img.onload = () => {
             ctx.fillStyle = "#ffffff";
-            const qrSize = 420;
+            const qrSize = 400;
             const qrX = cardX + (cardW - qrSize) / 2;
-            const qrY = cardY + 360;
-            ctx.fillRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
+            const qrY = cardY + 310;
+            ctx.fillRect(qrX - 16, qrY - 16, qrSize + 32, qrSize + 32);
             ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 8;
-            ctx.strokeRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
+            ctx.lineWidth = 6;
+            ctx.strokeRect(qrX - 16, qrY - 16, qrSize + 32, qrSize + 32);
             ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
             URL.revokeObjectURL(svgUrl);
             resolve();
@@ -905,24 +943,60 @@ export default function MyTicketsPage() {
         });
       }
 
+      // Ticket Details Text Grid
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 32px Arial";
-      ctx.fillText(`📅 TANGGAL: ${ticket.date}`, cardX + 80, cardY + 900);
-      ctx.fillText(`📍 TEMPAT  : ${ticket.location}`, cardX + 80, cardY + 970);
-      ctx.fillText(`🛋️ SEAT    : ${ticket.seat}`, cardX + 80, cardY + 1040);
-      ctx.fillText(`🎫 TICKET  : ${ticket.id}`, cardX + 80, cardY + 1110);
+      ctx.font = "bold 28px Arial";
+      ctx.fillText(`📅 TANGGAL : ${ticket.date}`, cardX + 80, cardY + 800);
+      ctx.fillText(`📍 TEMPAT  : ${ticket.location}`, cardX + 80, cardY + 865);
+      ctx.fillText(`🛋️ KURSI   : ${ticket.seat}`, cardX + 80, cardY + 930);
+      ctx.fillText(`👤 PEMESAN : ${userProfile?.full_name?.toUpperCase() || "GUEST"}`, cardX + 80, cardY + 995);
 
-      ctx.fillStyle = "#FFEA00";
+      // Realistic Mock Barcode at the bottom of the ticket
+      const barX = cardX + 80;
+      const barY = cardY + 1090;
+      const barW = cardW - 160;
+      const barH = 100;
+      
+      // Barcode white window
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(barX, barY, barW, barH);
+
+      // Barcode black lines
+      ctx.fillStyle = "#000000";
+      let currentX = barX + 24;
+      // Consistent pseudo-random lines based on ticket.id
+      const ticketSeed = ticket.id.charCodeAt(0) || 42;
+      let step = 0;
+      while (currentX < barX + barW - 24) {
+        const w = ((ticketSeed + step) % 7) + 2; 
+        ctx.fillRect(currentX, barY + 8, w, barH - 16);
+        currentX += w + ((ticketSeed * (step + 1)) % 5) + 2;
+        step++;
+      }
+
+      // ID label under barcode
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 20px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`*${ticket.id.toUpperCase()}*`, cardX + cardW / 2, barY + barH + 35);
+      ctx.textAlign = "left";
+
+      // Footer Branding
+      ctx.fillStyle = primaryColor;
       ctx.font = "bold italic 36px Arial";
-      ctx.fillText("TIKETIN.ID", cardX + 80, cardY + 1250);
+      ctx.fillText("TIKETIN.ID", cardX + 80, cardY + 1300);
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 24px Arial";
-      ctx.fillText("BANDUNG'S #1 EVENT HUB", cardX + 80, cardY + 1295);
+      ctx.font = "bold 22px Arial";
+      ctx.fillText("BANDUNG'S #1 EVENT ARENA", cardX + 80, cardY + 1340);
 
+      // Custom Sticker
       if (sticker && sticker !== "NONE") {
         ctx.save();
-        ctx.translate(cardX + cardW - 200, cardY + 1020);
-        ctx.rotate(-12 * Math.PI / 180);
+        ctx.translate(cardX + cardW - 180, cardY + 960);
+        ctx.rotate(-10 * Math.PI / 180);
         
         let bg = "#FBBF24";
         let fg = "#000000";
@@ -934,12 +1008,12 @@ export default function MyTicketsPage() {
         else if (sticker === "LUNAS") { bg = "#10B981"; fg = "#ffffff"; txt = "✓ SECURED PASS"; }
 
         ctx.fillStyle = "#000000";
-        ctx.fillRect(-150, -35, 300, 70);
+        ctx.fillRect(-150, -32, 300, 64);
         ctx.fillStyle = bg;
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 4;
-        ctx.fillRect(-153, -38, 300, 70);
-        ctx.strokeRect(-153, -38, 300, 70);
+        ctx.fillRect(-153, -35, 300, 64);
+        ctx.strokeRect(-153, -35, 300, 64);
 
         ctx.fillStyle = fg;
         ctx.font = "bold italic 22px Arial";
@@ -1066,7 +1140,7 @@ export default function MyTicketsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 mt-2 border-4 border-slate-900 dark:border-zinc-700 rounded-none shadow-[8px_8px_0_0_rgba(0,0,0,1)] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-2 bg-white dark:bg-zinc-900 z-[60]">
                 <DropdownMenuLabel className="font-black italic uppercase text-[10px] text-slate-400">Quick Access</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem onClick={() => router.push("/explore/profile")} className="focus:bg-rose-500 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <User className="mr-2 h-4 w-4" /> Profil Saya
                 </DropdownMenuItem>
@@ -1085,7 +1159,7 @@ export default function MyTicketsPage() {
                 <DropdownMenuItem onClick={() => router.push("/explore/history")} className="focus:bg-slate-900 focus:text-white font-black italic uppercase text-xs py-3 cursor-pointer text-slate-900 dark:text-zinc-100">
                   <Receipt className="mr-2 h-4 w-4" /> Riwayat Pembayaran
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-750 h-0.5" />
+                <DropdownMenuSeparator className="bg-slate-900 dark:bg-zinc-700 h-0.5" />
                 <DropdownMenuItem
                   className="focus:bg-red-500 focus:text-white font-black italic uppercase text-xs py-3 text-red-500 dark:text-red-400 cursor-pointer"
                   onClick={handleLogout}
@@ -1325,7 +1399,6 @@ export default function MyTicketsPage() {
                           >
                             {/* FRONT SIDE (Physical Card Look) */}
                             <div
-                              style={{ backfaceVisibility: "hidden" }}
                               onClick={() => {
                                 setFlippedTickets(prev => {
                                   const next = new Set(prev);
@@ -1333,7 +1406,10 @@ export default function MyTicketsPage() {
                                   return next;
                                 });
                               }}
-                              style={{ background: "linear-gradient(135deg, var(--primary-color, #6D4AFF) 0%, #553C9A 100%)" }}
+                              style={{ 
+                                backfaceVisibility: "hidden",
+                                background: "linear-gradient(135deg, var(--primary-color, #6D4AFF) 0%, #553C9A 100%)"
+                              }}
                               className="absolute inset-0 border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col items-center justify-between shadow-[4px_4px_0_0_#000] cursor-pointer text-white rounded-2xl"
                             >
                               <div className="w-full text-center">
@@ -1551,7 +1627,7 @@ export default function MyTicketsPage() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Ceritakan pengalaman gila kamu nonton event ini..."
-                    className="w-full p-4 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-850 text-slate-900 dark:text-zinc-100 outline-none focus:bg-amber-50 dark:focus:bg-zinc-800 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all"
+                    className="w-full p-4 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 outline-none focus:bg-amber-50 dark:focus:bg-zinc-800 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all"
                   />
                 </div>
 
@@ -1719,7 +1795,7 @@ export default function MyTicketsPage() {
                 <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Tiket Telah Digunakan</p>
               </div>
 
-              <div className="bg-slate-50 dark:bg-zinc-850 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-3 font-bold">
+              <div className="bg-slate-50 dark:bg-zinc-900/50 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-3 font-bold">
                 <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 dark:border-zinc-700 pb-2 text-slate-900 dark:text-zinc-100">
                   {scannedTicketNotification.eventTitle}
                 </p>
@@ -1772,7 +1848,7 @@ export default function MyTicketsPage() {
                 <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Aksi ini tidak dapat dibatalkan</p>
               </div>
 
-              <div className="bg-[#FCFAF1] dark:bg-zinc-950 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-2 font-bold">
+              <div className="bg-[#FCFAF1] dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 text-left space-y-2 font-bold">
                 <p className="text-lg font-black italic uppercase border-b-2 border-slate-900 dark:border-zinc-700 pb-2 text-slate-900 dark:text-zinc-100">
                   {txToCancel.title}
                 </p>
@@ -1787,7 +1863,7 @@ export default function MyTicketsPage() {
                   type="button"
                   disabled={isCancelling}
                   onClick={() => setTxToCancel(null)}
-                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-750 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+                  className="w-1/2 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-4 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
                 >
                   TIDAK, KEMBALI
                 </button>

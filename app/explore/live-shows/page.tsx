@@ -27,6 +27,7 @@ interface Event {
   location: string;
   category: string;
   image_url: string;
+  price: number;
   max_buy: number;
   totalRemainingStock: number;
   hasVoucher?: boolean;
@@ -46,7 +47,7 @@ function CategoryBadge({ category }: { category: string }) {
   return (
     <span
       className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest border-2 border-slate-900 shadow-[2px_2px_0_0_#000] ${
-        isMusik ? "bg-[#39FF14] text-black" : "bg-[#00F0FF] text-black"
+        isMusik ? "bg-[var(--primary-color)] text-slate-950" : "bg-[#00F0FF] text-black"
       }`}
     >
       {category || "GENERAL"}
@@ -175,7 +176,7 @@ function TiltEventCard({
         <div className="border-t-3 border-dashed border-slate-200 dark:border-zinc-800 pt-5 flex items-center justify-between mt-auto">
           <div>
             <p className="text-[8px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-wider">HARGA MULAI</p>
-            <p className="text-xl font-black italic tracking-tighter text-[#6D4AFF] dark:text-zinc-100 leading-none">
+            <p className="text-xl font-black italic tracking-tighter text-[var(--primary-color)] dark:text-zinc-100 leading-none">
               {formatRupiah(event.price || 0)}
             </p>
           </div>
@@ -200,14 +201,44 @@ export default function LiveShowsPage() {
   const [isLoadingTiers, setIsLoadingTiers] = useState(false);
   const [eventReviews, setEventReviews] = useState<any[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(18);
+  const [boostedEvents, setBoostedEvents] = useState<Event[]>([]);
+  const [currentBoostedIdx, setCurrentBoostedIdx] = useState(0);
+
+  const [userProfile, setUserProfile] = useState<any>(null);
+  // ─── Q&A STATES ───
+  const [qaList, setQaList] = useState<any[]>([]);
+  const [newQuestion, setNewQuestion] = useState("");
 
   const today = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
 
   useEffect(() => {
     fetchEvents();
     fetchWishlist();
+    fetchUserProfile();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase
+        .from("profiles").select("*").eq("id", session.user.id).single();
+      if (profile) {
+        setUserProfile(profile);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil profil user:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (boostedEvents.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentBoostedIdx((prev) => (prev + 1) % boostedEvents.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [boostedEvents]);
 
   const fetchEvents = async () => {
     try {
@@ -261,6 +292,13 @@ export default function LiveShowsPage() {
         };
       });
 
+      // Boosted banner: only ACTIVE (not ended) boosted events
+      const boosted = formattedEvents.filter((e: any) => {
+        const isEnded = e.end_date ? e.end_date < today : e.date < today;
+        return e.isBoosted && !isEnded;
+      });
+      setBoostedEvents(boosted);
+
       // Sort by boosted first, then newest
       formattedEvents.sort((a, b) => {
         if (a.isBoosted && !b.isBoosted) return -1;
@@ -313,15 +351,49 @@ export default function LiveShowsPage() {
     setIsLoadingTiers(true);
     setIsLoadingReviews(true);
 
+    // Load Q&A from localStorage
+    const savedQa = localStorage.getItem(`tiketin_qa_${event.id}`);
+    if (savedQa) {
+      setQaList(JSON.parse(savedQa));
+    } else {
+      const defaultQa = [
+        {
+          id: "q1",
+          question: "Apakah event ini ramah kursi roda?",
+          answer: "Halo! Ya, kami menyediakan ramp khusus dan area khusus ramah kursi roda di dekat Front of House (FOH).",
+          createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+          userName: "Ahmad"
+        },
+        {
+          id: "q2",
+          question: "Jam berapa open gate hari H?",
+          answer: "Open gate akan dibuka mulai pukul 15:00 WIB, sedangkan show utama baru dimulai jam 19:30 WIB.",
+          createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+          userName: "Clara"
+        }
+      ];
+      setQaList(defaultQa);
+      localStorage.setItem(`tiketin_qa_${event.id}`, JSON.stringify(defaultQa));
+    }
+
     try {
       const { data: tiers } = await supabase.from("ticket_categories").select("*").eq("event_id", event.id).order("price", { ascending: true });
       if (tiers) setEventTiers(tiers);
 
       const { data: reviews } = await supabase
-        .from("ulasan_event")
+        .from("reviews")
         .select(`
-          *,
-          profiles:user_id (full_name, avatar_url)
+          id,
+          rating,
+          comment,
+          created_at,
+          user_id,
+          reply_comment,
+          replied_at,
+          profiles (
+            full_name,
+            avatar_url
+          )
         `)
         .eq("event_id", event.id)
         .order("created_at", { ascending: false });
@@ -332,6 +404,55 @@ export default function LiveShowsPage() {
       setIsLoadingTiers(false);
       setIsLoadingReviews(false);
     }
+  };
+
+  const handleSendQuestion = () => {
+    if (!newQuestion.trim()) return;
+    if (!selectedEventDetails) return;
+
+    const newQaItem = {
+      id: `q-${Date.now()}`,
+      question: newQuestion.trim(),
+      answer: null,
+      createdAt: new Date().toISOString(),
+      userName: userProfile?.full_name?.split(" ")[0] || "Kamu"
+    };
+
+    const updated = [...qaList, newQaItem];
+    setQaList(updated);
+    localStorage.setItem(`tiketin_qa_${selectedEventDetails.id}`, JSON.stringify(updated));
+    setNewQuestion("");
+
+    // Trigger simulated response after 2 seconds
+    setTimeout(() => {
+      const lowerQ = newQaItem.question.toLowerCase();
+      let answer = "Halo! Pertanyaan Anda telah kami terima. Tim promotor kami akan segera memverifikasinya. Stay tuned!";
+      
+      if (lowerQ.includes("kursi roda") || lowerQ.includes("difabel") || lowerQ.includes("wheelchair")) {
+        answer = "Halo! Ya, event ini ramah kursi roda. Kami menyediakan jalur ramp khusus di gate masuk serta tribun/area khusus penonton disabilitas di section Festival B.";
+      } else if (lowerQ.includes("pintu") || lowerQ.includes("gate") || lowerQ.includes("jam") || lowerQ.includes("buka")) {
+        answer = "Halo! Pintu gerbang utama (open gate) akan dibuka mulai pukul 15.00 WIB. Kami menyarankan untuk datang lebih awal untuk menghindari antrean panjang.";
+      } else if (lowerQ.includes("refund") || lowerQ.includes("batal") || lowerQ.includes("kembali")) {
+        answer = "Halo! Tiket yang sudah dibeli bersifat final dan tidak dapat direfund atau dibatalkan. Namun, e-ticket dapat dipindahtangankan secara aman dengan menyerahkan surat kuasa.";
+      } else if (lowerQ.includes("makan") || lowerQ.includes("minum") || lowerQ.includes("f&b")) {
+        answer = "Halo! Penonton dilarang membawa makanan dan minuman dari luar venue. Namun, jangan khawatir karena kami menyediakan puluhan booth kuliner resmi di dalam area konser.";
+      } else if (lowerQ.includes("kamera") || lowerQ.includes("foto") || lowerQ.includes("sler") || lowerQ.includes("dslr")) {
+        answer = "Halo! Kamera profesional seperti DSLR, Mirrorless, atau Go-Pro tidak diperkenankan masuk tanpa kartu pers resmi. Kamera handphone diperbolehkan.";
+      }
+
+      setQaList((prevList) => {
+        const listCopy = prevList.map((item) => {
+          if (item.id === newQaItem.id) {
+            return { ...item, answer };
+          }
+          return item;
+        });
+        localStorage.setItem(`tiketin_qa_${selectedEventDetails.id}`, JSON.stringify(listCopy));
+        return listCopy;
+      });
+      
+      toast("Promotor membalas pertanyaanmu! 💬", "success");
+    }, 2000);
   };
 
   // Filter out events that ended more than 2 days ago
@@ -390,16 +511,132 @@ export default function LiveShowsPage() {
       <main className="max-w-7xl mx-auto space-y-12 relative z-30">
         {/* PAGE TITLE */}
         <div className="text-left space-y-3">
-          <div className="bg-[#39FF14] text-black border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_#000] -rotate-2 inline-flex items-center gap-2 mb-2 italic">
+          <div className="bg-[var(--primary-color)] text-black border-4 border-slate-900 px-4 py-2 font-black uppercase text-[10px] shadow-[4px_4px_0_0_#000] -rotate-2 inline-flex items-center gap-2 mb-2 italic">
             ⚡ LIVE SHOWS & UPCOMING
           </div>
           <h1 className="text-4xl md:text-7xl font-black -skew-x-12 italic uppercase leading-none tracking-tighter drop-shadow-[5px_5px_0_var(--primary-color)]">
-            STAGE YANG <span className="text-amber-400 drop-shadow-[4px_4px_0_#000]">SEDANG BERJALAN.</span>
+            STAGE YANG <span className="text-[var(--primary-color)] drop-shadow-[4px_4px_0_#000]">SEDANG BERJALAN.</span>
           </h1>
         </div>
 
+        {/* ── BOOSTED BANNER CAROUSEL ── */}
+        {boostedEvents.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Label */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-[var(--primary-color)] border-4 border-slate-900 px-3 py-1.5 shadow-[3px_3px_0_0_#000] -rotate-1 inline-flex items-center gap-2">
+                <Zap size={12} fill="black" strokeWidth={3} />
+                <span className="font-black uppercase text-[9px] tracking-widest text-black italic">BOOSTED STAGES</span>
+              </div>
+              <span className="text-[9px] font-black uppercase text-slate-400 dark:text-zinc-500 tracking-widest">{boostedEvents.length} EVENT UNGGULAN</span>
+            </div>
+
+            {/* Wide landscape banner — left: content | right: full image */}
+            <div
+              className="relative w-full h-[220px] md:h-[260px] border-4 border-slate-900 dark:border-zinc-700 overflow-hidden cursor-pointer shadow-[6px_6px_0_0_var(--primary-color),12px_12px_0_0_#000] group bg-slate-950 flex"
+              onClick={() => openDetailModal(boostedEvents[currentBoostedIdx])}
+            >
+              {/* LEFT: content */}
+              <div className="relative z-10 flex flex-col justify-end p-6 md:p-8 w-[58%] md:w-[52%] shrink-0">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentBoostedIdx}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex flex-col gap-2"
+                  >
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="bg-[var(--primary-color)] text-black border-2 border-slate-900 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest shadow-[2px_2px_0_0_#000] inline-flex items-center gap-1">
+                        <Zap size={9} fill="black" strokeWidth={3} /> SPONSORED
+                      </span>
+                      <span className="bg-zinc-900 text-[var(--primary-color)] border border-[var(--primary-color)]/40 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest">
+                        {boostedEvents[currentBoostedIdx]?.category}
+                      </span>
+                      {boostedEvents[currentBoostedIdx]?.totalRemainingStock > 0 &&
+                       boostedEvents[currentBoostedIdx]?.totalRemainingStock <= 20 && (
+                        <span className="bg-red-500 text-white text-[8px] font-black uppercase px-2 py-1 border border-slate-900 animate-pulse">
+                          🔥 Sisa {boostedEvents[currentBoostedIdx]?.totalRemainingStock}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="text-lg md:text-2xl font-black italic uppercase text-white tracking-tighter -skew-x-6 drop-shadow-[2px_2px_0_rgba(0,0,0,0.9)] leading-tight line-clamp-2">
+                      {boostedEvents[currentBoostedIdx]?.title}
+                    </h2>
+
+                    {/* Meta */}
+                    <div className="flex flex-col gap-1 text-[10px] font-black uppercase text-slate-400">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar size={10} strokeWidth={3} className="text-[var(--primary-color)] shrink-0" />
+                        {boostedEvents[currentBoostedIdx]?.date}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin size={10} strokeWidth={3} className="text-[var(--primary-color)] shrink-0" />
+                        <span className="line-clamp-1">{boostedEvents[currentBoostedIdx]?.location}</span>
+                      </span>
+                    </div>
+
+                    {/* Price + CTA */}
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-base font-black italic text-[var(--primary-color)]">
+                        {formatRupiah(boostedEvents[currentBoostedIdx]?.price || 0)}
+                      </span>
+                      <span className="bg-white text-black border-2 border-slate-900 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-[3px_3px_0_0_var(--primary-color)] group-hover:bg-[var(--primary-color)] group-hover:shadow-none transition-all">
+                        BELI TIKET →
+                      </span>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Dot indicators */}
+                {boostedEvents.length > 1 && (
+                  <div className="flex items-center gap-2 mt-4">
+                    {boostedEvents.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); setCurrentBoostedIdx(i); }}
+                        className={`transition-all duration-300 border border-white/30 ${
+                          i === currentBoostedIdx
+                            ? 'w-6 h-2 bg-[var(--primary-color)]'
+                            : 'w-2 h-2 bg-white/30 hover:bg-white/60'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT: full poster image, not cropped */}
+              <div className="relative flex-1 h-full bg-zinc-900 border-l-4 border-[var(--primary-color)]/20 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentBoostedIdx}
+                    src={boostedEvents[currentBoostedIdx]?.image_url}
+                    alt={boostedEvents[currentBoostedIdx]?.title}
+                    initial={{ opacity: 0, scale: 1.04 }}
+                    animate={{ opacity: 0.9, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                </AnimatePresence>
+                {/* Fade left edge to blend with content panel */}
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-transparent" />
+            </div>
+          </div>
+        </motion.div>
+      )}
+
         {/* SEARCH AND FILTER BAR */}
-        <div className="flex flex-col md:flex-row gap-6 items-stretch md:items-center justify-between border-t-4 border-slate-900 dark:border-zinc-755 pt-8">
+        <div className="flex flex-col md:flex-row gap-6 items-stretch md:items-center justify-between border-t-4 border-slate-900 dark:border-zinc-700 pt-8">
           <div className="relative flex-grow max-w-xl">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-zinc-500 z-10" strokeWidth={3} />
             <input
@@ -420,7 +657,7 @@ export default function LiveShowsPage() {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase text-xs md:text-sm rounded-xl transition-all ${
                   selectedCategory === cat
-                    ? "bg-amber-400 text-slate-900 shadow-[3px_3px_0_0_#000]"
+                    ? "bg-[var(--primary-color)] text-slate-900 shadow-[3px_3px_0_0_#000]"
                     : "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 shadow-[3px_3px_0_0_var(--primary-color)]"
                 }`}
               >
@@ -461,10 +698,10 @@ export default function LiveShowsPage() {
         {visibleCount < processedEvents.length && (
           <div className="flex justify-center pt-8">
             <button
-              onClick={() => setVisibleCount((prev) => prev + 12)}
-              className="bg-white border-4 border-slate-900 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_#FBBF24] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3 cursor-pointer"
+              onClick={() => setVisibleCount((prev) => prev + 18)}
+              className="bg-white border-4 border-slate-900 px-12 py-6 font-black italic uppercase text-sm shadow-[8px_8px_0_0_var(--primary-color)] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all flex items-center gap-3 cursor-pointer"
             >
-              <PlusCircle size={20} /> LOAD MORE SHOWS
+              <PlusCircle size={20} /> LOAD MORE SHOWS ({processedEvents.length - visibleCount} LAGI)
             </button>
           </div>
         )}
@@ -472,13 +709,13 @@ export default function LiveShowsPage() {
         {/* ── ALTERNATIVE DESIGN EO CTA STRIP ── */}
         <div className="w-full border-6 border-slate-900 bg-white dark:bg-zinc-900 p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col md:flex-row items-center justify-between gap-6 rounded-2xl mt-32 text-left">
           <div className="space-y-2">
-            <span className="bg-emerald-400 text-black border-2 border-black px-3 py-1 font-black text-[9px] uppercase tracking-wider italic shadow-[2px_2px_0_0_#000]">EO PARTNERSHIP</span>
+            <span className="bg-[var(--primary-color)] text-black border-2 border-black px-3 py-1 font-black text-[9px] uppercase tracking-wider italic shadow-[2px_2px_0_0_#000]">EO PARTNERSHIP</span>
             <h3 className="text-2xl md:text-3xl font-black italic uppercase text-slate-900 dark:text-zinc-50 -skew-x-3 leading-none">Tertarik untuk menjual tiket konser Anda disini?</h3>
             <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Daftar sekarang dan kelola event Anda dengan dashboard modern.</p>
           </div>
           <button
             onClick={() => router.push("/explore/ajukan")}
-            className="bg-amber-400 hover:bg-[#39FF14] text-slate-900 border-4 border-slate-900 px-8 py-5 font-black uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all -skew-x-6 cursor-pointer shrink-0"
+            className="bg-[var(--primary-color)] text-slate-900 hover:bg-slate-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-slate-900 border-4 border-slate-900 px-8 py-5 font-black uppercase text-xs md:text-sm shadow-[6px_6px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all -skew-x-6 cursor-pointer shrink-0"
           >
             AJUKAN EVENT SEKARANG ⚡
           </button>
@@ -505,7 +742,7 @@ export default function LiveShowsPage() {
               {/* IMAGE POSTER */}
               <div className="w-full md:w-[38%] relative h-64 md:h-auto md:min-h-[500px] shrink-0 border-b-8 md:border-b-0 md:border-r-8 border-slate-900 dark:border-zinc-700 bg-[#FCFAF1] dark:bg-zinc-950 p-6 flex items-center justify-center">
                 <div className="relative w-full h-full border-4 border-slate-900 dark:border-zinc-700 bg-zinc-950 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] flex items-center justify-center overflow-hidden group/poster rounded-2xl">
-                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 -rotate-3 bg-amber-400 text-black border-2 border-slate-900 px-3.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest z-30 shadow-[2px_2px_0_0_#000] select-none pointer-events-none italic">
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 -rotate-3 bg-[var(--primary-color)] text-black border-2 border-slate-900 px-3.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest z-30 shadow-[2px_2px_0_0_#000] select-none pointer-events-none italic">
                     ★ LIVE STAGE ★
                   </div>
                   <img
@@ -539,7 +776,7 @@ export default function LiveShowsPage() {
                       </div>
                     </div>
                     <div className="bg-[#FCFAF1] dark:bg-zinc-800 border-3 border-slate-900 p-4 shadow-[4px_4px_0_0_var(--primary-color)] rounded-xl flex items-start gap-3">
-                      <MapPin size={18} className="text-[#6D4AFF] shrink-0" />
+                      <MapPin size={18} className="text-[var(--primary-color)] shrink-0" />
                       <div>
                         <p className="text-[8px] font-black text-slate-400">LOKASI</p>
                         <p className="text-[10px] font-black text-slate-900 dark:text-zinc-100 line-clamp-3">{selectedEventDetails.location}</p>
@@ -556,7 +793,7 @@ export default function LiveShowsPage() {
 
                   <div className="space-y-2">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deskripsi Event</p>
-                    <div className="border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] rounded-xl overflow-hidden bg-white dark:bg-zinc-850">
+                    <div className="border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
                       {/* macOS console header bar */}
                       <div className="bg-slate-100 dark:bg-zinc-800 border-b-3 border-slate-900 dark:border-zinc-700 px-4 py-2 flex items-center justify-between">
                         <div className="flex gap-1.5">
@@ -587,25 +824,79 @@ export default function LiveShowsPage() {
                             <p className="text-[9px] text-red-500 font-black uppercase mt-1">Sisa: {tier.stock} Tiket</p>
                           </div>
                           <div className="text-left border-t-2 border-dashed border-slate-300 dark:border-zinc-700 pt-3 mt-3 flex justify-between z-20">
-                            <p className="font-black text-base text-[#6D4AFF] dark:text-white italic">{formatRupiah(tier.price)}</p>
+                            <p className="font-black text-base text-[var(--primary-color)] dark:text-white italic">{formatRupiah(tier.price)}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
+
+                  {/* ─── TANYA PROMOTOR / Q&A BOX ─── */}
+                  <div className="space-y-4 border-t-4 border-slate-900 dark:border-zinc-700 pt-5">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Tanya Promotor / Q&A Box</p>
+                    
+                    {/* Q&A Feed */}
+                    <div className="space-y-3 max-h-[220px] overflow-y-auto brutal-scroll pr-1">
+                      {qaList.length > 0 ? (
+                        qaList.map((qa) => (
+                          <div key={qa.id} className="bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 p-3 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] space-y-2 text-xs">
+                            <div className="flex justify-between items-center text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+                              <span>Tanya: {qa.userName || "User"}</span>
+                              <span>{new Date(qa.createdAt).toLocaleDateString("id-ID")}</span>
+                            </div>
+                            <p className="font-bold text-slate-900 dark:text-zinc-50">Q: {qa.question}</p>
+                            {qa.answer ? (
+                              <div className="bg-slate-50 dark:bg-zinc-800 border border-dashed border-[var(--primary-color)] p-2 text-slate-700 dark:text-zinc-300 rounded mt-1 relative pl-6">
+                                <div className="absolute left-2.5 top-3.5 w-1.5 h-1.5 rounded-full bg-[var(--primary-color)] animate-pulse" />
+                                <p className="text-[8px] font-black text-[var(--primary-color)] uppercase tracking-widest mb-1">PROMOTOR REPLY:</p>
+                                <p className="font-semibold text-[11px]">{qa.answer}</p>
+                              </div>
+                            ) : (
+                              <div className="text-[9px] italic text-amber-500 font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                ⏳ Menunggu balasan promotor...
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs font-bold text-slate-400 italic py-2">Belum ada pertanyaan. Tanyakan sesuatu ke promotor!</p>
+                      )}
+                    </div>
+
+                    {/* Question Input Form */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ada pertanyaan untuk EO? (misal: open gate, kursi roda...)"
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSendQuestion();
+                        }}
+                        className="flex-grow h-11 px-3 border-3 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 text-xs font-bold outline-none rounded-xl"
+                      />
+                      <button
+                        onClick={handleSendQuestion}
+                        className="bg-[var(--primary-color)] text-slate-900 border-3 border-slate-900 dark:border-zinc-700 px-4 h-11 text-xs font-black uppercase shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_#fff] hover:translate-y-0.5 hover:shadow-none transition-all rounded-xl shrink-0 cursor-pointer"
+                      >
+                        KIRIM
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
 
                 <div className="pt-6 border-t-4 border-slate-900 flex justify-between items-center mt-6">
                   <div>
                     <p className="text-[8px] font-black text-slate-400">Harga Mulai Dari</p>
-                    <p className="text-3xl font-black text-[#6D4AFF] italic leading-none">{formatRupiah(selectedEventDetails.price)}</p>
+                    <p className="text-3xl font-black text-[var(--primary-color)] italic leading-none">{formatRupiah(selectedEventDetails.price)}</p>
                   </div>
                   <button
                     onClick={() => {
                       setSelectedEventDetails(null);
                       router.push(`/explore/checkout/${selectedEventDetails.id}`);
                     }}
-                    className="py-4 px-8 border-4 border-slate-900 bg-amber-400 text-slate-950 font-black uppercase text-xs md:text-sm shadow-[6px_6px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all rounded-xl"
+                    className="py-4 px-8 border-4 border-slate-900 bg-[var(--primary-color)] text-slate-950 font-black uppercase text-xs md:text-sm shadow-[6px_6px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all rounded-xl"
                   >
                     BELI TIKET
                   </button>

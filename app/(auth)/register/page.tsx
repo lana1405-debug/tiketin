@@ -27,7 +27,7 @@ const GLOBAL_STYLES = `
 `;
 
 const RegisterIllustration = () => (
-  <div className="relative w-full h-full bg-[#FCD34D] flex items-center justify-center overflow-hidden border-b-4 lg:border-b-0 lg:border-l-[12px] border-black dark:border-zinc-750">
+  <div className="relative w-full h-full bg-[#FCD34D] flex items-center justify-center overflow-hidden border-b-4 lg:border-b-0 lg:border-l-[12px] border-black dark:border-zinc-700">
     <div className="absolute inset-0 opacity-10" 
       style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000, #000 1px, transparent 1px, transparent 15px)' }} 
     />
@@ -52,7 +52,7 @@ const RegisterIllustration = () => (
         </div>
     </div>
 
-    <div className="absolute bottom-0 w-full bg-black border-t-4 lg:border-t-8 border-black dark:border-zinc-750 py-2 lg:py-4 overflow-hidden text-left z-30">
+    <div className="absolute bottom-0 w-full bg-black border-t-4 lg:border-t-8 border-black dark:border-zinc-700 py-2 lg:py-4 overflow-hidden text-left z-30">
         <div className="marquee-track">
             {[...Array(6)].map((_, i) => (
                 <span key={i} className="text-sm lg:text-2xl font-black italic uppercase text-white mx-4 lg:mx-8">

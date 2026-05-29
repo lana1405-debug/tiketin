@@ -16,20 +16,15 @@ const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function check() {
-  console.log("Checking Supabase connection to:", supabaseUrl);
-  try {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .limit(1);
-
+  console.log("Checking tables...");
+  const tables = ['event_qa', 'qa', 'ulasan_event', 'reviews', 'wishlist', 'transaksi', 'event_questions'];
+  for (const t of tables) {
+    const { data, error } = await supabase.from(t).select('*').limit(1);
     if (error) {
-      console.error("Error fetching articles:", error);
+      console.log(`Table ${t}: Error - ${error.message} (${error.code})`);
     } else {
-      console.log("Success! Articles data:", data);
+      console.log(`Table ${t}: Success! Data count:`, data.length);
     }
-  } catch (err) {
-    console.error("Crash:", err);
   }
 }
 
