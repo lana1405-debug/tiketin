@@ -1,0 +1,199 @@
+{
+  "event_qa": {
+    "error": "Could not find the table 'public.event_qa' in the schema cache"
+  },
+  "qa": {
+    "error": "Could not find the table 'public.qa' in the schema cache"
+  },
+  "ulasan_event": {
+    "error": "Could not find the table 'public.ulasan_event' in the schema cache"
+  },
+  "reviews": {
+    "columns": [
+      "id",
+      "event_id",
+      "user_id",
+      "rating",
+      "comment",
+      "created_at",
+      "reply_comment",
+      "replied_at"
+    ],
+    "hasData": true
+  },
+  "wishlist": {
+    "columns": [
+      "id",
+      "user_id",
+      "event_id",
+      "created_at"
+    ],
+    "hasData": true
+  },
+  "transaksi": {
+    "columns": [
+      "id",
+      "user_id",
+      "order_id",
+      "total_qty",
+      "total_bayar",
+      "status_pembayaran",
+      "expires_at",
+      "created_at",
+      "snap_token",
+      "event_id",
+      "category_id"
+    ],
+    "hasData": true
+  },
+  "event_questions": {
+    "error": "Could not find the table 'public.event_questions' in the schema cache"
+  },
+  "ticket_categories": {
+    "columns": [
+      "id",
+      "event_id",
+      "name",
+      "price",
+      "stock",
+      "created_at"
+    ],
+    "hasData": true
+  },
+  "profiles": {
+    "columns": [
+      "id",
+      "full_name",
+      "role",
+      "created_at",
+      "email",
+      "ktp_url",
+      "verification_status",
+      "verified_at",
+      "nik",
+      "points",
+      "eo_name",
+      "avatar_url"
+    ],
+    "hasData": true
+  },
+  "vouchers": {
+    "columns": [
+      "id",
+      "code",
+      "discount_type",
+      "discount_value",
+      "max_uses",
+      "uses_count",
+      "valid_from",
+      "valid_to",
+      "event_id",
+      "created_at"
+    ],
+    "hasData": true
+  },
+  "events": {
+    "columns": [
+      "id",
+      "title",
+      "description",
+      "price",
+      "date",
+      "organizer_id",
+      "created_at",
+      "location",
+      "status",
+      "stock",
+      "start_time",
+      "end_date",
+      "image_url",
+      "max_buy",
+      "category",
+      "gate_passkey"
+    ],
+    "hasData": true
+  },
+  "withdrawals": {
+    "columns": [
+      "id",
+      "created_at",
+      "event_id",
+      "organizer_id",
+      "gross_amount",
+      "platform_fee",
+      "net_amount",
+      "bank_name",
+      "account_number",
+      "account_name",
+      "status",
+      "receipt_url"
+    ],
+    "hasData": true
+  },
+  "tiket": {
+    "columns": [
+      "id",
+      "transaksi_id",
+      "event_id",
+      "ticket_category_id",
+      "ticket_code",
+      "seat_info",
+      "status_checkin",
+      "checked_in_at",
+      "checked_in_by",
+      "created_at",
+      "last_scanned_date"
+    ],
+    "hasData": true
+  },
+  "complaints": {
+    "columns": [
+      "id",
+      "created_at",
+      "user_id",
+      "title",
+      "message",
+      "status",
+      "category",
+      "admin_reply"
+    ],
+    "hasData": true
+  },
+  "complaint_messages": {
+    "columns": [
+      "id",
+      "complaint_id",
+      "sender_id",
+      "message",
+      "is_admin",
+      "created_at"
+    ],
+    "hasData": true
+  },
+  "notifications": {
+    "columns": [],
+    "hasData": false
+  },
+  "articles": {
+    "columns": [
+      "id",
+      "title",
+      "content",
+      "category",
+      "status",
+      "author_id",
+      "author_name",
+      "created_at",
+      "updated_at"
+    ],
+    "hasData": true
+  },
+  "site_settings": {
+    "columns": [
+      "key",
+      "value",
+      "updated_at"
+    ],
+    "hasData": true
+  }
+}

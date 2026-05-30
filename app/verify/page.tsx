@@ -69,6 +69,12 @@ export default function CustomerVerificationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nik || !ktpFile || !userId) return;
+
+    if (nik.length !== 16) {
+      toast("Nomor Induk Kependudukan (NIK) harus berisi tepat 16 digit!", "warning");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -167,6 +173,7 @@ export default function CustomerVerificationPage() {
                 type="text" 
                 required 
                 maxLength={16}
+                minLength={16}
                 value={nik}
                 onChange={(e) => setNik(e.target.value.replace(/\D/g, ''))}
                 placeholder="CONTOH: 32731..." 
