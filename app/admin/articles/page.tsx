@@ -391,13 +391,16 @@ export default function AdminArticlesPage() {
       const article = articles.find((a) => a.id === id);
       if (article) {
         try {
-          // Insert notification
-          await supabase.from("notifications").insert({
-            user_id: article.author_id,
-            title: "Artikel Disetujui 🚀",
-            message: `Artikel Anda "${article.title}" telah disetujui dan dipublikasikan.`,
-            type: "success",
-            is_read: false
+          // Insert notification via server-side API (bypass RLS)
+          await fetch('/api/admin/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: article.author_id,
+              title: "Artikel Disetujui 🚀",
+              message: `Artikel Anda "${article.title}" telah disetujui dan dipublikasikan.`,
+              type: "success",
+            })
           });
 
           // Fetch current admin info and log action
@@ -440,13 +443,16 @@ export default function AdminArticlesPage() {
         try {
           const isTakedown = article.status === "approved";
           
-          // Insert notification
-          await supabase.from("notifications").insert({
-            user_id: article.author_id,
-            title: isTakedown ? "Artikel Ditakedown ⚠️" : "Artikel Ditolak ❌",
-            message: `Artikel Anda "${article.title}" telah ${isTakedown ? "ditakedown oleh admin" : "ditolak"}. Alasan: ${reason}`,
-            type: "warning",
-            is_read: false
+          // Insert notification via server-side API (bypass RLS)
+          await fetch('/api/admin/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: article.author_id,
+              title: isTakedown ? "Artikel Ditakedown ⚠️" : "Artikel Ditolak ❌",
+              message: `Artikel Anda "${article.title}" telah ${isTakedown ? "ditakedown oleh admin" : "ditolak"}. Alasan: ${reason}`,
+              type: "warning",
+            })
           });
 
           // Fetch current admin info and log action

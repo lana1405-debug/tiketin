@@ -101,15 +101,18 @@ export default function AdminComplaintsPage() {
     if (!error) {
       setReplyInputs(prev => ({ ...prev, [id]: "" }));
       
-      // Kirim Notifikasi ke User
+      // Kirim Notifikasi ke User via server-side API (bypass RLS)
       const complaint = complaints.find(c => c.id === id);
       if (complaint?.user_id) {
-        await supabase.from("notifications").insert({
-          user_id: complaint.user_id,
-          title: "Balasan Pengaduan Baru! 💬",
-          message: `Admin membalas aduan "${complaint.title}": "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
-          type: "info",
-          is_read: false
+        await fetch('/api/admin/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: complaint.user_id,
+            title: "Balasan Pengaduan Baru! 💬",
+            message: `Admin membalas aduan "${complaint.title}": "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
+            type: "info",
+          })
         });
       }
     } else {
@@ -123,12 +126,15 @@ export default function AdminComplaintsPage() {
       if (!error) {
         const complaint = complaints.find(c => c.id === id);
         if (complaint?.user_id) {
-          await supabase.from("notifications").insert({
-            user_id: complaint.user_id,
-            title: "Pengaduan Diselesaikan! ✅",
-            message: `Laporan aduan "${complaint.title}" Anda telah ditandai selesai oleh admin.`,
-            type: "success",
-            is_read: false
+          await fetch('/api/admin/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: complaint.user_id,
+              title: "Pengaduan Diselesaikan! ✅",
+              message: `Laporan aduan "${complaint.title}" Anda telah ditandai selesai oleh admin.`,
+              type: "success",
+            })
           });
         }
       }

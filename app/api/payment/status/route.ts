@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import midtransClient from 'midtrans-client';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -41,8 +41,10 @@ export async function POST(request: Request) {
       });
     }
 
+    const db = supabaseAdmin!;
+
     // 3. Ambil data transaksi dari Supabase
-    const { data: txData, error: txError } = await supabase
+    const { data: txData, error: txError } = await db
       .from('transaksi')
       .select(`
         id,
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
 
     if (isBoostPayment) {
       // 1. Update status transaksi menjadi paid
-      const { error: updateTxError } = await supabase
+      const { error: updateTxError } = await db
         .from('transaksi')
         .update({ status_pembayaran: 'paid' })
         .eq('id', txData.id);
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
         const boostedAt = new Date();
         const boostedUntil = new Date(boostedAt.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 hari aktif
 
-        const { data: currentSetting } = await supabase
+        const { data: currentSetting } = await db
           .from("site_settings")
           .select("value")
           .eq("key", "boosted_events")
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
           };
           const updatedList = [...currentList, newBoost];
 
-          const { error: upsertError } = await supabase
+          const { error: upsertError } = await db
             .from("site_settings")
             .upsert({ key: "boosted_events", value: updatedList });
             
@@ -119,14 +121,14 @@ export async function POST(request: Request) {
         }
 
         // 3. Kirim Notifikasi ke EO
-        const { data: eventData } = await supabase
+        const { data: eventData } = await db
           .from('events')
           .select('title')
           .eq('id', txData.event_id)
           .single();
         const eventTitle = eventData?.title || 'Event Anda';
 
-        await supabase.from("notifications").insert({
+        await db.from("notifications").insert({
           user_id: txData.user_id,
           title: "Event Boost Aktif! ⚡",
           message: `Pembayaran Rp ${Number(txData.total_bayar).toLocaleString('id-ID')} berhasil. Event "${eventTitle}" berhasil di-boost selama 3 hari.`,
@@ -145,7 +147,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Update status transaksi menjadi paid
-    const { error: updateTxError } = await supabase
+    const { error: updateTxError } = await db
       .from('transaksi')
       .update({ status_pembayaran: 'paid' })
       .eq('id', txData.id);
@@ -160,14 +162,14 @@ export async function POST(request: Request) {
       const voucherCode = order_id.split('-VCHR-')[1]?.toUpperCase();
       if (voucherCode) {
         try {
-          const { data: voucherData } = await supabase
+          const { data: voucherData } = await db
             .from('vouchers')
             .select('id, uses_count')
             .eq('code', voucherCode)
             .single();
           
           if (voucherData) {
-            await supabase
+            await db
               .from('vouchers')
               .update({ uses_count: (voucherData.uses_count || 0) + 1 })
               .eq('id', voucherData.id);
@@ -199,7 +201,7 @@ export async function POST(request: Request) {
       status_checkin: false
     }));
 
-    const { error: insertTicketsError } = await supabase
+    const { error: insertTicketsError } = await db
       .from('tiket')
       .insert(ticketsToInsert);
 
@@ -209,7 +211,7 @@ export async function POST(request: Request) {
     }
 
     // 6. Jalankan RPC untuk mengurangi stok tiket secara aman
-    const { error: stockError } = await supabase.rpc('decrement_ticket_stock', { 
+    const { error: stockError } = await db.rpc('decrement_ticket_stock', { 
       cat_id: txData.category_id, 
       qty: txData.total_qty 
     });
@@ -220,7 +222,7 @@ export async function POST(request: Request) {
 
     // 7. Berikan reward poin ke profil pengguna (50 poin per tiket)
     const earnedPoints = txData.total_qty * 50;
-    const { data: profile, error: profileGetError } = await supabase
+    const { data: profile, error: profileGetError } = await db
       .from('profiles')
       .select('points')
       .eq('id', txData.user_id)
@@ -228,7 +230,7 @@ export async function POST(request: Request) {
 
     if (!profileGetError && profile) {
       const newPoints = (profile.points || 0) + earnedPoints;
-      const { error: profileUpdateError } = await supabase
+      const { error: profileUpdateError } = await db
         .from('profiles')
         .update({ points: newPoints })
         .eq('id', txData.user_id);
@@ -240,7 +242,7 @@ export async function POST(request: Request) {
 
     // 8. Kirim Notifikasi ke user
     try {
-      const { data: eventData } = await supabase
+      const { data: eventData } = await db
         .from('events')
         .select('title')
         .eq('id', txData.event_id)
@@ -248,7 +250,7 @@ export async function POST(request: Request) {
       
       const eventTitle = eventData?.title || 'Event';
       
-      await supabase.from("notifications").insert({
+      await db.from("notifications").insert({
         user_id: txData.user_id,
         title: "Tiket Berhasil Dibeli! 🎫",
         message: `Pembelian ${txData.total_qty} tiket untuk event ${eventTitle} sukses. Selamat menikmati!`,
