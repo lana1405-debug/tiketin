@@ -38,14 +38,14 @@ const CheckoutSkeleton = () => {
   return (
     <div className="min-h-screen bg-[#FCFAF1] text-slate-900 noise animate-pulse">
       {/* Sticky Header */}
-      <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center px-6 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 h-20 flex items-center px-4 sm:px-6 sticky top-0 z-50 shadow-[0_8px_0_0_#000] dark:shadow-[0_8px_0_0_#6D4AFF]">
         <div className="flex items-center gap-2 border-2 border-slate-200 p-2 bg-slate-100 w-32 h-10">
           <div className="w-4 h-4 bg-slate-300 rounded animate-pulse" />
           <div className="h-4 bg-slate-300 rounded w-16 animate-pulse" />
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-12 pb-32">
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 pt-12 pb-32">
         {/* Title skeleton */}
         <div className="mb-12">
           <div className="h-14 bg-slate-300 rounded-lg w-3/4 mb-4 animate-pulse" />
@@ -67,7 +67,7 @@ const CheckoutSkeleton = () => {
               </div>
               
               {/* Event Details skeleton */}
-              <div className="p-8 space-y-6">
+              <div className="p-4 sm:p-6 md:p-8 space-y-6 text-left">
                 <div className="h-8 bg-slate-300 rounded w-3/4 animate-pulse" />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -90,7 +90,7 @@ const CheckoutSkeleton = () => {
             </div>
 
             {/* Ticket Tier skeleton */}
-            <div className="bg-white border-4 border-slate-900 p-8 shadow-[8px_8px_0_0_#000]">
+            <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 sm:p-6 md:p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_#6D4AFF] text-left">
               <div className="h-6 bg-slate-300 rounded w-1/3 mb-6 animate-pulse" />
               <div className="space-y-4">
                 <div className="border-4 border-slate-300 p-5 bg-white h-24 flex items-center justify-between">
@@ -119,7 +119,7 @@ const CheckoutSkeleton = () => {
 
           {/* Right Column */}
           <div className="w-full lg:w-[450px]">
-            <div className="bg-white border-4 border-slate-900 p-8 shadow-[8px_8px_0_0_#000] flex flex-col sticky top-24">
+            <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 sm:p-6 md:p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_#6D4AFF] flex flex-col lg:sticky lg:top-24 text-left">
               {/* Expiry Timer skeleton */}
               <div className="bg-slate-200 border-4 border-slate-900 p-4 mb-6 shadow-[4px_4px_0_0_#000] h-14 flex items-center justify-between">
                 <div className="h-4 bg-slate-300 rounded w-1/3 animate-pulse" />
@@ -621,20 +621,20 @@ export default function CheckoutPage() {
   return (
     <div className={`min-h-screen bg-[#FCFAF1] text-slate-900 noise ${poppins.className}`}>
       
-      <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center px-6 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
+      <nav className="w-full bg-white border-b-8 border-slate-900 h-20 flex items-center px-4 sm:px-8 md:px-12 sticky top-0 z-50 shadow-[0_8px_0_0_#000]">
         <button onClick={() => router.back()} className="flex items-center gap-2 group border-2 border-transparent p-2 hover:border-slate-900 hover:bg-amber-400 transition-all">
           <ChevronLeft size={24} strokeWidth={4} />
           <span className="text-xl font-black italic uppercase tracking-tighter -skew-x-12 leading-none">KEMBALI</span>
         </button>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-12 pb-32">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
-          <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 drop-shadow-[4px_4px_0_#6D4AFF]">
-            SECURE <span className="text-amber-400 drop-shadow-[4px_4px_0_#000]">TICKETS.</span>
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 pt-8 sm:pt-12 pb-32">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 md:mb-12">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black italic uppercase -skew-x-6 drop-shadow-[3px_3px_0_#6D4AFF] md:drop-shadow-[4px_4px_0_#6D4AFF]">
+            SECURE <span className="text-amber-400 drop-shadow-[3px_3px_0_0_#000] md:drop-shadow-[4px_4px_0_0_#000]">TICKETS.</span>
           </h1>
-          <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-sm flex items-center gap-2 italic text-left">
-            <Zap size={16} className="fill-amber-400 text-amber-400" /> Selesaikan pembayaran & dapet 50 poin/tiket!
+          <p className="font-bold text-slate-500 mt-2 uppercase tracking-widest text-xs sm:text-sm flex flex-wrap items-center gap-2 italic text-left">
+            <Zap size={16} className="fill-amber-400 text-amber-400 shrink-0" /> Selesaikan pembayaran & dapet 50 poin/tiket!
           </p>
         </motion.div>
 
@@ -673,16 +673,16 @@ export default function CheckoutPage() {
                   {event.category}
                 </div>
               </div>
-              <div className="p-8">
+              <div className="p-4 sm:p-6 md:p-8">
                 <h2 className="text-3xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 underline decoration-4 decoration-[#6D4AFF]">{event.title}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 uppercase font-bold text-xs mb-8">
-                  <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
-                    <Calendar size={24} className="text-[#6D4AFF]"/>
-                    <span>{event.date}</span>
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] min-w-0">
+                    <Calendar size={24} className="text-[#6D4AFF] shrink-0"/>
+                    <span className="break-words">{event.date}</span>
                   </div>
-                  <div className="flex items-center gap-4 bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000]">
-                    <MapPin size={24} className="text-amber-500"/>
-                    <span>{event.location}</span>
+                  <div className="flex items-center gap-4 bg-[#FCFAF1] sm:bg-slate-50 p-4 border-2 border-slate-900 shadow-[4px_4px_0_0_#000] min-w-0">
+                    <MapPin size={24} className="text-amber-500 shrink-0"/>
+                    <span className="break-words">{event.location}</span>
                   </div>
                 </div>
 
@@ -698,7 +698,7 @@ export default function CheckoutPage() {
               </div>
             </motion.div>
 
-            <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card text-left">
+            <div className="bg-white border-4 border-slate-900 p-4 sm:p-6 md:p-8 brutal-shadow-card text-left">
               <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter mb-6 flex items-center gap-3">
                 <Tag size={28} className="text-[#6D4AFF]" /> PILIH TIER TIKET
               </h3>
@@ -734,19 +734,19 @@ export default function CheckoutPage() {
                   };
 
                   return categories.map((cat) => (
-                    <label key={cat.id} className={`block w-full border-4 p-5 cursor-pointer transition-all ${selectedCatId === cat.id ? "border-slate-900 bg-amber-400 shadow-[6px_6px_0_0_#000] translate-x-1 translate-y-1" : "border-slate-300 bg-white hover:border-slate-900"}`}>
-                      <div className="flex items-center justify-between font-black">
-                        <div className="flex items-center gap-4">
-                          <input type="radio" name="ticketCategory" checked={selectedCatId === cat.id} onChange={() => setSelectedCatId(cat.id)} disabled={cat.stock <= 0} className="w-6 h-6 accent-slate-900 cursor-pointer" />
+                    <label key={cat.id} className={`block w-full border-4 p-4 sm:p-5 cursor-pointer transition-all ${selectedCatId === cat.id ? "border-slate-900 bg-amber-400 shadow-[6px_6px_0_0_#000] translate-x-1 translate-y-1" : "border-slate-300 bg-white hover:border-slate-900"}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-black">
+                        <div className="flex items-start gap-4">
+                          <input type="radio" name="ticketCategory" checked={selectedCatId === cat.id} onChange={() => setSelectedCatId(cat.id)} disabled={cat.stock <= 0} className="w-6 h-6 accent-slate-900 cursor-pointer mt-1 shrink-0" />
                           <div>
-                            <p className="font-black italic uppercase text-xl leading-none">{cat.name}</p>
+                            <p className="font-black italic uppercase text-lg sm:text-xl leading-none">{cat.name}</p>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2">
                               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Sisa Stok: {cat.stock} Pcs</p>
                               {getStockBadge(cat.stock)}
                             </div>
                           </div>
                         </div>
-                        <p className="font-black italic text-2xl tracking-tighter">{formatRupiah(cat.price)}</p>
+                        <p className="font-black italic text-xl sm:text-2xl tracking-tighter self-end sm:self-center">{formatRupiah(cat.price)}</p>
                       </div>
                     </label>
                   ));
@@ -756,20 +756,20 @@ export default function CheckoutPage() {
 
             {/* SEATING MAP SELECTOR */}
             {isSeatingEnabled && selectedCategory && qty > 0 && (
-              <div className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card text-left mt-8">
+              <div className="bg-white border-4 border-slate-900 p-4 sm:p-6 md:p-8 brutal-shadow-card text-left mt-8">
                 <h3 className="text-2xl font-black italic uppercase -skew-x-6 tracking-tighter mb-2 flex items-center gap-3">
                   🎟️ PILIH KURSI ({selectedSeats.length}/{qty})
                 </h3>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 italic">
                   Silakan pilih {qty} kursi di area {selectedCategory.name.replace(/\s*\[.+\]/, "").toUpperCase()} (Baris berwarna putih).
                 </p>
-                <div className="bg-amber-400 border-3 border-slate-900 p-3 mb-6 shadow-[3px_3px_0_0_#000] font-black uppercase text-[10px] sm:text-xs tracking-wider flex items-center gap-2 italic text-slate-950">
+                <div className="bg-amber-400 border-3 border-slate-900 p-3 mb-6 shadow-[3px_3px_0_0_#000] font-black uppercase text-[10px] sm:text-xs tracking-wider flex items-center gap-2 italic text-slate-955">
                   <span>⚠️</span>
                   <span>LAYOUT ACARA BELUM TENTU SEPERTI DIGAMBAR (HANYA GAMBARAN). UNTUK HARI H AKAN DIARAHKAN OLEH PANITIA ACARA.</span>
                 </div>
-
+ 
                 {/* Seating Grid Map container */}
-                <div className="border-4 border-slate-900 bg-slate-100 dark:bg-zinc-900 p-6 flex flex-col items-center gap-8 overflow-x-auto rounded-2xl shadow-[4px_4px_0_0_#000] min-w-full">
+                <div className="border-4 border-slate-900 bg-slate-100 dark:bg-zinc-900 p-3 sm:p-6 flex flex-col items-center gap-8 overflow-x-auto rounded-2xl shadow-[4px_4px_0_0_#000] min-w-full">
                   {/* Stage indicator */}
                   <div className="w-full max-w-md bg-slate-900 text-white font-black text-center py-2.5 uppercase tracking-widest -skew-x-3 text-xs border-4 border-black shadow-[3px_3px_0_0_#000]">
                     💻 STAGE / PANGGUNG UTAMA
@@ -872,7 +872,7 @@ export default function CheckoutPage() {
           </div>
 
           <div className="w-full lg:w-[450px]">
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 p-8 brutal-shadow-card flex flex-col h-full sticky top-24 text-left">
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white border-4 border-slate-900 p-4 sm:p-6 md:p-8 brutal-shadow-card flex flex-col h-auto lg:sticky lg:top-24 text-left">
               {/* Neo-Brutalist Expiry Timer Box */}
               <div className={`border-4 border-slate-900 p-4 mb-6 shadow-[4px_4px_0_0_#000] font-black uppercase text-xs sm:text-sm tracking-wider flex items-center justify-between gap-3 ${
                 timeLeft <= 120 ? "bg-[#FF3B30] text-white animate-pulse" : "bg-amber-400 text-slate-900"
@@ -987,7 +987,7 @@ export default function CheckoutPage() {
 
               <div className="mt-auto border-t-4 border-slate-900 pt-6 mb-8">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1 italic">TOTAL TAGIHAN</p>
-                <p className="text-5xl font-black text-[#6D4AFF] italic tracking-tighter leading-none drop-shadow-[2px_2px_0_#FBBF24]">
+                <p className="text-4xl sm:text-5xl font-black text-[#6D4AFF] italic tracking-tighter leading-none drop-shadow-[2px_2px_0_#FBBF24]">
                   {formatRupiah(totalBayar)}
                 </p>
               </div>
@@ -1000,7 +1000,7 @@ export default function CheckoutPage() {
                   isExpired || 
                   (isSeatingEnabled && selectedSeats.length !== qty)
                 } 
-                className={`w-full border-4 border-slate-900 p-6 font-black text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                className={`w-full border-4 border-slate-900 p-4 sm:p-6 font-black text-lg sm:text-xl md:text-2xl italic uppercase brutal-shadow-btn -skew-x-6 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
                   totalBayar === 0 && absoluteMaxQty > 0
                     ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300" 
                     : "bg-amber-400 text-slate-900 hover:bg-amber-300"
@@ -1042,7 +1042,7 @@ export default function CheckoutPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-4 sm:p-6 md:p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
             >
               <div className="w-20 h-20 bg-red-500 border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 rotate-12 shadow-[4px_4px_0_0_#000]">
                 <span className="text-4xl text-white">⏳</span>
@@ -1085,7 +1085,7 @@ export default function CheckoutPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-4 sm:p-6 md:p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] -rotate-1 text-slate-900 text-center"
             >
               <div className="w-20 h-20 bg-[#6D4AFF] border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 rotate-12 shadow-[4px_4px_0_0_#000]">
                 <span className="text-4xl text-white">🎟️</span>
@@ -1131,7 +1131,7 @@ export default function CheckoutPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-[#FCFAF1] border-8 border-slate-900 p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] rotate-1 text-slate-900 text-center"
+              className="bg-[#FCFAF1] border-8 border-slate-900 p-4 sm:p-6 md:p-8 max-w-md w-full relative z-[60] shadow-[12px_12px_0_0_#000] rotate-1 text-slate-900 text-center"
             >
               <div className="w-20 h-20 bg-amber-400 border-4 border-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 -rotate-12 shadow-[4px_4px_0_0_#000]">
                 <span className="text-4xl text-black">⏳</span>

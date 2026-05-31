@@ -94,21 +94,21 @@ export default function AjukanEventPage() {
   };
 
   return (
-    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 p-6 md:p-12 ${poppins.className} text-left text-slate-900 dark:text-zinc-50 brutal-grid noise`}>
+    <main className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 p-4 sm:p-8 md:p-12 ${poppins.className} text-left text-slate-900 dark:text-zinc-50 brutal-grid noise`}>
       <div className="max-w-4xl mx-auto">
         
         <header className="mb-12">
           <div className="bg-[var(--primary-color)] border-4 border-black dark:border-zinc-700 p-4 inline-block -rotate-2 shadow-[6px_6px_0_0_#000] mb-8">
             <TicketIcon className="text-black" size={40} strokeWidth={3} />
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl md:text-8xl font-black italic uppercase -skew-x-6 tracking-tighter leading-[0.8] mb-4">
+          <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black italic uppercase -skew-x-6 tracking-tighter leading-[0.8] mb-4">
             VERIFIKASI <span className="text-[var(--primary-color)]">PROMOTOR.</span>
           </h1>
           <p className="font-black text-slate-400 uppercase tracking-[0.3em] text-[10px] italic">Tiketin Revolution • Know Your Business (KYB)</p>
         </header>
 
         {/* WARNING NOTE POTONGAN 15% */}
-        <div className="bg-amber-400 border-4 border-slate-900 dark:border-zinc-700 p-6 shadow-[6px_6px_0px_0px_#000] -rotate-1 mb-12 text-slate-900">
+        <div className="bg-amber-400 border-4 border-slate-900 dark:border-zinc-700 p-4 sm:p-6 shadow-[6px_6px_0px_0px_#000] -rotate-1 mb-12 text-slate-900">
           <div className="flex gap-4 items-start">
             <Info className="shrink-0 text-slate-900 mt-1" size={24} strokeWidth={3} />
             <div>
@@ -125,7 +125,7 @@ export default function AjukanEventPage() {
           {/* SECTION 01: IDENTITAS */}
           <section className="relative">
             <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 sm:p-6 md:p-10">
               <div className="bg-black dark:bg-zinc-800 text-white px-4 py-1 inline-block -skew-x-12 mb-8">
                 <h3 className="font-black italic uppercase text-lg">01. IDENTITAS ORGANISASI</h3>
               </div>
@@ -135,14 +135,14 @@ export default function AjukanEventPage() {
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">Nama Resmi Promotor / Event Organizer</label>
                   <div className="relative flex items-center bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700">
                     <div className="px-4 border-r-4 border-black dark:border-zinc-700 h-14 flex items-center bg-amber-400 text-slate-900"><Briefcase size={20} strokeWidth={3} /></div>
-                    <input type="text" placeholder="MISAL: BUMI SILIWANGI ENTERTAINMENT" className="w-full h-14 px-4 font-black uppercase outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setOrgName(e.target.value)} required />
+                    <input type="text" placeholder="MISAL: BUMI SILIWANGI ENTERTAINMENT" className="flex-1 min-w-0 h-14 px-4 font-black uppercase outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setOrgName(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="font-black uppercase italic text-[10px] tracking-widest text-slate-400 block">WhatsApp Bisnis</label>
                   <div className="relative flex items-center bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700">
                     <div className="px-4 border-r-4 border-black dark:border-zinc-700 h-14 flex items-center bg-emerald-400 text-slate-900"><Phone size={20} strokeWidth={3} /></div>
-                    <input type="tel" placeholder="08123456789" className="w-full h-14 px-4 font-black outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setWhatsapp(e.target.value)} required />
+                    <input type="tel" placeholder="08123456789" className="flex-1 min-w-0 h-14 px-4 font-black outline-none bg-transparent text-slate-900 dark:text-zinc-50 focus:bg-amber-50/10 dark:focus:bg-zinc-800/30" onChange={(e) => setWhatsapp(e.target.value)} required />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -160,7 +160,7 @@ export default function AjukanEventPage() {
           {/* SECTION 02: UPLOAD DOKUMEN */}
           <section className="relative">
             <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 sm:p-6 md:p-10">
               <div className="bg-[var(--primary-color)] text-black border-2 border-black dark:border-zinc-700 px-4 py-1 inline-block -skew-x-12 mb-8">
                 <h3 className="font-black italic uppercase text-lg">02. BERKAS PENDUKUNG (PDF)</h3>
               </div>
@@ -198,7 +198,7 @@ export default function AjukanEventPage() {
           {/* SECTION 03: VISI */}
           <section className="relative">
             <div className="absolute inset-0 bg-black dark:bg-zinc-800 translate-x-2 translate-y-2 md:translate-x-4 md:translate-y-4" />
-            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 md:p-10">
+            <div className="relative bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 sm:p-6 md:p-10">
               <div className="bg-[var(--primary-color)] border-2 border-black dark:border-zinc-700 text-black px-4 py-1 inline-block -skew-x-12 mb-8 shadow-[3px_3px_0_0_#000]">
                 <h3 className="font-black italic uppercase text-lg">03. RENCANA EVENT</h3>
               </div>

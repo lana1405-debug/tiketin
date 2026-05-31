@@ -1,0 +1,26 @@
+[
+  {
+    "id": "frowghgry",
+    "action": "APPROVE_ARTICLE",
+    "admin_id": "e9954408-41ce-4521-9153-8ab89b8a3482",
+    "admin_name": "admin2@tiketin.com",
+    "details": "Menyetujui artikel \"te\" (ID: 64212db4-e759-477c-8f0c-19f79a1f9d07)",
+    "timestamp": "2026-05-31T09:28:47.967Z"
+  },
+  {
+    "id": "tyfmmsoq6",
+    "action": "APPROVE_ARTICLE",
+    "admin_id": "e9954408-41ce-4521-9153-8ab89b8a3482",
+    "admin_name": "admin2@tiketin.com",
+    "details": "Menyetujui artikel \"tes tes\" (ID: 4e59db0e-2e1e-49f0-af16-f2745523d39d)",
+    "timestamp": "2026-05-31T09:25:12.744Z"
+  },
+  {
+    "id": "sy4qwvnq1",
+    "action": "APPROVE_ARTICLE",
+    "admin_id": "e9954408-41ce-4521-9153-8ab89b8a3482",
+    "admin_name": "admin2@tiketin.com",
+    "details": "Menyetujui artikel \"SYNCRONIzE 2026\" (ID: 1138f9f8-09b2-42be-be1b-d78cfa570f49)",
+    "timestamp": "2026-05-31T09:08:20.390Z"
+  }
+]

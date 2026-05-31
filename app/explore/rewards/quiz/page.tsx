@@ -420,7 +420,7 @@ export default function DailyQuizPage() {
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 selection:bg-amber-400 selection:text-black ${poppins.className}`}>
       
       {/* NAVBAR */}
-      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_var(--primary-color)]">
@@ -565,7 +565,7 @@ export default function DailyQuizPage() {
 
         {/* 🎡 STAGE 3: GAMEPLAY SCREEN */}
         {gameState === "playing" && activeQuestion && (
-          <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-6 sm:p-10 shadow-[15px_15px_0_0_rgba(109,74,255,1)] relative text-left space-y-8">
+          <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-4 sm:p-8 md:p-10 shadow-[15px_15px_0_0_rgba(109,74,255,1)] relative text-left space-y-8">
             
             {/* Progress & Countdown Header */}
             <div className="flex justify-between items-center border-b-4 border-black dark:border-zinc-700 pb-4">
@@ -666,7 +666,7 @@ export default function DailyQuizPage() {
             initial={{ scale: 0.9, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-8 shadow-[15px_15px_0_0_#000] text-center space-y-8"
+            className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-4 sm:p-6 md:p-8 shadow-[15px_15px_0_0_#000] text-center space-y-8"
           >
             
             {score === totalQuestions ? (

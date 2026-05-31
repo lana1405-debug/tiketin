@@ -263,7 +263,7 @@ export default function UserProfilePage() {
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise brutal-grid ${poppins.className}`}>
       
       {/* NAVBAR */}
-      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color,#6D4AFF)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color,#6D4AFF)] h-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
@@ -281,10 +281,10 @@ export default function UserProfilePage() {
       </nav>
 
       {/* CONTENT */}
-      <main className="max-w-5xl mx-auto px-6 pt-12 pb-24">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 md:px-8 pt-12 pb-24">
         
         {/* HEADER PROFILE CARD */}
-        <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 md:p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color,#6D4AFF)] flex flex-col md:flex-row items-center gap-8 mb-8 relative overflow-hidden">
+        <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 sm:p-6 md:p-8 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color,#6D4AFF)] flex flex-col md:flex-row items-center gap-8 mb-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
             <Award size={200} className="text-slate-900 dark:text-white" />
           </div>
@@ -353,7 +353,7 @@ export default function UserProfilePage() {
         {/* STATS CARDS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
           <Link href="/explore/tickets" className="group">
-            <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#E0F2FE] dark:bg-sky-950/40 p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all group-hover:translate-x-0.5 group-hover:translate-y-0.5 group-hover:shadow-none h-full flex flex-col justify-between">
+            <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#E0F2FE] dark:bg-sky-950/40 p-4 sm:p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all group-hover:translate-x-0.5 group-hover:translate-y-0.5 group-hover:shadow-none h-full flex flex-col justify-between">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 dark:text-sky-400">Tiket Saya</span>
                 <TicketIcon className="text-sky-800 dark:text-sky-400" size={20} strokeWidth={3} />
@@ -367,7 +367,7 @@ export default function UserProfilePage() {
             </div>
           </Link>
 
-          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#DCFCE7] dark:bg-emerald-950/40 p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] h-full flex flex-col justify-between">
+          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#DCFCE7] dark:bg-emerald-950/40 p-4 sm:p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] h-full flex flex-col justify-between">
             <div className="flex justify-between items-start">
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">Event Dihadiri</span>
               <CheckCircle2 className="text-emerald-800 dark:text-emerald-400" size={20} strokeWidth={3} />
@@ -381,7 +381,7 @@ export default function UserProfilePage() {
           </div>
 
           <Link href="/explore/rewards" className="group">
-            <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#F3E8FF] dark:bg-purple-950/40 p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all group-hover:translate-x-0.5 group-hover:translate-y-0.5 group-hover:shadow-none h-full flex flex-col justify-between">
+            <div className="border-4 border-slate-900 dark:border-zinc-700 bg-[#F3E8FF] dark:bg-purple-950/40 p-4 sm:p-5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] transition-all group-hover:translate-x-0.5 group-hover:translate-y-0.5 group-hover:shadow-none h-full flex flex-col justify-between">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 dark:text-purple-400">Rewards Arena</span>
                 <Trophy className="text-purple-800 dark:text-purple-400" size={20} strokeWidth={3} />
@@ -398,7 +398,7 @@ export default function UserProfilePage() {
 
         {/* AUTHOR ARTICLES DASHBOARD */}
         {userProfile?.verification_status === "approved" && (
-          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-[8px_8px_0_0_#6D4AFF] mb-8 space-y-6">
+          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 sm:p-6 shadow-[8px_8px_0_0_#6D4AFF] mb-8 space-y-6">
             <div className="flex items-center justify-between border-b-4 border-slate-900 dark:border-zinc-700 pb-4">
               <div className="flex items-center gap-2">
                 <div className="bg-purple-100 dark:bg-purple-950/40 p-2 border-2 border-slate-900 dark:border-zinc-700">
@@ -413,23 +413,23 @@ export default function UserProfilePage() {
 
             {/* Sub Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="border-2 border-black p-4 bg-slate-50 dark:bg-zinc-800 text-left">
+              <div className="border-2 border-black p-2 sm:p-4 bg-slate-50 dark:bg-zinc-800 text-left">
                 <div className="text-[10px] font-black uppercase text-slate-400">Total Artikel</div>
                 <div className="text-2xl font-black italic -skew-x-6 text-[#6D4AFF] mt-1">{authorArticles.length}</div>
               </div>
-              <div className="border-2 border-black p-4 bg-emerald-50 dark:bg-emerald-950/20 text-left">
+              <div className="border-2 border-black p-2 sm:p-4 bg-emerald-50 dark:bg-emerald-950/20 text-left">
                 <div className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400">Disetujui</div>
                 <div className="text-2xl font-black italic -skew-x-6 text-emerald-600 dark:text-emerald-400 mt-1">
                   {authorArticles.filter(a => a.status === 'approved').length}
                 </div>
               </div>
-              <div className="border-2 border-black p-4 bg-amber-50 dark:bg-amber-950/20 text-left">
+              <div className="border-2 border-black p-2 sm:p-4 bg-amber-50 dark:bg-amber-950/20 text-left">
                 <div className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400">Menunggu</div>
                 <div className="text-2xl font-black italic -skew-x-6 text-amber-600 dark:text-amber-400 mt-1">
                   {authorArticles.filter(a => a.status === 'pending').length}
                 </div>
               </div>
-              <div className="border-2 border-black p-4 bg-red-50 dark:bg-red-950/20 text-left">
+              <div className="border-2 border-black p-2 sm:p-4 bg-red-50 dark:bg-red-950/20 text-left">
                 <div className="text-[10px] font-black uppercase text-red-600 dark:text-red-400">Ditolak</div>
                 <div className="text-2xl font-black italic -skew-x-6 text-red-600 dark:text-red-400 mt-1">
                   {authorArticles.filter(a => a.status === 'rejected').length}
@@ -517,7 +517,7 @@ export default function UserProfilePage() {
         {/* FORMS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* EDIT PROFILE CARD */}
-          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
+          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 sm:p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
             <div className="flex items-center gap-2 mb-6">
               <div className="bg-rose-100 dark:bg-rose-950/40 p-2 border-2 border-slate-900 dark:border-zinc-700">
                 <User className="text-rose-600 dark:text-rose-400" size={18} strokeWidth={3} />
@@ -557,7 +557,7 @@ export default function UserProfilePage() {
           </div>
 
           {/* CHANGE PASSWORD CARD */}
-          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
+          <div className="border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 sm:p-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)]">
             <div className="flex items-center gap-2 mb-6">
               <div className="bg-amber-100 dark:bg-amber-950/40 p-2 border-2 border-slate-900 dark:border-zinc-700">
                 <Key className="text-amber-600 dark:text-amber-400" size={18} strokeWidth={3} />
@@ -612,7 +612,7 @@ export default function UserProfilePage() {
         </div>
 
         {/* DANGER ZONE */}
-        <div className="border-4 border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-950/20 p-6 shadow-[8px_8px_0_0_#EF4444] text-left">
+        <div className="border-4 border-red-500 dark:border-red-600 bg-red-50 dark:bg-red-950/20 p-4 sm:p-6 shadow-[8px_8px_0_0_#EF4444] text-left">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h3 className="text-lg font-black uppercase text-red-600 dark:text-red-400">Danger Zone</h3>

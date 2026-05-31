@@ -97,7 +97,7 @@ export default function ExploreLayout({ children }: { children: React.ReactNode 
       </AnimatePresence>
 
       {/* ── FLOATING ACCENT COLOR & THEME SWITCHER WIDGET ── */}
-      <div className="fixed bottom-24 right-8 z-[80] flex flex-col items-end">
+      <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-8 z-[80] flex flex-col items-end">
         <AnimatePresence>
           {isOpen && (
             <motion.div

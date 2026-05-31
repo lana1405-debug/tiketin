@@ -141,6 +141,12 @@ const GLOBAL_STYLES = `
   }
   .animate-equalizer-bar-3 {
     animation: equalizer-3 0.9s ease-in-out infinite;
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 `;
 
@@ -1064,7 +1070,7 @@ export default function ExplorePage() {
       />
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <nav className="w-full bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b-2 border-slate-900/10 dark:border-zinc-800 sticky top-0 z-[50] shadow-[0_8px_32px_0_rgba(109,74,255,0.05)] h-20 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/explore" className="flex items-center gap-2 group text-slate-900 dark:text-zinc-50">
               <div className="h-10 w-10 bg-[#6D4AFF] border-4 border-slate-900 dark:border-zinc-700 -rotate-12 flex items-center justify-center group-hover:rotate-0 transition-transform shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
@@ -1149,7 +1155,7 @@ export default function ExplorePage() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -30, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 120, damping: 14 }}
-            className="w-full max-w-7xl mx-auto px-6 sm:px-12 mt-6 relative z-30"
+            className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 mt-6 relative z-30"
           >
             {userProfile.verification_status === "pending" ? (
               <div className="bg-amber-400 border-4 border-slate-900 p-5 md:p-6 shadow-[8px_8px_0_0_#000] flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1194,7 +1200,7 @@ export default function ExplorePage() {
         )}
       </AnimatePresence>
 
-      <main className="max-w-7xl mx-auto px-6 sm:px-12 pt-10 pb-24 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-10 pb-24 relative z-10">
         {/* DUAL-PANE HERO SECTION */}
         {!searchQuery ? (
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-10 mb-20 items-center">
@@ -1277,7 +1283,7 @@ export default function ExplorePage() {
                 ))}
               </motion.div>
 
-              <div className="grid grid-cols-2 gap-4 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 {[
                   { icon: <Music size={20} strokeWidth={3} style={{ color: "var(--primary-color)" }} />, label: "TOTAL EVENT", value: events.length || 500, suffix: "+" },
                   { icon: <Users size={20} strokeWidth={3} className="text-emerald-500" />, label: "HAPPY FANS", value: totalFans, suffix: "+" },
@@ -1303,7 +1309,7 @@ export default function ExplorePage() {
             </div>
 
             {/* Right Column: Hero Carousel Recommended Showcase */}
-            <div className="lg:col-span-5 relative w-full h-[400px] md:h-[450px]">
+            <div className="lg:col-span-5 relative w-full h-[320px] sm:h-[380px] md:h-[450px]">
               {isLoading ? (
                 <div className="w-full h-full border-8 border-slate-900 dark:border-zinc-800 rounded-3xl overflow-hidden bg-slate-900 animate-pulse flex flex-col justify-end p-8 gap-4 shadow-[8px_8px_0_0_var(--primary-color,#6D4AFF),16px_16px_0_0_#000]">
                   <div className="h-6 w-24 bg-slate-770 rounded" />
@@ -1651,7 +1657,7 @@ export default function ExplorePage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
-            className="flex flex-row justify-center w-full max-w-5xl mx-auto pt-6 px-4 gap-4 sm:gap-6 md:gap-8"
+            className="flex flex-row overflow-x-auto no-scrollbar scroll-smooth justify-start md:justify-center w-full max-w-5xl mx-auto pt-6 px-4 gap-3 sm:gap-6 md:gap-8 pb-3"
           >
             {["ALL", "MUSIK", "TEATER", "FAVORIT"].map((cat) => {
               const isActive = selectedCategory === cat;
@@ -1670,7 +1676,7 @@ export default function ExplorePage() {
                     rotate: isActive ? -1 : 0,
                   }}
                   transition={{ type: "spring", stiffness: 450, damping: 15 }}
-                  className={`group relative flex-1 min-w-[75px] max-w-[220px] h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase rounded-2xl overflow-visible z-10 ${isActive
+                  className={`group relative flex-1 min-w-[100px] sm:min-w-[120px] max-w-[220px] h-16 md:h-20 flex items-center justify-center border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase rounded-2xl overflow-visible z-10 ${isActive
                     ? "text-white -skew-x-6 shadow-[4px_4px_0_0_#FBBF24]"
                     : "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 shadow-[4px_4px_0_0_var(--primary-color),8px_8px_0_0_#000] md:shadow-[4px_4px_0_0_var(--primary-color),8px_8px_0_0_#000,12px_12px_0_0_#FBBF24]"
                     }`}
@@ -1857,7 +1863,7 @@ export default function ExplorePage() {
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
         style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
-        className="text-white pt-24 pb-12 px-6 sm:px-12 border-t-8 border-slate-900 text-left relative z-20"
+        className="text-white pt-24 pb-12 px-4 sm:px-8 lg:px-12 border-t-8 border-slate-900 text-left relative z-20"
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16 mb-16">
@@ -1965,7 +1971,7 @@ export default function ExplorePage() {
                 })()}
               </div>
 
-              <div className="w-full md:w-[62%] p-8 md:p-10 flex flex-col justify-between overflow-y-auto flex-1 md:max-h-[680px] text-left relative bg-white dark:bg-zinc-900 brutal-scroll">
+              <div className="w-full md:w-[62%] p-4 sm:p-6 md:p-10 flex flex-col justify-between overflow-y-auto flex-1 md:max-h-[680px] text-left relative bg-white dark:bg-zinc-900 brutal-scroll">
                 <button
                   onClick={() => setSelectedEventDetails(null)}
                   className="absolute top-4 right-4 z-30 h-10 w-10 bg-white dark:bg-zinc-900 hover:bg-red-500 hover:text-white border-4 border-slate-900 dark:border-zinc-700 shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] flex items-center justify-center font-black transition-all hover:rotate-90 rounded-lg"
@@ -2307,7 +2313,7 @@ export default function ExplorePage() {
                   setQuickPurchaseEvent(null);
                 }
               }}
-              className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-900 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-y-auto brutal-scroll p-6 md:p-8"
+              className="relative w-full max-w-md h-full bg-[#FCFAF1] dark:bg-zinc-900 border-l-8 border-slate-900 dark:border-zinc-800 shadow-[-10px_0_0_0_rgba(0,0,0,0.15)] flex flex-col z-10 overflow-y-auto brutal-scroll p-4 sm:p-6 md:p-8"
             >
               <div className="flex justify-between items-center border-b-4 border-slate-900 dark:border-zinc-800 pb-4 mb-6">
                 <div>

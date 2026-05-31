@@ -184,7 +184,8 @@
       "author_id",
       "author_name",
       "created_at",
-      "updated_at"
+      "updated_at",
+      "linked_event_id"
     ],
     "hasData": true
   },

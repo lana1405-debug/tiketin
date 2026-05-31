@@ -178,7 +178,7 @@ export default function CustomerComplaintsPage() {
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-black dark:text-zinc-50 ${poppins.className}`}>
       {/* NAVBAR */}
       <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
               <ArrowLeft className="text-white" size={18} strokeWidth={3} />
@@ -244,7 +244,7 @@ export default function CustomerComplaintsPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
         
         {/* KIRI: FORM & LIST TIKET */}
         <div className="lg:col-span-4 space-y-10">
@@ -265,7 +265,7 @@ export default function CustomerComplaintsPage() {
           key={cat.id}
           type="button"
           onClick={() => setCategory(cat.id)}
-          className={`flex items-center justify-center gap-3 p-4 border-4 border-black dark:border-zinc-700 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
+          className={`flex items-center justify-center gap-3 p-2 sm:p-4 border-4 border-black dark:border-zinc-700 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none ${
             isActive 
             ? 'bg-black dark:bg-zinc-50 text-white dark:text-black shadow-none translate-x-1 translate-y-1' 
             : 'bg-white dark:bg-zinc-800 text-black dark:text-zinc-200 shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)]'
@@ -320,7 +320,7 @@ export default function CustomerComplaintsPage() {
                 <div className="bg-[#6D4AFF] px-3 py-1 border-2 border-white text-[9px] font-black italic uppercase">Chat Active</div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FCFAF1] dark:bg-zinc-950 custom-scrollbar flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-[#FCFAF1] dark:bg-zinc-950 custom-scrollbar flex flex-col">
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`flex flex-col ${msg.is_admin ? 'items-start' : 'items-end'}`}>
                     <div className={`max-w-[80%] p-4 border-4 border-black dark:border-zinc-700 shadow-[4px_4px_0_0_rgba(0,0,0,1)] dark:shadow-[4px_4px_0_0_var(--primary-color)] ${msg.is_admin ? 'bg-white dark:bg-zinc-800 text-black dark:text-zinc-100' : 'bg-[#6D4AFF] text-white text-right'}`}>
@@ -337,7 +337,7 @@ export default function CustomerComplaintsPage() {
               </div>
 
               {selectedTicket.status !== 'resolved' ? (
-                <div className="p-5 border-t-8 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 flex gap-4">
+                 <div className="p-3 sm:p-5 border-t-8 border-black dark:border-zinc-700 bg-white dark:bg-zinc-900 flex gap-4">
                   <input type="text" placeholder="BALAS ADMIN DI SINI..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendReply()} className="flex-1 p-4 border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-bold italic outline-none focus:bg-slate-50 dark:focus:bg-zinc-700 text-sm placeholder:text-slate-400 dark:placeholder:text-zinc-600" />
                   <button onClick={handleSendReply} className="bg-black text-white px-6 border-4 border-black shadow-[4px_4px_0_0_rgba(109,74,255,1)] hover:shadow-none transition-all">
                     <Send size={20} />

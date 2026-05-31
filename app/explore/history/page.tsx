@@ -239,7 +239,7 @@ export default function HistoryPage() {
   return (
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 noise ${poppins.className}`}>
       {/* NAVBAR */}
-      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_#6D4AFF]">
@@ -306,7 +306,7 @@ export default function HistoryPage() {
         </div>
       </nav>
 
-      <main className="max-w-4xl mx-auto px-6 sm:px-12 pt-12 pb-32 text-left">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 lg:px-12 pt-12 pb-32 text-left">
         <div className="mb-12 border-b-8 border-slate-900 dark:border-zinc-700 pb-8 flex items-end justify-between">
           <div>
             <h1 className="text-5xl md:text-7xl font-black italic uppercase -skew-x-6 tracking-tighter text-left text-slate-900 dark:text-zinc-50">
@@ -347,7 +347,7 @@ export default function HistoryPage() {
                   {tx.status_pembayaran === 'paid' ? '✓' : tx.status_pembayaran === 'pending' ? '⏳' : '✗'}
                 </div>
 
-                <div className={`bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] transition-all ${tx.status_pembayaran === 'expired' ? 'opacity-60 grayscale' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF]'}`}>
+                <div className={`bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-4 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] transition-all ${tx.status_pembayaran === 'expired' ? 'opacity-60 grayscale' : 'hover:-translate-y-1 hover:shadow-[12px_12px_0_0_#6D4AFF]'}`}>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="bg-slate-900 text-white dark:bg-zinc-800 dark:text-zinc-300 font-black italic uppercase px-3 py-1 text-xs tracking-widest">
@@ -443,7 +443,7 @@ export default function HistoryPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-4 sm:p-6 md:p-8 text-center space-y-6"
             >
               <div className="inline-block bg-red-500 text-white p-4 border-4 border-slate-900 dark:border-zinc-700 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
                 <AlertCircle className="text-white" size={48} strokeWidth={3} />

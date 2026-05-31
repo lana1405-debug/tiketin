@@ -47,6 +47,7 @@ interface Article {
   updated_at: string;
   thumbnail_url?: string | null;
   excerpt?: string | null;
+  linked_event_ids?: string[] | null;  // array of event UUIDs
   profiles?: {
     full_name: string;
     avatar_url?: string | null;
@@ -57,6 +58,7 @@ interface MatchedEvent {
   id: string;
   title: string;
   date: string;
+  end_date?: string | null;
   location: string;
   price: number;
   image_url: string;
@@ -337,43 +339,50 @@ function ArticleCard({
 // ─── SMART EVENT LINK WIDGET ─────────────────────────────────────────────────
 function EventLinkWidget({ events }: { events: MatchedEvent[] }) {
   if (events.length === 0) return null;
+  const today = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
+
   return (
     <div className="mt-8 border-t-4 border-dashed border-[#6D4AFF]/40 pt-6">
       <div className="inline-flex items-center gap-2 bg-[#6D4AFF] text-white px-3 py-1 text-[9px] font-black uppercase italic tracking-widest border-2 border-black mb-4">
         <Ticket size={12} strokeWidth={3} /> Event Terkait di Tiketin
       </div>
       <div className="grid gap-3">
-        {events.map((ev) => (
-          <Link
-            key={ev.id}
-            href={`/explore/checkout/${ev.id}`}
-            className="flex items-center gap-4 bg-amber-50 dark:bg-zinc-800 border-4 border-black p-4 shadow-[4px_4px_0_0_#6D4AFF] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all group/ev"
-          >
-            {ev.image_url && (
-              <div className="w-16 h-16 border-2 border-black overflow-hidden shrink-0">
-                <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+        {events.map((ev) => {
+          const isEnded = ev.end_date ? ev.end_date < today : ev.date < today;
+          return (
+            <Link
+              key={ev.id}
+              href={`/explore/checkout/${ev.id}`}
+              className="flex items-center gap-4 bg-amber-50 dark:bg-zinc-800 border-4 border-black p-4 shadow-[4px_4px_0_0_#6D4AFF] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all group/ev"
+            >
+              {ev.image_url && (
+                <div className="w-16 h-16 border-2 border-black overflow-hidden shrink-0">
+                  <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black italic uppercase text-slate-900 dark:text-zinc-50 truncate group-hover/ev:text-[#6D4AFF] transition-colors">
+                  {ev.title}
+                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1">
+                    <Calendar size={10} />
+                    {new Date(ev.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1">
+                    <MapPin size={10} />
+                    {ev.location}
+                  </span>
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black italic uppercase text-slate-900 dark:text-zinc-50 truncate group-hover/ev:text-[#6D4AFF] transition-colors">
-                {ev.title}
-              </p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1">
-                  <Calendar size={10} />
-                  {new Date(ev.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
-                <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1">
-                  <MapPin size={10} />
-                  {ev.location}
-                </span>
+              <div className={`shrink-0 text-white px-3 py-2 border-2 border-black font-black italic uppercase text-[10px] flex items-center gap-1 ${
+                isEnded ? "bg-red-500" : "bg-[#6D4AFF]"
+              }`}>
+                {isEnded ? "Event Selesai ❌" : "Beli Tiket 🎫"}
               </div>
-            </div>
-            <div className="shrink-0 bg-[#6D4AFF] text-white px-3 py-2 border-2 border-black font-black italic uppercase text-[10px] flex items-center gap-1">
-              Beli Tiket 🎫
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -704,7 +713,7 @@ function ArticleModal({
 }
 
 // ─── FORM TULIS ARTIKEL ──────────────────────────────────────────────────────
-function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClose: () => void; authorId: string; authorName: string; onSuccess: () => void }) {
+function WriteArticleModal({ onClose, authorId, authorName, onSuccess, activeEvents }: { onClose: () => void; authorId: string; authorName: string; onSuccess: () => void; activeEvents: MatchedEvent[] }) {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<ArticleCategory>("BANDUNG");
@@ -715,62 +724,56 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // ── State untuk multi-select event picker ───────────────────────────────────
+  const [linkedEventIds, setLinkedEventIds] = useState<string[]>([]);
+  const [eventSearch, setEventSearch] = useState("");
+  const [showEventDropdown, setShowEventDropdown] = useState(false);
+
+  const filteredEvents = activeEvents
+    .filter((ev) => ev.title.toLowerCase().includes(eventSearch.toLowerCase()))
+    .slice(0, 8);
+
+  const selectedEvents = activeEvents.filter((ev) => linkedEventIds.includes(ev.id));
+
+  const toggleEvent = (ev: MatchedEvent) => {
+    setLinkedEventIds((prev) =>
+      prev.includes(ev.id) ? prev.filter((id) => id !== ev.id) : [...prev, ev.id]
+    );
+  };
+
+  const removeEvent = (id: string) => {
+    setLinkedEventIds((prev) => prev.filter((eid) => eid !== id));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast("File harus berupa gambar!", "error");
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast("Ukuran gambar maksimal 2MB!", "error");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { toast("File harus berupa gambar!", "error"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast("Ukuran gambar maksimal 2MB!", "error"); return; }
     setCoverImage(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) {
-      toast("Judul dan isi artikel wajib diisi!", "error");
-      return;
-    }
-    if (content.trim().length < 100) {
-      toast("Konten artikel minimal 100 karakter.", "warning");
-      return;
-    }
+    if (!title.trim() || !content.trim()) { toast("Judul dan isi artikel wajib diisi!", "error"); return; }
+    if (content.trim().length < 100) { toast("Konten artikel minimal 100 karakter.", "warning"); return; }
     setSubmitting(true);
     try {
       let uploadedImageUrl = "";
       if (coverImage) {
         const fileExt = coverImage.name.split('.').pop();
         const fileName = `article-cover-${authorId}-${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, coverImage);
-
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, coverImage);
         if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filePath);
-
+        const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(fileName);
         uploadedImageUrl = publicUrl;
       }
 
       let finalContent = excerpt.trim()
         ? `**Ringkasan:** ${excerpt.trim()}\n\n${content.trim()}`
         : content.trim();
-
-      if (uploadedImageUrl) {
-        finalContent = `[COVER_IMAGE]: ${uploadedImageUrl}\n\n${finalContent}`;
-      }
+      if (uploadedImageUrl) finalContent = `[COVER_IMAGE]: ${uploadedImageUrl}\n\n${finalContent}`;
 
       const { error } = await supabase.from("articles").insert({
         title: title.trim(),
@@ -779,14 +782,14 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
         author_id: authorId,
         author_name: authorName,
         status: "pending",
+        ...(linkedEventIds.length > 0 ? { linked_event_ids: linkedEventIds } : {}),
       });
       if (error) throw error;
       toast("🎉 Artikel berhasil dikirim! Menunggu review admin.", "success");
       onSuccess();
       onClose();
     } catch (err: any) {
-      const message = err?.message || (err instanceof Error ? err.message : "Gagal mengirim artikel.");
-      toast(message, "error");
+      toast(err?.message || "Gagal mengirim artikel.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -795,16 +798,12 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, y: 30 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 30 }}
+          initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }}
           onClick={(e) => e.stopPropagation()}
           className="bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 shadow-[12px_12px_0_0_#6D4AFF] max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         >
@@ -820,6 +819,7 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
             </div>
             <p className="text-white/70 text-xs font-bold mt-2 uppercase tracking-wider">Artikel kamu akan direview oleh admin sebelum dipublikasikan</p>
           </div>
+
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
             {/* Kategori */}
             <div>
@@ -828,10 +828,7 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
                 {CATEGORIES.map((cat) => {
                   const cfg = CATEGORY_CONFIG[cat];
                   return (
-                    <button
-                      type="button"
-                      key={cat}
-                      onClick={() => setCategory(cat)}
+                    <button type="button" key={cat} onClick={() => setCategory(cat)}
                       className={`flex flex-col items-center gap-1 p-3 border-4 border-black font-black italic uppercase text-xs transition-all ${
                         category === cat
                           ? `${cfg.bg} text-white shadow-none translate-x-0.5 translate-y-0.5`
@@ -849,16 +846,119 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
             {/* Judul */}
             <div>
               <label className="text-[10px] font-black uppercase italic text-slate-500 dark:text-zinc-400 block mb-2">Judul Artikel *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={200}
-                placeholder="Tulis judul yang menarik..."
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                maxLength={200} placeholder="Tulis judul yang menarik..."
                 className="w-full border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-bold p-3 text-sm focus:outline-none focus:border-[#6D4AFF] transition-colors"
                 required
               />
               <p className="text-right text-[9px] text-slate-400 mt-1">{title.length}/200</p>
+            </div>
+
+            {/* ── Multi-select Event Terkait ───────────────────────────────────── */}
+            <div>
+              <label className="text-[10px] font-black uppercase italic text-slate-500 dark:text-zinc-400 block mb-2">
+                <span className="flex items-center gap-1">
+                  <Ticket size={10} strokeWidth={3} />
+                  Event Terkait (Opsional) {linkedEventIds.length > 0 && <span className="bg-[#6D4AFF] text-white px-1.5 py-0.5 text-[8px] font-black">{linkedEventIds.length}</span>}
+                </span>
+              </label>
+
+              {/* Search input (selalu tampil) */}
+              <div className="relative">
+                <div className="flex items-center border-4 border-black dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                  <Search size={14} className="ml-3 text-slate-400 shrink-0" strokeWidth={3} />
+                  <input
+                    type="text"
+                    value={eventSearch}
+                    onChange={(e) => { setEventSearch(e.target.value); setShowEventDropdown(true); }}
+                    onFocus={() => setShowEventDropdown(true)}
+                    placeholder="Cari dan pilih event yang dibahas..."
+                    className="flex-1 p-3 text-sm font-medium bg-transparent text-slate-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                  {eventSearch && (
+                    <button type="button" onClick={() => { setEventSearch(""); setShowEventDropdown(false); }} className="mr-2 text-slate-400 hover:text-slate-700">
+                      <X size={14} strokeWidth={3} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown */}
+                {showEventDropdown && eventSearch && (
+                  <div className="absolute z-50 top-full left-0 right-0 border-4 border-black dark:border-zinc-700 border-t-0 bg-white dark:bg-zinc-900 shadow-[4px_4px_0_0_#6D4AFF] max-h-52 overflow-y-auto">
+                    {filteredEvents.length === 0 ? (
+                      <div className="p-3 text-xs font-bold text-slate-400 italic uppercase text-center">Event tidak ditemukan</div>
+                    ) : (
+                      filteredEvents.map((ev) => {
+                        const isSelected = linkedEventIds.includes(ev.id);
+                        const isPast = new Date(ev.date) < new Date();
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => toggleEvent(ev)}
+                            className={`w-full flex items-center gap-3 p-3 transition-colors text-left border-b-2 border-slate-100 dark:border-zinc-800 last:border-0 ${
+                              isSelected
+                                ? "bg-[#6D4AFF]/10 dark:bg-[#6D4AFF]/20"
+                                : "hover:bg-slate-50 dark:hover:bg-zinc-800"
+                            }`}
+                          >
+                            {/* Checkbox visual */}
+                            <div className={`shrink-0 w-5 h-5 border-2 border-black flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#6D4AFF]" : "bg-white dark:bg-zinc-800"
+                            }`}>
+                              {isSelected && <span className="text-white text-[10px] font-black">✓</span>}
+                            </div>
+
+                            {ev.image_url && (
+                              <div className="w-9 h-9 border-2 border-black overflow-hidden shrink-0">
+                                <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-black uppercase italic text-slate-900 dark:text-zinc-50 truncate">{ev.title}</p>
+                                {isPast && (
+                                  <span className="shrink-0 text-[8px] font-black uppercase bg-slate-200 dark:bg-zinc-700 text-slate-500 dark:text-zinc-400 px-1.5 py-0.5 border border-slate-300 dark:border-zinc-600">SELESAI</span>
+                                )}
+                              </div>
+                              <p className="text-[9px] text-slate-400 dark:text-zinc-500">
+                                {new Date(ev.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })} · {ev.location}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected event chips */}
+              {selectedEvents.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {selectedEvents.map((ev) => (
+                    <div key={ev.id} className="flex items-center gap-1.5 bg-[#6D4AFF]/10 dark:bg-[#6D4AFF]/20 border-2 border-[#6D4AFF] px-2 py-1.5 max-w-full">
+                      {ev.image_url && (
+                        <div className="w-5 h-5 border border-black overflow-hidden shrink-0">
+                          <img src={ev.image_url} alt={ev.title} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <span className="text-[10px] font-black uppercase italic text-[#6D4AFF] truncate max-w-[160px]">{ev.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeEvent(ev.id)}
+                        className="shrink-0 text-[#6D4AFF] hover:text-red-500 transition-colors"
+                      >
+                        <X size={12} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-[9px] text-slate-400 dark:text-zinc-500 mt-2 italic">
+                Pilih satu atau lebih event yang dibahas. Artikel akan menampilkan link ke event tersebut.
+              </p>
             </div>
 
             {/* Ringkasan */}
@@ -953,6 +1053,7 @@ function WriteArticleModal({ onClose, authorId, authorName, onSuccess }: { onClo
   );
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -974,8 +1075,10 @@ export default function ArticlesPage() {
   // Bookmarks
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
 
-  // Active events for Smart Event-Link
+  // Active events for Smart Event-Link widget (hanya event mendatang)
   const [activeEvents, setActiveEvents] = useState<MatchedEvent[]>([]);
+  // All events untuk article picker (semua event termasuk yang sudah selesai)
+  const [allEvents, setAllEvents] = useState<MatchedEvent[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -1010,7 +1113,7 @@ export default function ArticlesPage() {
     const { data, error } = await supabase
       .from("articles")
       .select(`
-        id, title, content, category, author_id, status, created_at, updated_at,
+        id, title, content, category, author_id, status, created_at, updated_at, linked_event_ids,
         profiles ( full_name, avatar_url )
       `)
       .eq("status", "approved")
@@ -1022,15 +1125,27 @@ export default function ArticlesPage() {
   }, []);
 
   const fetchActiveEvents = useCallback(async () => {
-    const { data } = await supabase
+    // Fetch semua event (termasuk yang sudah selesai) untuk article picker
+    const { data: allData } = await supabase
       .from("events")
-      .select("id, title, date, location, price, image_url")
+      .select("id, title, date, end_date, location, price, image_url")
+      .eq("status", "approved")
+      .order("date", { ascending: false })
+      .limit(200);
+    if (allData) {
+      setAllEvents(allData as MatchedEvent[]);
+    }
+
+    // Fetch hanya event mendatang untuk widget beli tiket
+    const { data: upcomingData } = await supabase
+      .from("events")
+      .select("id, title, date, end_date, location, price, image_url")
       .eq("status", "approved")
       .gte("date", new Date().toISOString())
       .order("date", { ascending: true })
       .limit(50);
-    if (data) {
-      setActiveEvents(data as MatchedEvent[]);
+    if (upcomingData) {
+      setActiveEvents(upcomingData as MatchedEvent[]);
     }
   }, []);
 
@@ -1040,8 +1155,16 @@ export default function ArticlesPage() {
     fetchActiveEvents();
   }, [fetchUser, fetchArticles, fetchActiveEvents]);
 
-  // Smart Event-Link matching: find events mentioned in an article
+  // Smart Event-Link matching: prioritize explicit linked_event_ids array, then fall back to text matching
   const getMatchedEvents = useCallback((article: Article): MatchedEvent[] => {
+    // 1. Prioritas: linked_event_ids eksplisit yang dipilih penulis (bisa banyak)
+    if (article.linked_event_ids && article.linked_event_ids.length > 0) {
+      // Ambil dari allEvents (termasuk event yang sudah selesai)
+      const linked = allEvents.filter((ev) => article.linked_event_ids!.includes(ev.id));
+      if (linked.length > 0) return linked;
+    }
+
+    // 2. Fallback: text matching hanya pada event mendatang (relevan untuk beli tiket)
     if (activeEvents.length === 0) return [];
     const text = (article.title + " " + article.content).toLowerCase();
     return activeEvents.filter((ev) => {
@@ -1057,7 +1180,7 @@ export default function ArticlesPage() {
       // Fallback: check if the full event title substring is in the text
       return text.includes(ev.title.toLowerCase());
     }).slice(0, 3);
-  }, [activeEvents]);
+  }, [activeEvents, allEvents]);
 
   // Filtering logic
   const filtered = articles.filter((a) => {
@@ -1302,6 +1425,7 @@ export default function ArticlesPage() {
           authorName={authorName}
           onClose={() => setShowWriteModal(false)}
           onSuccess={fetchArticles}
+          activeEvents={allEvents}
         />
       )}
     </div>

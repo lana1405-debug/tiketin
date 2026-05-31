@@ -487,7 +487,7 @@ export default function LuckySpinPage() {
       `}</style>
 
       {/* NAVBAR */}
-      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore/rewards" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_var(--primary-color)]">
@@ -597,13 +597,13 @@ export default function LuckySpinPage() {
         </div>
 
         {/* SPIN WHEEL CARD CONTAINER */}
-        <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-6 sm:p-12 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] hover:shadow-[16px_16px_0_0_#000] dark:hover:shadow-[16px_16px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex flex-col items-center relative overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 border-8 border-black dark:border-zinc-700 p-4 sm:p-6 md:p-12 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] hover:shadow-[16px_16px_0_0_#000] dark:hover:shadow-[16px_16px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex flex-col items-center relative overflow-hidden">
           
           <Sparkles className="absolute top-4 left-4 text-slate-200 dark:text-zinc-800 animate-spin" style={{ animationDuration: "12s" }} size={40} />
           <Gift className="absolute bottom-4 right-4 text-slate-200 dark:text-zinc-800 animate-bounce" size={40} />
 
           {/* Wheel Frame */}
-          <div className="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] mb-8 select-none">
+          <div className="relative w-[230px] h-[230px] min-[360px]:w-[270px] min-[360px]:h-[270px] sm:w-[320px] sm:h-[320px] mb-8 select-none">
             
             {/* SVG Wheel */}
             <svg
@@ -678,17 +678,19 @@ export default function LuckySpinPage() {
             </svg>
 
             {/* Static Pointer / Needle fixed at 12 o'clock */}
-            <div
-              className="absolute top-[-8px] left-[138px] w-6 h-10 z-20 pointer-events-none"
-              style={{
-                transformOrigin: "50% 10%",
-                transform: needleFicked ? "rotate(-18deg)" : "rotate(0deg)",
-                transition: needleFicked ? "none" : "transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-              }}
-            >
-              <svg viewBox="0 0 24 32" className="w-full h-full drop-shadow-[2px_2px_0px_#000]">
-                <path d="M 12 32 L 2 2 L 22 2 Z" fill="#FF3B30" stroke="black" strokeWidth="3" />
-              </svg>
+            <div className="absolute top-[-8px] left-1/2 -translate-x-1/2 w-6 h-10 z-20 pointer-events-none">
+              <div
+                className="w-full h-full"
+                style={{
+                  transformOrigin: "50% 10%",
+                  transform: needleFicked ? "rotate(-18deg)" : "rotate(0deg)",
+                  transition: needleFicked ? "none" : "transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                }}
+              >
+                <svg viewBox="0 0 24 32" className="w-full h-full drop-shadow-[2px_2px_0px_#000]">
+                  <path d="M 12 32 L 2 2 L 22 2 Z" fill="#FF3B30" stroke="black" strokeWidth="3" />
+                </svg>
+              </div>
             </div>
 
           </div>

@@ -1107,7 +1107,7 @@ export default function MyTicketsPage() {
 
       {/* ── HEADER ── */}
       <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20">
-        <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group text-slate-900 dark:text-zinc-50">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_var(--primary-color)]">
               <ChevronLeft className="text-white" size={24} strokeWidth={3} />
@@ -1172,7 +1172,7 @@ export default function MyTicketsPage() {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 sm:px-12 pt-16 pb-40">
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 pt-16 pb-40">
 
         {/* ── PAGE TITLE ── */}
         <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
@@ -1249,7 +1249,7 @@ export default function MyTicketsPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.4, delay: idx * 0.1 }}
-                    className="w-full flex flex-col md:flex-row bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 brutal-shadow-card group relative overflow-hidden"
+                    className="w-full flex flex-col md:flex-row bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 brutal-shadow-card group relative overflow-visible"
                   >
 
                     {/* ⚡ OVERLAY TERPAKAI */}
@@ -1293,7 +1293,7 @@ export default function MyTicketsPage() {
                         </div>
                       </div>
 
-                      <div className="p-6 md:p-8 flex flex-col justify-center flex-grow text-left">
+                      <div className="p-4 sm:p-6 md:p-8 flex flex-col justify-center flex-grow text-left">
                         <h3 className="text-3xl md:text-4xl font-black italic uppercase -skew-x-6 tracking-tighter mb-4 leading-none text-slate-900 dark:text-zinc-50">
                           {ticket.title}
                         </h3>
@@ -1347,7 +1347,7 @@ export default function MyTicketsPage() {
                           handleTearComplete(ticket.id);
                         }
                       }}
-                      className="w-full md:w-72 p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white dark:bg-zinc-900 shrink-0 border-t-4 md:border-t-0 border-slate-900 dark:border-zinc-700 relative z-10"
+                      className="w-full md:w-72 p-4 sm:p-6 md:p-8 flex flex-col justify-center items-center text-center bg-white dark:bg-zinc-900 shrink-0 border-t-4 md:border-t-0 border-slate-900 dark:border-zinc-700 relative z-10"
                     >
 
                       {ticket.status === "PENDING" ? (
@@ -1572,7 +1572,7 @@ export default function MyTicketsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
+              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-4 sm:p-6 md:p-8 text-left"
             >
               {/* Close Button */}
               <button
@@ -1682,7 +1682,7 @@ export default function MyTicketsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-6 md:p-8 text-left"
+              className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-lg relative z-10 p-4 sm:p-6 md:p-8 text-left"
             >
               {/* Close Button */}
               <button
@@ -1782,7 +1782,7 @@ export default function MyTicketsPage() {
               initial={{ opacity: 0, scale: 0.9, y: 50 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 50 }}
-              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-8 text-center space-y-6"
+              className="bg-white dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 shadow-[12px_12px_0_0_#000] dark:shadow-[12px_12px_0_0_var(--primary-color)] w-full max-w-md relative z-10 p-4 sm:p-6 md:p-8 text-center space-y-6"
             >
               <div className="inline-block bg-emerald-400 p-4 border-4 border-slate-900 dark:border-zinc-700 -rotate-6 shadow-[4px_4px_0_0_#000] mx-auto">
                 <ShieldCheck className="text-slate-900" size={48} strokeWidth={3} />

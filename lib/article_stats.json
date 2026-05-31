@@ -13,5 +13,38 @@
         "MANTAP"
       ]
     }
+  },
+  "1138f9f8-09b2-42be-be1b-d78cfa570f49": {
+    "views": 10,
+    "reactions": {
+      "PANAS": 1,
+      "APRESIASI": 1,
+      "MANTAP": 1
+    },
+    "user_reactions": {
+      "ef6ae025-7100-414a-a7a9-75f60f9ffbfe": [
+        "PANAS",
+        "APRESIASI",
+        "MANTAP"
+      ]
+    }
+  },
+  "4e59db0e-2e1e-49f0-af16-f2745523d39d": {
+    "views": 4,
+    "reactions": {
+      "PANAS": 0,
+      "APRESIASI": 0,
+      "MANTAP": 0
+    },
+    "user_reactions": {}
+  },
+  "64212db4-e759-477c-8f0c-19f79a1f9d07": {
+    "views": 4,
+    "reactions": {
+      "PANAS": 0,
+      "APRESIASI": 0,
+      "MANTAP": 0
+    },
+    "user_reactions": {}
   }
 }

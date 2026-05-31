@@ -492,7 +492,7 @@ export default function RewardsPage() {
   return (
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 selection:bg-amber-400 selection:text-black ${poppins.className}`}>
       {/* NAVBAR */}
-      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-6">
+      <nav className="w-full bg-white dark:bg-zinc-900 border-b-8 border-slate-900 dark:border-zinc-700 sticky top-0 z-[50] shadow-[0_8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_8px_0_0_var(--primary-color)] h-20 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <Link href="/explore" className="flex items-center gap-2 group">
             <div className="h-10 w-10 bg-black flex items-center justify-center group-hover:-rotate-12 transition-transform shadow-[4px_4px_0_0_var(--primary-color)]">
@@ -587,7 +587,7 @@ export default function RewardsPage() {
           animate={{ rotateX: tilt.x, rotateY: tilt.y }}
           style={{ transformStyle: "preserve-3d", perspective: 1000 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="bg-[#6D4AFF] border-8 border-black p-10 shadow-[15px_15px_0px_0px_#000] dark:shadow-[15px_15px_0px_0px_var(--primary-color)] flex flex-col sm:flex-row justify-between items-center overflow-hidden relative gap-6 cursor-pointer"
+          className="bg-[#6D4AFF] border-8 border-black p-5 sm:p-10 shadow-[15px_15px_0px_0px_#000] dark:shadow-[15px_15px_0px_0px_var(--primary-color)] flex flex-col sm:flex-row justify-between items-center overflow-hidden relative gap-6 cursor-pointer"
         >
           <Zap className="absolute -left-10 -bottom-10 text-white/10" size={250} />
           <div style={{ transform: "translateZ(20px)" }} className="relative z-10 text-center sm:text-left flex-1 w-full">
@@ -707,7 +707,7 @@ export default function RewardsPage() {
               ].map((item, i) => {
                 const isRedeemingThis = isRedeeming === item.name;
                 return (
-                  <div key={i} className="bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_var(--primary-color)] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex justify-between items-center group text-slate-900 dark:text-zinc-50">
+                  <div key={i} className="bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 sm:p-6 shadow-[8px_8px_0px_0px_#000] dark:shadow-[8px_8px_0px_0px_var(--primary-color)] hover:shadow-[12px_12px_0px_0px_#000] dark:hover:shadow-[12px_12px_0px_0px_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1 transition-all duration-200 flex justify-between items-center group text-slate-900 dark:text-zinc-50">
                     <div className="text-left">
                       <p className="text-2xl leading-none mb-1 font-black italic uppercase">{item.name}</p>
                       <p className="text-sm text-slate-400 dark:text-zinc-500 font-bold uppercase">{item.cost} POIN</p>
@@ -757,7 +757,7 @@ export default function RewardsPage() {
                     }
 
                     return (
-                      <div key={i} className={`bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-6 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] ${isUsed ? "opacity-60 grayscale-[30%]" : "hover:shadow-[10px_10px_0_0_#000] dark:hover:shadow-[10px_10px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1"} flex flex-col justify-between relative overflow-hidden text-slate-900 dark:text-zinc-50 transition-all duration-200`}>
+                      <div key={i} className={`bg-white dark:bg-zinc-900 border-4 border-black dark:border-zinc-700 p-4 sm:p-6 shadow-[6px_6px_0_0_#000] dark:shadow-[6px_6px_0_0_var(--primary-color)] ${isUsed ? "opacity-60 grayscale-[30%]" : "hover:shadow-[10px_10px_0_0_#000] dark:hover:shadow-[10px_10px_0_0_var(--primary-color)] hover:-translate-x-1 hover:-translate-y-1"} flex flex-col justify-between relative overflow-hidden text-slate-900 dark:text-zinc-50 transition-all duration-200`}>
                         <div className={`absolute top-4 right-4 border-2 border-black dark:border-zinc-700 px-2 py-0.5 text-[9px] font-black uppercase shadow-[2px_2px_0_0_#000] ${badgeClass}`}>
                           {badgeText}
                         </div>
@@ -1054,7 +1054,7 @@ export default function RewardsPage() {
       {successVoucher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSuccessVoucher(null)} />
-          <div className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 p-8 max-w-md w-full relative z-10 shadow-[10px_10px_0_0_#000] dark:shadow-[10px_10px_0_0_var(--primary-color)] -rotate-1 text-slate-900 dark:text-zinc-50">
+          <div className="bg-[#FCFAF1] dark:bg-zinc-900 border-8 border-slate-900 dark:border-zinc-700 p-4 sm:p-6 md:p-8 max-w-md w-full relative z-10 shadow-[10px_10px_0_0_#000] dark:shadow-[10px_10px_0_0_var(--primary-color)] -rotate-1 text-slate-900 dark:text-zinc-50">
             <h3 className="text-4xl font-black italic -skew-x-6 uppercase tracking-tighter mb-4 text-emerald-500 text-left">
               TUKER BERHASIL! 🎉
             </h3>

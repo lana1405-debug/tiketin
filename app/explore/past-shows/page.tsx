@@ -486,7 +486,7 @@ export default function PastShowsPage() {
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(angka);
 
   return (
-    <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 p-6 sm:p-12 ${poppins_font.className} relative overflow-hidden brutal-grid noise`}>
+    <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 p-4 sm:p-8 md:p-12 ${poppins_font.className} relative overflow-hidden brutal-grid noise`}>
       {/* HEADER BAR */}
       <nav className="w-full max-w-7xl mx-auto flex items-center justify-between mb-16 relative z-30">
         <button
@@ -527,11 +527,21 @@ export default function PastShowsPage() {
 
             {/* Wide landscape banner — 2 column: content left, image right */}
             <div
-              className="relative w-full h-[220px] md:h-[260px] border-4 border-slate-900 dark:border-zinc-700 overflow-hidden cursor-pointer shadow-[6px_6px_0_0_var(--primary-color),12px_12px_0_0_#000] group bg-slate-950 flex"
+              className="relative w-full h-[250px] md:h-[260px] border-4 border-slate-900 dark:border-zinc-700 overflow-hidden cursor-pointer shadow-[6px_6px_0_0_var(--primary-color),12px_12px_0_0_#000] group bg-slate-950 flex flex-col md:flex-row"
               onClick={() => openDetailModal(boostedEvents[currentBoostedIdx])}
             >
+              {/* Mobile background poster */}
+              <div className="absolute inset-0 block md:hidden opacity-30 pointer-events-none z-0">
+                <img
+                  src={boostedEvents[currentBoostedIdx]?.image_url}
+                  alt=""
+                  className="w-full h-full object-cover filter blur-[2px]"
+                />
+                <div className="absolute inset-0 bg-black/60" />
+              </div>
+
               {/* LEFT: content */}
-              <div className="relative z-10 flex flex-col justify-end p-6 md:p-8 w-[60%] md:w-[55%] shrink-0">
+              <div className="relative z-10 flex flex-col justify-end p-5 sm:p-6 md:p-8 w-full md:w-[55%] shrink-0 h-full">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentBoostedIdx}
@@ -604,8 +614,8 @@ export default function PastShowsPage() {
                 )}
               </div>
 
-              {/* RIGHT: full image contained */}
-              <div className="relative flex-1 h-full bg-slate-900 border-l-4 border-[var(--primary-color)]/30 overflow-hidden">
+              {/* RIGHT: full image contained, hidden on mobile */}
+              <div className="relative flex-1 h-full bg-slate-900 border-l-4 border-[var(--primary-color)]/30 overflow-hidden hidden md:block">
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={currentBoostedIdx}
@@ -645,7 +655,7 @@ export default function PastShowsPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-6 py-3 border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase text-xs md:text-sm rounded-xl transition-all ${
+                className={`px-3 sm:px-6 py-2 sm:py-3 border-4 border-slate-900 dark:border-zinc-700 font-black italic uppercase text-xs md:text-sm rounded-xl transition-all ${
                   selectedCategory === cat
                     ? "bg-[var(--primary-color)] text-slate-900 shadow-[3px_3px_0_0_#000]"
                     : "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-50 shadow-[3px_3px_0_0_var(--primary-color)]"
