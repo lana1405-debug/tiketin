@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
 import { 
   ChevronLeft, Printer, ShieldCheck, Ticket, Calendar, MapPin, 
-  User, CreditCard, Receipt, RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle
+  User, CreditCard, Receipt, RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle,
+  Home
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/lib/supabase";
@@ -194,11 +195,25 @@ export default function InvoicePage() {
     <div className={`min-h-screen bg-[#FCFAF1] dark:bg-zinc-950 text-slate-900 dark:text-zinc-50 py-10 px-4 sm:px-6 md:px-12 transition-colors duration-300 ${poppins.className}`}>
       
       {/* Navigation */}
-      <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center no-print">
-        <button onClick={() => router.back()} className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 px-4 py-2 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all">
-          <ChevronLeft size={16} strokeWidth={3} /> KEMBALI
-        </button>
-        <button onClick={() => window.print()} className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-amber-400 dark:bg-amber-500 text-slate-900 dark:text-zinc-950 px-6 py-2 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all">
+      <div className="max-w-4xl mx-auto mb-8 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 no-print">
+        <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={() => router.push("/explore")} 
+            className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 px-4 py-2.5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+          >
+            <Home size={14} strokeWidth={3} /> HALAMAN UTAMA
+          </button>
+          <button 
+            onClick={() => router.push("/explore/tickets")} 
+            className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white px-4 py-2.5 shadow-[4px_4px_0_0_#000] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+          >
+            <Ticket size={14} strokeWidth={3} /> TIKET SAYA
+          </button>
+        </div>
+        <button 
+          onClick={() => window.print()} 
+          className="flex items-center justify-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-amber-400 dark:bg-amber-500 text-slate-900 dark:text-zinc-950 px-6 py-2.5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+        >
           <Printer size={16} strokeWidth={3} /> CETAK STRUK
         </button>
       </div>
@@ -370,6 +385,30 @@ export default function InvoicePage() {
                 {isExpired && <span className="bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border-2 border-red-500 px-3 py-1 font-black italic text-[10px] tracking-wider shadow-[2px_2px_0_0_#000] dark:shadow-[2px_2px_0_0_#EF4444]">BATAL</span>}
               </div>
             </div>
+          </div>
+
+          {/* Bottom Navigation */}
+          <div className="mt-8 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 no-print border-t-4 border-dashed border-slate-900 dark:border-zinc-700 pt-6">
+            <div className="flex flex-wrap gap-3">
+              <button 
+                onClick={() => router.push("/explore")} 
+                className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 px-4 py-2.5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+              >
+                <Home size={14} strokeWidth={3} /> HALAMAN UTAMA
+              </button>
+              <button 
+                onClick={() => router.push("/explore/tickets")} 
+                className="flex items-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-[#6D4AFF] text-white px-4 py-2.5 shadow-[4px_4px_0_0_#000] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+              >
+                <Ticket size={14} strokeWidth={3} /> TIKET SAYA
+              </button>
+            </div>
+            <button 
+              onClick={() => window.print()} 
+              className="flex items-center justify-center gap-2 border-4 border-slate-900 dark:border-zinc-700 bg-amber-400 dark:bg-amber-500 text-slate-900 dark:text-zinc-950 px-6 py-2.5 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_rgba(109,74,255,0.4)] font-black italic uppercase text-xs tracking-wider hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all"
+            >
+              <Printer size={16} strokeWidth={3} /> CETAK STRUK
+            </button>
           </div>
 
         </div>

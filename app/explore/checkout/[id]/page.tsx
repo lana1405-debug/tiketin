@@ -603,8 +603,8 @@ export default function CheckoutPage() {
           }
         },
         onPending: () => { 
-          toast("Pembayaran tertunda — selesaikan dalam 24 jam!", "warning");
-          router.push("/explore/tickets");
+          toast("Pembayaran tertunda — silakan selesaikan!", "warning");
+          router.push(`/explore/invoice/${orderId}`);
         },
         onError: () => { 
           toast("Pembayaran gagal! Coba lagi.", "error"); 

@@ -590,8 +590,9 @@ export default function MyTicketsPage() {
         }
       },
       onPending: () => {
-        toast("Pembayaran tertunda — selesaikan pembayaran Anda!", "warning");
+        toast("Pembayaran tertunda — silakan selesaikan!", "warning");
         setIsProcessingPay(null);
+        router.push(`/explore/invoice/${ticket.order_id}`);
       },
       onError: () => {
         toast("Pembayaran gagal! Coba lagi.", "error");

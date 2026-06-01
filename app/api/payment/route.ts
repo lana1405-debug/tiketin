@@ -16,6 +16,9 @@ export async function POST(request: Request) {
     const roundedPrice = Math.round(gross_amount / quantity);
     const exactGrossAmount = roundedPrice * quantity;
 
+    const requestUrl = new URL(request.url);
+    const origin = requestUrl.origin;
+
     let parameter = {
       transaction_details: {
         order_id: order_id,
@@ -30,7 +33,13 @@ export async function POST(request: Request) {
         price: roundedPrice, // ⚡ Harga satuan bulat agar validasi Midtrans lolos
         quantity: quantity, // ⚡ Kuantitas dinamis
         name: item_name
-      }]
+      }],
+      callbacks: {
+        finish: `${origin}/explore/invoice/${order_id}`,
+        pending: `${origin}/explore/invoice/${order_id}`,
+        error: `${origin}/explore/invoice/${order_id}`,
+        unfinish: `${origin}/explore/invoice/${order_id}`
+      }
     };
 
     const transaction = await snap.createTransaction(parameter);

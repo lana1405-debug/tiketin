@@ -72,6 +72,15 @@ export default function HistoryPage() {
   const [txToCancel, setTxToCancel] = useState<any | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState("SEMUA"); // "SEMUA", "PAID", "PENDING", "EXPIRED"
+
+  const filteredTransactions = transactions.filter((tx) => {
+    if (activeFilter === "SEMUA") return true;
+    if (activeFilter === "PAID") return tx.status_pembayaran === "paid";
+    if (activeFilter === "PENDING") return tx.status_pembayaran === "pending";
+    if (activeFilter === "EXPIRED") return tx.status_pembayaran === "expired" || tx.status_pembayaran === "failed";
+    return true;
+  });
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -231,7 +240,10 @@ export default function HistoryPage() {
           router.push(`/explore/invoice/${tx.order_id}`);
         }
       },
-      onPending: () => toast("Menunggu pembayaran...", "info"),
+      onPending: () => {
+        toast("Menunggu pembayaran...", "info");
+        router.push(`/explore/invoice/${tx.order_id}`);
+      },
       onError: () => toast("Gagal memproses pembayaran.", "error"),
       onClose: () => toast("Selesaikan sebelum 12 jam ya!", "warning")
     });
@@ -340,15 +352,38 @@ export default function HistoryPage() {
           <Receipt size={64} strokeWidth={2} className="text-amber-400 drop-shadow-[4px_4px_0_#000] dark:drop-shadow-[4px_4px_0_var(--primary-color)] hidden md:block" />
         </div>
 
+        {/* Tab Filters */}
+        <div className="flex flex-wrap gap-2.5 mb-10 pb-4 border-b-4 border-slate-900 dark:border-zinc-700">
+          {[
+            { id: "SEMUA", label: "📄 SEMUA" },
+            { id: "PAID", label: "✅ SUDAH DIBAYAR" },
+            { id: "PENDING", label: "⏳ BELUM DIBAYAR" },
+            { id: "EXPIRED", label: "✗ BATAL / EXPIRED" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id)}
+              className={`px-4 py-2 text-xs font-black italic uppercase border-3 border-slate-900 dark:border-zinc-700 tracking-wider shadow-[3px_3px_0_0_#000] dark:shadow-[3px_3px_0_0_var(--primary-color)] transition-all ${
+                activeFilter === tab.id
+                  ? "bg-amber-400 text-slate-900 shadow-none translate-x-[2px] translate-y-[2px]"
+                  : "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4">
             <div className="w-16 h-16 border-8 border-slate-900 border-t-amber-400 animate-spin"></div>
             <p className="font-black italic uppercase tracking-widest text-slate-400">Syncing...</p>
           </div>
-        ) : transactions.length === 0 ? (
+        ) : filteredTransactions.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-12 text-center brutal-shadow-card">
             <AlertCircle size={48} className="mx-auto mb-4 text-slate-300 dark:text-zinc-650" strokeWidth={2} />
             <h3 className="text-2xl font-black italic uppercase -skew-x-6 mb-2 text-slate-900 dark:text-zinc-50">Belum Ada Transaksi!</h3>
+            <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mt-1">Tidak ada tagihan yang cocok dengan filter saat ini.</p>
           </div>
         ) : (
           <motion.div
@@ -357,7 +392,7 @@ export default function HistoryPage() {
             animate="show"
             className="relative border-l-4 border-slate-900 dark:border-zinc-700 ml-4 md:ml-8 pl-8 md:pl-12 space-y-12 my-10"
           >
-            {transactions.map((tx) => (
+            {filteredTransactions.map((tx) => (
               <motion.div
                 key={tx.id}
                 variants={itemVariants}
@@ -424,7 +459,7 @@ export default function HistoryPage() {
                       <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         <button
                           onClick={() => router.push(`/explore/invoice/${tx.order_id}`)}
-                          className="w-full md:w-auto bg-white border-2 border-slate-900 px-5 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-[#6D4AFF] hover:text-white transition-all"
+                          className="w-full md:w-auto bg-white text-slate-900 border-2 border-slate-900 px-5 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-[#6D4AFF] hover:text-white transition-all"
                         >
                           <Receipt size={14} strokeWidth={3} /> LIHAT STRUK
                         </button>
@@ -434,14 +469,14 @@ export default function HistoryPage() {
                       <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         <button
                           onClick={() => handleLanjutBayar(tx)}
-                          className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
+                          className="w-full md:w-auto bg-amber-400 text-slate-900 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
                         >
                           LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
                         </button>
                         <button
                           onClick={() => handleCheckStatus(tx)}
                           disabled={isCheckingStatus === tx.order_id}
-                          className="w-full md:w-auto bg-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-slate-100"
+                          className="w-full md:w-auto bg-white text-slate-900 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-slate-100"
                         >
                           {isCheckingStatus === tx.order_id ? (
                             <Loader2 size={16} className="animate-spin" />
