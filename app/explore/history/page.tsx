@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Poppins } from "next/font/google";
-import { 
-  ChevronLeft, Receipt, AlertCircle, Clock, 
+import {
+  ChevronLeft, Receipt, AlertCircle, Clock,
   CheckCircle2, ChevronRight, Zap, XCircle,
-  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut, Loader2, User
+  ShieldCheck, Ticket, MessageSquare, Trophy, LogOut, Loader2, User, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -67,16 +67,17 @@ export default function HistoryPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // ⚡ Cancel transaction states
   const [txToCancel, setTxToCancel] = useState<any | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(style);
-    
+
     const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
     const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "";
     const script = document.createElement("script");
@@ -87,8 +88,8 @@ export default function HistoryPage() {
 
     fetchHistory();
 
-    return () => { 
-      document.head.removeChild(style); 
+    return () => {
+      document.head.removeChild(style);
       document.head.removeChild(script);
     };
   }, []);
@@ -133,7 +134,7 @@ export default function HistoryPage() {
           const creationTime = new Date(tx.created_at).getTime();
           const now = new Date().getTime();
           const diffInHours = (now - creationTime) / (1000 * 60 * 60);
-          
+
           let finalStatus = tx.status_pembayaran;
           if (tx.status_pembayaran === 'pending' && diffInHours > 12) {
             finalStatus = 'expired';
@@ -156,6 +157,29 @@ export default function HistoryPage() {
       console.error("Gagal tarik history:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCheckStatus = async (tx: any) => {
+    setIsCheckingStatus(tx.order_id);
+    try {
+      const response = await fetch("/api/payment/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: tx.order_id })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast("PEMBAYARAN TERVERIFIKASI! 🎉", "success");
+        fetchHistory();
+      } else {
+        toast(data.message || "Pembayaran belum terdeteksi. Silakan bayar terlebih dahulu.", "info");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast("Gagal mengecek status pembayaran.", "error");
+    } finally {
+      setIsCheckingStatus(null);
     }
   };
 
@@ -187,25 +211,24 @@ export default function HistoryPage() {
     window.snap.pay(tx.snap_token, {
       onSuccess: async function (result: any) {
         try {
-          // Panggil API status pembayaran di server-side untuk memproses DB secara aman
           const statusResponse = await fetch("/api/payment/status", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ order_id: tx.order_id })
           });
-          
+
           const statusData = await statusResponse.json();
           if (statusData.success) {
             toast("MANTAP! PEMBAYARAN BERHASIL. 🎉", "success");
           } else {
-            console.warn("Verifikasi status gagal:", statusData.message);
             toast("Pembayaran berhasil dicatat. Tiket sedang diproses.", "info");
           }
-          router.push("/explore/tickets"); 
+          // ✅ Redirect ke STRUK setelah bayar berhasil
+          router.push(`/explore/invoice/${tx.order_id}`);
         } catch (error) {
           console.error(error);
-          toast("Pembayaran sukses! Sistem sedang melakukan sinkronisasi otomatis, silakan cek Tiket Saya beberapa saat lagi.", "warning");
-          router.push("/explore/tickets");
+          toast("Pembayaran sukses! Struk sedang disiapkan...", "info");
+          router.push(`/explore/invoice/${tx.order_id}`);
         }
       },
       onPending: () => toast("Menunggu pembayaran...", "info"),
@@ -319,8 +342,8 @@ export default function HistoryPage() {
 
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4">
-             <div className="w-16 h-16 border-8 border-slate-900 border-t-amber-400 animate-spin"></div>
-             <p className="font-black italic uppercase tracking-widest text-slate-400">Syncing...</p>
+            <div className="w-16 h-16 border-8 border-slate-900 border-t-amber-400 animate-spin"></div>
+            <p className="font-black italic uppercase tracking-widest text-slate-400">Syncing...</p>
           </div>
         ) : transactions.length === 0 ? (
           <div className="bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 p-12 text-center brutal-shadow-card">
@@ -328,22 +351,21 @@ export default function HistoryPage() {
             <h3 className="text-2xl font-black italic uppercase -skew-x-6 mb-2 text-slate-900 dark:text-zinc-50">Belum Ada Transaksi!</h3>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="show"
             className="relative border-l-4 border-slate-900 dark:border-zinc-700 ml-4 md:ml-8 pl-8 md:pl-12 space-y-12 my-10"
           >
             {transactions.map((tx) => (
-              <motion.div 
-                key={tx.id} 
+              <motion.div
+                key={tx.id}
                 variants={itemVariants}
                 className="relative"
               >
                 {/* TIMELINE NODE DOT */}
-                <div className={`absolute -left-[45px] md:-left-[61px] top-6 w-8 h-8 rounded-full border-4 border-slate-900 dark:border-zinc-700 flex items-center justify-center font-black text-sm z-10 shadow-[2px_2px_0_0_#000] ${
-                  tx.status_pembayaran === 'paid' ? 'bg-emerald-400 text-slate-900' : tx.status_pembayaran === 'pending' ? 'bg-amber-400 text-slate-900 animate-pulse' : 'bg-red-500 text-white'
-                }`}>
+                <div className={`absolute -left-[45px] md:-left-[61px] top-6 w-8 h-8 rounded-full border-4 border-slate-900 dark:border-zinc-700 flex items-center justify-center font-black text-sm z-10 shadow-[2px_2px_0_0_#000] ${tx.status_pembayaran === 'paid' ? 'bg-emerald-400 text-slate-900' : tx.status_pembayaran === 'pending' ? 'bg-amber-400 text-slate-900 animate-pulse' : 'bg-red-500 text-white'
+                  }`}>
                   {tx.status_pembayaran === 'paid' ? '✓' : tx.status_pembayaran === 'pending' ? '⏳' : '✗'}
                 </div>
 
@@ -353,7 +375,7 @@ export default function HistoryPage() {
                       <span className="bg-slate-900 text-white dark:bg-zinc-800 dark:text-zinc-300 font-black italic uppercase px-3 py-1 text-xs tracking-widest">
                         {tx.order_id}
                       </span>
-                      
+
                       {/* ⚡ STATUS LABELS */}
                       {tx.status_pembayaran === 'paid' && (
                         <span className="flex items-center gap-1 font-black italic text-[10px] uppercase text-emerald-600 bg-emerald-100 border-2 border-emerald-500 px-2 py-0.5">
@@ -380,11 +402,11 @@ export default function HistoryPage() {
                       <p className="font-bold text-sm italic uppercase text-[#6D4AFF] mt-1">
                         {tx.total_qty}x {tx.ticket_categories?.name || "TIKET"}
                       </p>
-                      
+
                       {/* ⚡ COUNTDOWN INFO */}
                       {tx.status_pembayaran === 'pending' && (
                         <p className="text-[10px] font-black text-red-500 uppercase mt-2 italic bg-red-50 dark:bg-red-950/20 px-2 border border-red-200 dark:border-red-800">
-                           Sisa Waktu: {tx.hours_left.toFixed(1)} Jam lagi!
+                          Sisa Waktu: {tx.hours_left.toFixed(1)} Jam lagi!
                         </p>
                       )}
                     </div>
@@ -397,16 +419,38 @@ export default function HistoryPage() {
                         {formatRupiah(tx.total_bayar)}
                       </p>
                     </div>
-                    
+
+                    {tx.status_pembayaran === 'paid' && (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <button
+                          onClick={() => router.push(`/explore/invoice/${tx.order_id}`)}
+                          className="w-full md:w-auto bg-white border-2 border-slate-900 px-5 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-[#6D4AFF] hover:text-white transition-all"
+                        >
+                          <Receipt size={14} strokeWidth={3} /> LIHAT STRUK
+                        </button>
+                      </div>
+                    )}
                     {tx.status_pembayaran === 'pending' && (
                       <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                        <button 
+                        <button
                           onClick={() => handleLanjutBayar(tx)}
                           className="w-full md:w-auto bg-amber-400 border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-black hover:text-white"
                         >
                           LANJUT BAYAR <ChevronRight size={16} strokeWidth={3} />
                         </button>
-                        <button 
+                        <button
+                          onClick={() => handleCheckStatus(tx)}
+                          disabled={isCheckingStatus === tx.order_id}
+                          className="w-full md:w-auto bg-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-slate-100"
+                        >
+                          {isCheckingStatus === tx.order_id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <RefreshCw size={16} className="text-slate-900" />
+                          )}
+                          CEK STATUS
+                        </button>
+                        <button
                           onClick={() => setTxToCancel(tx)}
                           className="w-full md:w-auto bg-red-500 text-white border-2 border-slate-900 px-6 py-3 font-black italic uppercase text-xs flex items-center justify-center gap-2 brutal-shadow-btn hover:bg-red-600"
                         >

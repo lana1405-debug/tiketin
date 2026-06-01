@@ -341,17 +341,26 @@ export default function CheckoutPage() {
   const stockAvailable = selectedCategory ? selectedCategory.stock : 0;
   const absoluteMaxQty = Math.min(availableUserQuota, stockAvailable);
 
-  // Voucher Calculations
+  // Billing Calculations — harus sama persis dengan struk
+  const PLATFORM_FEE = 2500; // Rp 2.500 biaya layanan
+  const PPN_RATE = 0.11;     // PPN 11%
+
   const originalTotal = (selectedCategory?.price || 0) * qty;
   let discountAmount = 0;
   if (appliedVoucher) {
     if (appliedVoucher.discount_type === "percentage") {
       discountAmount = Math.floor(originalTotal * (appliedVoucher.discount_value / 100));
     } else if (appliedVoucher.discount_type === "fixed") {
-      discountAmount = appliedVoucher.discount_value;
+      discountAmount = Math.min(appliedVoucher.discount_value, originalTotal);
     }
   }
-  const totalBayar = Math.max(0, originalTotal - discountAmount);
+  const afterDiscount = Math.max(0, originalTotal - discountAmount);
+
+  // Untuk transaksi gratis (afterDiscount === 0), tidak ada PPN/platform fee
+  const isFreeTicket = afterDiscount === 0;
+  const ppnAmount = isFreeTicket ? 0 : Math.round(afterDiscount * PPN_RATE);
+  const platformFee = isFreeTicket ? 0 : PLATFORM_FEE;
+  const totalBayar = afterDiscount + ppnAmount + platformFee;
 
   useEffect(() => {
     if (absoluteMaxQty === 0) {
@@ -535,7 +544,7 @@ export default function CheckoutPage() {
         });
 
         toast(`Tiket GRATIS berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
-        router.push("/explore/tickets");
+        router.push(`/explore/invoice/${orderId}`);
         return;
       }
 
@@ -585,12 +594,12 @@ export default function CheckoutPage() {
             });
             
             const earnedPoints = qty * 50;
-            toast(`Pembayaran berhasil! +${earnedPoints} Poin! 🎉`, "success", 4000);
-            router.push("/explore/tickets"); 
+            toast(`MANTAP! PEMBAYARAN BERHASIL! +${earnedPoints} Poin! 🎉`, "success", 4000);
+            router.push(`/explore/invoice/${orderId}`);
           } catch (err) {
             console.error("Gagal sinkron status pembayaran:", err);
-            toast("Sistem sedang memproses tiket Anda, cek Tiket Saya secara berkala!", "warning");
-            router.push("/explore/tickets");
+            toast("Pembayaran berhasil! Sistem sedang memproses tiket Anda.", "warning");
+            router.push(`/explore/invoice/${orderId}`);
           }
         },
         onPending: () => { 
@@ -922,17 +931,33 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 mb-8 font-black uppercase italic text-xs">
-                      <div className="flex justify-between text-slate-400">
+                    <div className="space-y-3 mb-8 font-bold uppercase italic text-xs">
+                      {/* Harga dasar tiket */}
+                      <div className="flex justify-between text-slate-500">
                         <span>{selectedCategory?.name} x {qty}</span>
-                        <span>{formatRupiah((selectedCategory?.price || 0) * qty)}</span>
+                        <span>{formatRupiah(originalTotal)}</span>
                       </div>
-                      {appliedVoucher && (
-                        <div className="flex justify-between text-red-500 bg-red-50 p-2 border-2 border-red-200">
+                      {/* Diskon voucher */}
+                      {appliedVoucher && discountAmount > 0 && (
+                        <div className="flex justify-between text-red-500 bg-red-50 p-2 border-2 border-red-200 font-black">
                           <span>DISKON ({appliedVoucher.code})</span>
                           <span>- {formatRupiah(discountAmount)}</span>
                         </div>
                       )}
+                      {/* PPN & Platform fee — hanya untuk transaksi berbayar */}
+                      {!isFreeTicket && (
+                        <>
+                          <div className="flex justify-between text-slate-400 border-t border-dashed border-slate-200 pt-2">
+                            <span>PPN (11%)</span>
+                            <span>{formatRupiah(ppnAmount)}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400">
+                            <span>BIAYA PLATFORM</span>
+                            <span>{formatRupiah(platformFee)}</span>
+                          </div>
+                        </>
+                      )}
+                      {/* Reward points */}
                       <div className="flex justify-between text-emerald-500 bg-emerald-50 p-2 border-2 border-emerald-200">
                         <span>ESTIMASI REWARDS</span>
                         <span>+ {qty * 50} PTS</span>
@@ -990,6 +1015,9 @@ export default function CheckoutPage() {
                 <p className="text-4xl sm:text-5xl font-black text-[#6D4AFF] italic tracking-tighter leading-none drop-shadow-[2px_2px_0_#FBBF24]">
                   {formatRupiah(totalBayar)}
                 </p>
+                {!isFreeTicket && (
+                  <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Sudah termasuk PPN 11% + biaya platform Rp 2.500</p>
+                )}
               </div>
 
               <button 

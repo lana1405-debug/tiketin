@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, ChevronLeft, Calendar, MapPin,
   Download, ShieldCheck, Zap, Ticket as TicketIcon, Loader2, CreditCard, Star, Clock, X,
-  MessageSquare, Trophy, Receipt, Share2, AlertCircle, User
+  MessageSquare, Trophy, Receipt, Share2, AlertCircle, User, RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -115,13 +115,13 @@ function CountdownBadge({ dateStr }: { dateStr: string }) {
           </span>
         )}
         <span className="font-black italic text-[10px] uppercase">
-          <span className="text-amber-400">{String(countdown.hours).padStart(2,'0')}</span>j
+          <span className="text-amber-400">{String(countdown.hours).padStart(2, '0')}</span>j
         </span>
         <span className="font-black italic text-[10px] uppercase">
-          <span className="text-amber-400">{String(countdown.minutes).padStart(2,'0')}</span>m
+          <span className="text-amber-400">{String(countdown.minutes).padStart(2, '0')}</span>m
         </span>
         <span className="font-black italic text-[10px] uppercase">
-          <span className="text-amber-400">{String(countdown.seconds).padStart(2,'0')}</span>d
+          <span className="text-amber-400">{String(countdown.seconds).padStart(2, '0')}</span>d
         </span>
         <span className="font-black italic text-[10px] uppercase text-purple-200 ml-1">MENUJU HARI H</span>
       </div>
@@ -168,6 +168,7 @@ export default function MyTicketsPage() {
   // ⚡ Cancel transaction states
   const [txToCancel, setTxToCancel] = useState<any | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState<string | null>(null);
 
   // ⚡ State buat notifikasi check-in real-time
   const [scannedTicketNotification, setScannedTicketNotification] = useState<{
@@ -243,7 +244,7 @@ export default function MyTicketsPage() {
     document.head.appendChild(script);
 
     setMounted(true);
-    
+
     // Set status offline di awal
     setIsOffline(!navigator.onLine);
 
@@ -262,8 +263,8 @@ export default function MyTicketsPage() {
 
     fetchUserAndTickets();
 
-    return () => { 
-      document.head.removeChild(style); 
+    return () => {
+      document.head.removeChild(style);
       document.head.removeChild(script);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -344,13 +345,13 @@ export default function MyTicketsPage() {
       setTickets(prev =>
         prev.map(t =>
           t.id === dbUpdate.ticket_code
-            ? { 
-                ...t, 
-                status: "TERPAKAI", 
-                status_checkin: true, 
-                last_scanned_date: dbUpdate.last_scanned_date, 
-                checked_in_at: dbUpdate.checked_in_at 
-              }
+            ? {
+              ...t,
+              status: "TERPAKAI",
+              status_checkin: true,
+              last_scanned_date: dbUpdate.last_scanned_date,
+              checked_in_at: dbUpdate.checked_in_at
+            }
             : t
         )
       );
@@ -367,7 +368,7 @@ export default function MyTicketsPage() {
 
   const fetchUserAndTickets = async () => {
     setIsLoading(true);
-    
+
     if (!navigator.onLine) {
       const lastUserId = localStorage.getItem("tiketin_last_user_id");
       if (lastUserId) {
@@ -437,6 +438,7 @@ export default function MyTicketsPage() {
           ),
           transaksi!inner (
             id,
+            order_id,
             status_pembayaran,
             total_bayar,
             user_id
@@ -457,6 +459,7 @@ export default function MyTicketsPage() {
             id: t.ticket_code,
             event_id: t.events.id,
             transaksi_id: t.transaksi.id,
+            order_id: t.transaksi.order_id,
             title: t.events.title,
             date: t.events.date,
             end_date: t.events.end_date,
@@ -556,32 +559,32 @@ export default function MyTicketsPage() {
       router.push(`/explore/checkout/${ticket.event_id}`);
       return;
     }
-    
+
     setIsProcessingPay(ticket.transaksi_id);
-    
+
     // @ts-ignore
     window.snap.pay(ticket.snap_token, {
       onSuccess: async function (result: any) {
         try {
           toast("Sinkronisasi pembayaran...", "info", 2000);
-          
+
           const response = await fetch("/api/payment/status", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ order_id: ticket.order_id })
           });
-          
+
           const resData = await response.json();
           if (resData.success) {
             toast("Pembayaran berhasil! Tiket Anda telah aktif! 🎉", "success", 4000);
-            fetchUserAndTickets();
+            router.push(`/explore/invoice/${ticket.order_id}`);
           } else {
             throw new Error(resData.error || "Gagal verifikasi");
           }
         } catch (err: any) {
           console.error(err);
-          toast("Gagal memverifikasi status pembayaran. Coba refresh halaman!", "warning");
-          fetchUserAndTickets();
+          toast("Pembayaran sukses! Struk sedang disiapkan...", "info");
+          router.push(`/explore/invoice/${ticket.order_id}`);
         } finally {
           setIsProcessingPay(null);
         }
@@ -594,10 +597,34 @@ export default function MyTicketsPage() {
         toast("Pembayaran gagal! Coba lagi.", "error");
         setIsProcessingPay(null);
       },
-      onClose: () => {
-        setIsProcessingPay(null);
-      }
     });
+  };
+
+  const handleCheckTicketStatus = async (ticket: any) => {
+    if (isOffline) {
+      toast("Gagal mengecek status. Anda sedang offline! 📴", "error");
+      return;
+    }
+    setIsCheckingStatus(ticket.order_id);
+    try {
+      const response = await fetch("/api/payment/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: ticket.order_id })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast("PEMBAYARAN TERVERIFIKASI! 🎉", "success");
+        fetchUserAndTickets();
+      } else {
+        toast(data.message || "Pembayaran belum terdeteksi. Silakan bayar terlebih dahulu.", "info");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast("Gagal mengecek status pembayaran.", "error");
+    } finally {
+      setIsCheckingStatus(null);
+    }
   };
 
   const handleCancelConfirm = async () => {
@@ -857,7 +884,7 @@ export default function MyTicketsPage() {
       ctx.save();
       ctx.translate(W / 2, 210);
       ctx.rotate(-6 * Math.PI / 180);
-      
+
       // Black Shadow
       ctx.fillStyle = "#000000";
       ctx.fillRect(-480, -75, 960, 150);
@@ -956,7 +983,7 @@ export default function MyTicketsPage() {
       const barY = cardY + 1090;
       const barW = cardW - 160;
       const barH = 100;
-      
+
       // Barcode white window
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(barX, barY, barW, barH);
@@ -971,7 +998,7 @@ export default function MyTicketsPage() {
       const ticketSeed = ticket.id.charCodeAt(0) || 42;
       let step = 0;
       while (currentX < barX + barW - 24) {
-        const w = ((ticketSeed + step) % 7) + 2; 
+        const w = ((ticketSeed + step) % 7) + 2;
         ctx.fillRect(currentX, barY + 8, w, barH - 16);
         currentX += w + ((ticketSeed * (step + 1)) % 5) + 2;
         step++;
@@ -997,7 +1024,7 @@ export default function MyTicketsPage() {
         ctx.save();
         ctx.translate(cardX + cardW - 180, cardY + 960);
         ctx.rotate(-10 * Math.PI / 180);
-        
+
         let bg = "#FBBF24";
         let fg = "#000000";
         let txt = "★ VIP ACCESS ★";
@@ -1189,20 +1216,20 @@ export default function MyTicketsPage() {
         {/* ⚡ TABS */}
         <div className="overflow-x-auto w-full mb-12">
           <div className="flex bg-white dark:bg-zinc-900 border-4 border-slate-900 dark:border-zinc-700 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] p-1 w-max min-w-full sm:min-w-0">
-          {["PENDING", "AKTIF", "TERPAKAI"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 sm:flex-initial shrink-0 whitespace-nowrap px-4 sm:px-6 py-3 font-black italic uppercase text-xs md:text-sm transition-all ${activeTab === tab
-                ? (tab === "PENDING" ? "bg-amber-400 text-slate-900 border-2 border-slate-900" : tab === "AKTIF" ? "bg-[#6D4AFF] text-white border-2 border-[#6D4AFF]" : "bg-slate-900 text-white border-2 border-slate-900")
-                : "bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100"
-                }`}
-            >
-              {tab === "PENDING" && "⏳ Belum Bayar"}
-              {tab === "AKTIF" && "🎫 Aktif"}
-              {tab === "TERPAKAI" && "🏁 Terpakai"}
-            </button>
-          ))}
+            {["PENDING", "AKTIF", "TERPAKAI"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 sm:flex-initial shrink-0 whitespace-nowrap px-4 sm:px-6 py-3 font-black italic uppercase text-xs md:text-sm transition-all ${activeTab === tab
+                  ? (tab === "PENDING" ? "bg-amber-400 text-slate-900 border-2 border-slate-900" : tab === "AKTIF" ? "bg-[#6D4AFF] text-white border-2 border-[#6D4AFF]" : "bg-slate-900 text-white border-2 border-slate-900")
+                  : "bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                  }`}
+              >
+                {tab === "PENDING" && "⏳ Belum Bayar"}
+                {tab === "AKTIF" && "🎫 Aktif"}
+                {tab === "TERPAKAI" && "🏁 Terpakai"}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1254,7 +1281,7 @@ export default function MyTicketsPage() {
 
                     {/* ⚡ OVERLAY TERPAKAI */}
                     {ticket.status === "TERPAKAI" && (
-                      <motion.div 
+                      <motion.div
                         initial={{ scale: 3, rotate: -35, opacity: 0 }}
                         animate={{ scale: 1, rotate: -12, opacity: 1 }}
                         transition={{ type: "spring", damping: 10, stiffness: 100 }}
@@ -1317,7 +1344,7 @@ export default function MyTicketsPage() {
                     </div>
 
                     {/* PEMBATAS TIKET VERTIKAL (DESKTOP) */}
-                    <motion.div 
+                    <motion.div
                       animate={animatingTearId === ticket.id ? { opacity: 0, scaleY: 0.5 } : { opacity: 1, scaleY: 1 }}
                       transition={{ duration: 0.4 }}
                       className="hidden md:flex flex-col items-center justify-between relative w-8 shrink-0 bg-[var(--background)]"
@@ -1328,7 +1355,7 @@ export default function MyTicketsPage() {
                     </motion.div>
 
                     {/* PEMBATAS TIKET HORIZONTAL (MOBILE) */}
-                    <motion.div 
+                    <motion.div
                       animate={animatingTearId === ticket.id ? { opacity: 0, scaleX: 0.5 } : { opacity: 1, scaleX: 1 }}
                       transition={{ duration: 0.4 }}
                       className="flex md:hidden items-center justify-between relative h-8 w-full bg-[var(--background)]"
@@ -1358,11 +1385,11 @@ export default function MyTicketsPage() {
                             <p className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-zinc-50">{formatRupiah(ticket.price)}</p>
                           </div>
                           <div className="w-full flex flex-col gap-2 mt-4">
-                            <button 
-                               onClick={() => handlePayPending(ticket)} 
-                               disabled={isProcessingPay !== null || isOffline}
-                               style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
-                               className={`w-full text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
+                            <button
+                              onClick={() => handlePayPending(ticket)}
+                              disabled={isProcessingPay !== null || isOffline}
+                              style={{ backgroundColor: "var(--primary-color, #6D4AFF)" }}
+                              className={`w-full text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               {isProcessingPay === ticket.transaksi_id ? (
                                 <Loader2 className="animate-spin" size={14} />
@@ -1371,17 +1398,30 @@ export default function MyTicketsPage() {
                               )}
                               BAYAR SEKARANG
                             </button>
-                            
-                            <button 
+
+                            <button
+                              onClick={() => handleCheckTicketStatus(ticket)}
+                              disabled={isCheckingStatus === ticket.order_id || isOffline}
+                              className={`w-full bg-white text-slate-900 font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2 ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
+                              {isCheckingStatus === ticket.order_id ? (
+                                <Loader2 className="animate-spin" size={14} />
+                              ) : (
+                                <RefreshCw size={14} className="text-slate-900" />
+                              )}
+                              CEK STATUS BAYAR
+                            </button>
+
+                            <button
                               disabled={isOffline}
-                              onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)} 
+                              onClick={() => router.push(`/explore/checkout/${ticket.event_id}`)}
                               className={`w-full bg-amber-400 text-slate-900 dark:text-zinc-100 font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               PAKAI VOUCHER / EDIT TIKET
                             </button>
- 
-                            <button 
-                              onClick={() => setTxToCancel(ticket)} 
+
+                            <button
+                              onClick={() => setTxToCancel(ticket)}
                               disabled={isOffline}
                               className={`w-full bg-red-500 text-white font-black italic uppercase text-xs py-4 border-2 border-slate-900 dark:border-zinc-700 shadow-[4px_4px_0_0_#000] dark:shadow-[4px_4px_0_0_var(--primary-color)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all ${isOffline ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
@@ -1406,7 +1446,7 @@ export default function MyTicketsPage() {
                                   return next;
                                 });
                               }}
-                              style={{ 
+                              style={{
                                 backfaceVisibility: "hidden",
                                 background: "linear-gradient(135deg, var(--primary-color, #6D4AFF) 0%, #553C9A 100%)"
                               }}
@@ -1416,11 +1456,11 @@ export default function MyTicketsPage() {
                                 <p className="text-[10px] font-black uppercase text-purple-200 tracking-widest mb-1">TIKET AKTIF</p>
                                 <p className="text-xl font-black italic uppercase -skew-x-6">{ticket.category}</p>
                               </div>
-                              
+
                               <div className="h-20 w-20 bg-amber-400 border-4 border-slate-900 flex items-center justify-center -rotate-6 shadow-[3px_3px_0_0_#000] rounded-xl">
                                 <TicketIcon size={36} className="text-slate-900" strokeWidth={3} />
                               </div>
-                              
+
                               <div className="w-full space-y-2 text-center">
                                 <p className="text-[9px] font-bold text-purple-200 uppercase italic">KLIK UNTUK SHOW QR & AKSI</p>
                                 <div className="bg-amber-400 hover:bg-white text-slate-900 font-black text-xs py-3 uppercase border-2 border-slate-900 shadow-[2px_2px_0_0_#000] rounded-xl">
@@ -1517,6 +1557,18 @@ export default function MyTicketsPage() {
                                     <Share2 size={10} strokeWidth={3} /> SHARE STORY
                                   </button>
                                 </div>
+                              )}
+
+                              {ticket.status !== "PENDING" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/explore/invoice/${ticket.order_id}`);
+                                  }}
+                                  className="w-full bg-white text-slate-900 font-black italic uppercase text-[9px] py-2 mt-2 border border-slate-900 shadow-[2px_2px_0_0_#000] hover:bg-slate-100 transition-all flex items-center justify-center gap-1.5 rounded"
+                                >
+                                  <Receipt size={10} strokeWidth={3} /> LIHAT STRUK
+                                </button>
                               )}
 
                               {canReview && (
@@ -1721,11 +1773,10 @@ export default function MyTicketsPage() {
                           key={st.key}
                           type="button"
                           onClick={() => setSelectedSticker(st.key)}
-                          className={`p-3 border-4 font-black italic uppercase text-xs text-center transition-all shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1.5px_1.5px_0_0_#000] ${
-                            isSelected 
-                              ? "bg-amber-300 text-slate-900 border-[#6D4AFF] -skew-x-3" 
+                          className={`p-3 border-4 font-black italic uppercase text-xs text-center transition-all shadow-[3px_3px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1.5px_1.5px_0_0_#000] ${isSelected
+                              ? "bg-amber-300 text-slate-900 border-[#6D4AFF] -skew-x-3"
                               : "bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border-slate-900 dark:border-zinc-700"
-                          }`}
+                            }`}
                         >
                           {st.key !== "NONE" ? (
                             <span className={`inline-block px-2 py-0.5 border-2 ${st.bg} text-[9px]`}>
