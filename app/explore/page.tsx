@@ -697,6 +697,15 @@ export default function ExplorePage() {
   };
 
   useEffect(() => {
+    // ⚡ LOAD CACHED DATA INSTANTLY ON MOUNT TO AVOID CLS
+    const lastUserId = localStorage.getItem("tiketin_last_user_id");
+    if (lastUserId) {
+      const cachedProfile = localStorage.getItem(`tiketin_cached_profile_${lastUserId}`);
+      if (cachedProfile) {
+        setUserProfile(JSON.parse(cachedProfile));
+      }
+    }
+
     const styleTag = document.createElement("style");
     styleTag.innerHTML = GLOBAL_STYLES;
     document.head.appendChild(styleTag);
@@ -726,6 +735,8 @@ export default function ExplorePage() {
       .from("profiles").select("*").eq("id", session.user.id).single();
     if (profile) {
       setUserProfile(profile as UserProfile);
+      localStorage.setItem("tiketin_last_user_id", session.user.id);
+      localStorage.setItem(`tiketin_cached_profile_${session.user.id}`, JSON.stringify(profile));
       const todayStr = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
       const lastSpin = localStorage.getItem(`last_spin_date_${profile.id}`);
       setHasSpunToday(lastSpin === todayStr);
@@ -1516,94 +1527,102 @@ export default function ExplorePage() {
         )}
 
         {/* LUCKY SPIN HARIAN PROMO BANNER */}
-        {!searchQuery && userProfile && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="w-full max-w-7xl mx-auto mb-16 bg-gradient-to-r from-[#FF3B30] via-rose-600 to-[#D11A2A] border-4 border-slate-900 dark:border-zinc-700 p-8 md:p-10 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col lg:flex-row items-center justify-between gap-6 -rotate-1 relative overflow-hidden rounded-3xl group/spin hover:rotate-0 transition-transform duration-300"
-          >
-            <div className="absolute right-[-80px] top-[-80px] w-64 h-64 border-[16px] border-white/10 rounded-full animate-spin-slow pointer-events-none group-hover/spin:scale-110 transition-transform duration-700" />
-            <div className="absolute left-[-40px] bottom-[-40px] w-48 h-48 border-[8px] border-white/5 rounded-full animate-spin pointer-events-none" style={{ animationDuration: '6s' }} />
-            <div className="flex flex-col md:flex-row items-center gap-6 z-10 w-full text-center md:text-left">
-              <div className="h-20 w-20 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 -rotate-12 shadow-[4px_4px_0_0_#000] animate-bounce rounded-2xl group-hover/spin:rotate-12 transition-transform duration-300">
-                <span className="text-4xl">🎡</span>
-              </div>
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-slate-900 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest rounded shadow-[1.5px_1.5px_0_0_#000]">
-                  🔥 GRATIS SETIAP HARI
-                </div>
-                <h3 className="text-3xl md:text-4xl font-black italic -skew-x-6 uppercase text-white drop-shadow-[3px_3px_0px_#000] leading-none tracking-tight">
-                  LUCKY SPIN HARIAN!
-                </h3>
-                <p className="font-bold text-xs md:text-sm text-rose-100 uppercase tracking-wide max-w-xl">
-                  Putar roda keberuntungan Anda gratis! Berkesempatan mendapatkan Poin Reward, Tiket Acara, atau Voucher gratis setiap hari!
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (userProfile?.verification_status !== "approved") {
-                  toast("⚠️ Kamu harus lolos verifikasi KTP terlebih dahulu untuk bermain Lucky Spin!", "warning");
-                  router.push("/verify");
-                  return;
-                }
-                router.push("/explore/rewards/spin");
-              }}
-              className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-8 py-5 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 z-10 w-full lg:w-auto text-center cursor-pointer rounded-2xl"
+        {!searchQuery && (
+          isLoading ? (
+            <div className="w-full max-w-7xl mx-auto mb-16 bg-slate-200 dark:bg-zinc-800 border-4 border-slate-900 dark:border-zinc-700 h-[320px] lg:h-[180px] rounded-3xl animate-pulse shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_rgba(255,255,255,0.1)]" />
+          ) : userProfile && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="w-full max-w-7xl mx-auto mb-16 bg-gradient-to-r from-[#FF3B30] via-rose-600 to-[#D11A2A] border-4 border-slate-900 dark:border-zinc-700 p-8 md:p-10 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col lg:flex-row items-center justify-between gap-6 -rotate-1 relative overflow-hidden rounded-3xl group/spin hover:rotate-0 transition-transform duration-300"
             >
-              COBA SPIN SEKARANG! ⚡
-            </button>
-          </motion.div>
+              <div className="absolute right-[-80px] top-[-80px] w-64 h-64 border-[16px] border-white/10 rounded-full animate-spin-slow pointer-events-none group-hover/spin:scale-110 transition-transform duration-700" />
+              <div className="absolute left-[-40px] bottom-[-40px] w-48 h-48 border-[8px] border-white/5 rounded-full animate-spin pointer-events-none" style={{ animationDuration: '6s' }} />
+              <div className="flex flex-col md:flex-row items-center gap-6 z-10 w-full text-center md:text-left">
+                <div className="h-20 w-20 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 -rotate-12 shadow-[4px_4px_0_0_#000] animate-bounce rounded-2xl group-hover/spin:rotate-12 transition-transform duration-300">
+                  <span className="text-4xl">🎡</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-slate-900 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest rounded shadow-[1.5px_1.5px_0_0_#000]">
+                    🔥 GRATIS SETIAP HARI
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-black italic -skew-x-6 uppercase text-white drop-shadow-[3px_3px_0px_#000] leading-none tracking-tight">
+                    LUCKY SPIN HARIAN!
+                  </h3>
+                  <p className="font-bold text-xs md:text-sm text-rose-100 uppercase tracking-wide max-w-xl">
+                    Putar roda keberuntungan Anda gratis! Berkesempatan mendapatkan Poin Reward, Tiket Acara, atau Voucher gratis setiap hari!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (userProfile?.verification_status !== "approved") {
+                    toast("⚠️ Kamu harus lolos verifikasi KTP terlebih dahulu untuk bermain Lucky Spin!", "warning");
+                    router.push("/verify");
+                    return;
+                  }
+                  router.push("/explore/rewards/spin");
+                }}
+                className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-8 py-5 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 z-10 w-full lg:w-auto text-center cursor-pointer rounded-2xl"
+              >
+                COBA SPIN SEKARANG! ⚡
+              </button>
+            </motion.div>
+          )
         )}
 
         {/* DAILY QUIZ PROMO BANNER (SUDAH DI-FIX DARI DUPLIKASI) */}
-        {!searchQuery && userProfile && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="w-full max-w-7xl mx-auto mb-16 bg-gradient-to-r from-[#6D4AFF] via-violet-600 to-[#5B37E5] border-4 border-slate-900 dark:border-zinc-700 p-8 md:p-10 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col lg:flex-row items-center justify-between gap-6 rotate-1 relative overflow-hidden rounded-3xl group/quiz hover:rotate-0 transition-transform duration-300"
-          >
-            <div className="absolute right-[-60px] bottom-[-60px] w-56 h-56 border-[12px] border-white/10 rounded-full animate-pulse pointer-events-none" />
-            <div className="absolute left-[-50px] top-[-50px] w-64 h-64 border-[16px] border-white/5 rounded-full animate-spin pointer-events-none" style={{ animationDuration: '10s' }} />
-
-            <div className="flex flex-col md:flex-row items-center gap-6 z-10 w-full text-center md:text-left">
-              <div className="h-20 w-20 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 rotate-12 shadow-[4px_4px_0_0_#000] animate-bounce rounded-2xl group-hover/quiz:-rotate-12 transition-transform duration-300">
-                <span className="text-4xl">🧠</span>
-              </div>
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-slate-900 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest rounded shadow-[1.5px_1.5px_0_0_#000]">
-                  🔥 KUIS HARIAN TIKETIN
-                </div>
-                <h3 className="text-3xl md:text-4xl font-black italic -skew-x-6 uppercase text-white drop-shadow-[3px_3px_0px_#000] leading-none tracking-tight">
-                  KUIS TRIVIA HARIAN!
-                </h3>
-                <p className="font-bold text-xs md:text-sm text-purple-100 uppercase tracking-wide max-w-xl">
-                  Jawab kuis harian seputar Musik, Teater, &amp; Bandung dalam 10 detik! Berkesempatan memenangkan Poin Reward atau Voucher gratis setiap hari!
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (userProfile?.verification_status !== "approved") {
-                  toast("⚠️ Kamu harus lolos verifikasi KTP terlebih dahulu untuk bermain Kuis Harian!", "warning");
-                  router.push("/verify");
-                  return;
-                }
-                router.push("/explore/rewards/quiz");
-              }}
-              className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-8 py-5 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 z-10 w-full lg:w-auto text-center cursor-pointer rounded-2xl"
+        {!searchQuery && (
+          isLoading ? (
+            <div className="w-full max-w-7xl mx-auto mb-16 bg-slate-200 dark:bg-zinc-800 border-4 border-slate-900 dark:border-zinc-700 h-[320px] lg:h-[180px] rounded-3xl animate-pulse shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_rgba(255,255,255,0.1)]" />
+          ) : userProfile && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="w-full max-w-7xl mx-auto mb-16 bg-gradient-to-r from-[#6D4AFF] via-violet-600 to-[#5B37E5] border-4 border-slate-900 dark:border-zinc-700 p-8 md:p-10 shadow-[8px_8px_0_0_#000] dark:shadow-[8px_8px_0_0_var(--primary-color)] flex flex-col lg:flex-row items-center justify-between gap-6 rotate-1 relative overflow-hidden rounded-3xl group/quiz hover:rotate-0 transition-transform duration-300"
             >
-              MAIN KUIS SEKARANG! ⚡
-            </button>
-          </motion.div>
+              <div className="absolute right-[-60px] bottom-[-60px] w-56 h-56 border-[12px] border-white/10 rounded-full animate-pulse pointer-events-none" />
+              <div className="absolute left-[-50px] top-[-50px] w-64 h-64 border-[16px] border-white/5 rounded-full animate-spin pointer-events-none" style={{ animationDuration: '10s' }} />
+
+              <div className="flex flex-col md:flex-row items-center gap-6 z-10 w-full text-center md:text-left">
+                <div className="h-20 w-20 bg-white border-4 border-slate-900 flex items-center justify-center shrink-0 rotate-12 shadow-[4px_4px_0_0_#000] animate-bounce rounded-2xl group-hover/quiz:-rotate-12 transition-transform duration-300">
+                  <span className="text-4xl">🧠</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-slate-900 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest rounded shadow-[1.5px_1.5px_0_0_#000]">
+                    🔥 KUIS HARIAN TIKETIN
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-black italic -skew-x-6 uppercase text-white drop-shadow-[3px_3px_0px_#000] leading-none tracking-tight">
+                    KUIS TRIVIA HARIAN!
+                  </h3>
+                  <p className="font-bold text-xs md:text-sm text-purple-100 uppercase tracking-wide max-w-xl">
+                    Jawab kuis harian seputar Musik, Teater, &amp; Bandung dalam 10 detik! Berkesempatan memenangkan Poin Reward atau Voucher gratis setiap hari!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (userProfile?.verification_status !== "approved") {
+                    toast("⚠️ Kamu harus lolos verifikasi KTP terlebih dahulu untuk bermain Kuis Harian!", "warning");
+                    router.push("/verify");
+                    return;
+                  }
+                  router.push("/explore/rewards/quiz");
+                }}
+                className="bg-amber-400 hover:bg-white text-slate-900 border-4 border-slate-900 px-8 py-5 font-black italic uppercase text-xs sm:text-sm shadow-[4px_4px_0_0_#000] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_#000] transition-all shrink-0 z-10 w-full lg:w-auto text-center cursor-pointer rounded-2xl"
+              >
+                MAIN KUIS SEKARANG! ⚡
+              </button>
+            </motion.div>
+          )
         )}
 
         {/* PILIHAN UNTUK KAMU / RECOMMENDATIONS */}
-        {!searchQuery && personalizedRecommendations.length > 0 && (
+        {!searchQuery && (isLoading || personalizedRecommendations.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1618,20 +1637,28 @@ export default function ExplorePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {personalizedRecommendations.map((event, idx) => (
-                <TiltEventCard
-                  key={`rec-${event.id}`}
-                  event={event}
-                  idx={idx}
-                  today={today}
-                  likedEvents={likedEvents}
-                  toggleLike={toggleLike}
-                  openDetailModal={openDetailModal}
-                  formatRupiah={formatRupiah}
-                  handleShareEvent={handleShareEvent}
-                  handleOpenQuickPurchase={handleOpenQuickPurchase}
-                />
-              ))}
+              {isLoading ? (
+                <>
+                  <EventCardSkeleton />
+                  <EventCardSkeleton />
+                  <EventCardSkeleton />
+                </>
+              ) : (
+                personalizedRecommendations.map((event, idx) => (
+                  <TiltEventCard
+                    key={`rec-${event.id}`}
+                    event={event}
+                    idx={idx}
+                    today={today}
+                    likedEvents={likedEvents}
+                    toggleLike={toggleLike}
+                    openDetailModal={openDetailModal}
+                    formatRupiah={formatRupiah}
+                    handleShareEvent={handleShareEvent}
+                    handleOpenQuickPurchase={handleOpenQuickPurchase}
+                  />
+                ))
+              )}
             </div>
           </motion.div>
         )}

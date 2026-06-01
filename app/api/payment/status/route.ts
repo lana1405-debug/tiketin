@@ -41,7 +41,13 @@ export async function POST(request: Request) {
       });
     }
 
-    const db = supabaseAdmin!;
+    const db = supabaseAdmin;
+    if (!db) {
+      console.error('Status API Error: SUPABASE_SERVICE_ROLE_KEY is not set.');
+      return NextResponse.json({ 
+        error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing on Vercel. Please add it to your Environment Variables and redeploy.' 
+      }, { status: 500 });
+    }
 
     // 3. Ambil data transaksi dari Supabase
     const { data: txData, error: txError } = await db

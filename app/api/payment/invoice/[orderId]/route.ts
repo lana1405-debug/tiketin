@@ -19,7 +19,13 @@ export async function GET(
     const authHeader = request.headers.get('Authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
 
-    const db = supabaseAdmin!;
+    const db = supabaseAdmin;
+    if (!db) {
+      console.error('Invoice API Error: SUPABASE_SERVICE_ROLE_KEY is not set.');
+      return NextResponse.json({ 
+        error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing on Vercel. Please add it to your Environment Variables and redeploy.' 
+      }, { status: 500 });
+    }
     let user = null;
 
     if (token) {
