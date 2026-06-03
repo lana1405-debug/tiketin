@@ -434,7 +434,8 @@ export default function CheckoutPage() {
   };
 
   const handleApplyVoucher = async () => {
-    if (!voucherCodeInput.trim()) return;
+    const cleanedCode = voucherCodeInput.trim().toUpperCase().replace(/\s+/g, "");
+    if (!cleanedCode) return;
     setIsVoucherChecking(true);
     setVoucherError("");
     setAppliedVoucher(null);
@@ -443,7 +444,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/payment/validate-voucher", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucherCodeInput.trim(), event_id: event.id })
+        body: JSON.stringify({ code: cleanedCode, event_id: event.id })
       });
 
       const data = await res.json();

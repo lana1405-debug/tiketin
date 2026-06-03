@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin, supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -14,8 +14,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Event ID harus diisi' }, { status: 400 });
     }
 
-    const codeUpper = code.trim().toUpperCase();
-    const { data: voucher, error } = await supabase
+    const db = supabaseAdmin || supabase;
+    const codeUpper = code.toUpperCase().replace(/\s+/g, "");
+    const { data: voucher, error } = await db
       .from('vouchers')
       .select('*')
       .eq('code', codeUpper)

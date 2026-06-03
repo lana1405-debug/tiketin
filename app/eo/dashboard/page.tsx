@@ -755,8 +755,8 @@ export default function EODashboard() {
         discount_type: voucherForm.discount_type,
         discount_value: Number(voucherForm.discount_value),
         max_uses: voucherForm.max_uses ? Number(voucherForm.max_uses) : null,
-        valid_from: new Date(voucherForm.valid_from).toISOString(),
-        valid_to: new Date(voucherForm.valid_to).toISOString(),
+        valid_from: new Date(voucherForm.valid_from + "T00:00:00").toISOString(),
+        valid_to: new Date(voucherForm.valid_to + "T23:59:59").toISOString(),
         uses_count: 0
       };
 

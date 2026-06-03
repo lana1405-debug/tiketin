@@ -10,11 +10,27 @@ envContent.split('\n').forEach(line => {
   }
 });
 
-const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function testSql() {
-  const { data, error } = await supabase.rpc('exec_sql', { sql: 'select version();' });
-  console.log("exec_sql result:", data, error);
+  console.log("Creating bucket 'withdrawal_receipts'...");
+  const { data: bucketData, error: createError } = await supabase
+    .storage
+    .createBucket('withdrawal_receipts', {
+      public: true,
+      fileSizeLimit: 2097152 // 2MB
+    });
+
+  if (createError) {
+    console.error("Error creating bucket:", createError);
+  } else {
+    console.log("Bucket created successfully:", bucketData);
+  }
+
+  const { data: buckets, error: bError } = await supabase
+    .storage
+    .listBuckets();
+  console.log("Buckets:", JSON.stringify(buckets, null, 2), bError);
 }
 
 testSql();

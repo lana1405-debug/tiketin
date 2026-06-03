@@ -58,35 +58,19 @@ export default function AdminWithdrawalsPage() {
     setUploadingId(id);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const formData = new FormData();
+      formData.append("id", id);
+      formData.append("file", file);
 
-      // Upload file to 'withdrawal_receipts' bucket
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('withdrawal_receipts')
-        .upload(filePath, file);
+      const res = await fetch("/api/admin/upload-receipt", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (uploadError) {
-        throw new Error("Gagal mengupload bukti transfer: " + uploadError.message);
-      }
+      const data = await res.json();
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('withdrawal_receipts')
-        .getPublicUrl(filePath);
-
-      // Update withdrawals status and receipt_url
-      const { error: updateError } = await supabase
-        .from("withdrawals")
-        .update({ 
-          status: "completed",
-          receipt_url: publicUrl
-        })
-        .eq("id", id);
-
-      if (updateError) {
-        throw updateError;
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Gagal memproses bukti transfer");
       }
 
       toast("Pencairan dana berhasil diselesaikan dengan bukti transfer! ✅", "success");
